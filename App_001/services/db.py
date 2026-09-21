@@ -54,12 +54,21 @@ def save_role_groups(data):
     pass
 
 def get_resources():
+    import ast
     risorse = _fetchall("SELECT * FROM STAFFMATCH_RISORSA")
     for r in risorse:
         r["skills"] = _fetchall("SELECT SKILL_ID, LIVELLO FROM STAFFMATCH_RISORSASKILL WHERE RISORSA_ID = ?", (r["id"],))
         r["costo_orario"] = r.pop("costoorario", None)
         r["termine_progetto"] = r.pop("termineprogetto", None)
         r["movimento_in_corso"] = r.pop("movimentoincorso", None)
+        r["password_hash"] = r.pop("passwordhash", "") or ""
+        r["is_active"] = r.pop("isactive", True)
+        r["ruolo"] = r.pop("ruolo", "") or ""
+        raw = r.pop("grupporuoloids", "[]") or "[]"
+        try:
+            r["gruppo_ruolo_ids"] = ast.literal_eval(raw)
+        except:
+            r["gruppo_ruolo_ids"] = []
     return risorse
 
 def save_resources(data):
