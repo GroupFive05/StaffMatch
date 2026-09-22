@@ -1,4 +1,5 @@
 import os
+import json
 from hdbcli import dbapi
 
 def _get_conn():
@@ -29,102 +30,150 @@ def _execute(query, params=()):
     conn.close()
 
 def get_skills():
-    rows = _fetchall("SELECT ID, CODICE, DESCRIZIONE, LIVELLOMIN, LIVELLOMAX FROM STAFFMATCH_SKILL")
-    return [{"id": r["id"], "nome": r["codice"], "descrizione": r["descrizione"], "livello_min": r["livellomin"], "livello_max": r["livellomax"]} for r in rows]
+    return _fetchall("SELECT ID as id, NOME as nome, CATEGORIA as categoria, DESCRIZIONE as descrizione FROM STAFFMATCH_SKILL")
 
 def save_skills(data):
     _execute("DELETE FROM STAFFMATCH_SKILL")
     for s in data:
-        _execute("INSERT INTO STAFFMATCH_SKILL (ID, CODICE, DESCRIZIONE, LIVELLOMIN, LIVELLOMAX) VALUES (?,?,?,?,?)",
-                 (s.get("id"), s.get("nome"), s.get("descrizione"), s.get("livello_min"), s.get("livello_max")))
+        _execute("INSERT INTO STAFFMATCH_SKILL (ID, NOME, CATEGORIA, DESCRIZIONE) VALUES (?,?,?,?)",
+                 (s.get("id"), s.get("nome"), s.get("categoria",""), s.get("descrizione","")))
 
 def get_roles():
-    return _fetchall("SELECT ID, NOME, LIVELLO, DESCRIZIONE FROM STAFFMATCH_MANSIONE")
+    return _fetchall("SELECT ID as id, NOME as nome, SENIORITY as seniority, DESCRIZIONE as descrizione, COSTOORARIO as costo_orario FROM STAFFMATCH_RUOLO")
 
 def save_roles(data):
-    _execute("DELETE FROM STAFFMATCH_MANSIONE")
+    _execute("DELETE FROM STAFFMATCH_RUOLO")
     for r in data:
-        _execute("INSERT INTO STAFFMATCH_MANSIONE (ID, NOME, LIVELLO, DESCRIZIONE) VALUES (?,?,?,?)",
-                 (r.get("id"), r.get("nome"), r.get("livello"), r.get("descrizione")))
+        _execute("INSERT INTO STAFFMATCH_RUOLO (ID, NOME, SENIORITY, DESCRIZIONE, COSTOORARIO) VALUES (?,?,?,?,?)",
+                 (r.get("id"), r.get("nome"), r.get("seniority",""), r.get("descrizione",""), r.get("costo_orario",0)))
 
 def get_role_groups():
-    return []
+    rows = _fetchall("SELECT ID as id, NOME as nome, DESCRIZIONE as descrizione, RUOLIIDS as ruoli_ids FROM STAFFMATCH_GRUPPORUOLO")
+    for r in rows:
+        try:
+            r["ruoli_ids"] = json.loads(r.get("ruoli_ids") or "[]")
+        except:
+            r["ruoli_ids"] = []
+    return rows
 
 def save_role_groups(data):
-    pass
+    _execute("DELETE FROM STAFFMATCH_GRUPPORUOLO")
+    for g in data:
+        _execute("INSERT INTO STAFFMATCH_GRUPPORUOLO (ID, NOME, DESCRIZIONE, RUOLIIDS) VALUES (?,?,?,?)",
+                 (g.get("id"), g.get("nome"), g.get("descrizione",""), json.dumps(g.get("ruoli_ids",[]))))
 
 def get_resources():
-    import ast
-    risorse = _fetchall("SELECT * FROM STAFFMATCH_RISORSA")
+    risorse = _fetchall("SELECT ID as id, NOME as nome, COGNOME as cognome, EMAIL as email, DATANASCITA as data_nascita, RUOLOID as ruolo_id, COSTOORARIO as costo_orario, LINGUE as lingue, ISACTIVE as is_active, PASSWORDHASH as password_hash, GRUPPORUOLOIDS as gruppo_ruolo_ids, DISPONIBILITA as disponibilita, TERMINEPROGETTO as termine_progetto, OFFSHORE as offshore, STAGISTA as stagista, MOVIMENTOINCORSO as movimento_in_corso FROM STAFFMATCH_RISORSA")
     for r in risorse:
-        r["skills"] = _fetchall("SELECT SKILL_ID, LIVELLO FROM STAFFMATCH_RISORSASKILL WHERE RISORSA_ID = ?", (r["id"],))
-        r["costo_orario"] = r.pop("costoorario", None)
-        r["termine_progetto"] = r.pop("termineprogetto", None)
-        r["movimento_in_corso"] = r.pop("movimentoincorso", None)
-        r["password_hash"] = r.pop("passwordhash", "") or ""
-        r["is_active"] = r.pop("isactive", True)
-        r["ruolo"] = r.pop("ruolo", "") or ""
-        raw = r.pop("grupporuoloids", "[]") or "[]"
         try:
-            r["gruppo_ruolo_ids"] = ast.literal_eval(raw)
+            r["lingue"] = json.loads(r.get("lingue") or "[]")
+        except:
+            r["lingue"] = []
+        try:
+            r["gruppo_ruolo_ids"] = json.loads(r.get("gruppo_ruolo_ids") or "[]")
         except:
             r["gruppo_ruolo_ids"] = []
+        skills = _fetchall("SELECT SKILLID as skill_id, LIVELLO as livello FROM STAFFMATCH_RISORSASKILL WHERE RISORSAID = ?", (r["id"],))
+        r["skill_ids"] = skills
     return risorse
 
 def save_resources(data):
     _execute("DELETE FROM STAFFMATCH_RISORSASKILL")
     _execute("DELETE FROM STAFFMATCH_RISORSA")
     for r in data:
-        _execute("INSERT INTO STAFFMATCH_RISORSA (ID, NOME, COGNOME, EMAIL, MANSIONE_ID, LIVELLO, COSTOORARIO, DISPONIBILITA, TERMINEPROGETTO, OFFSHORE, STAGISTA, MOVIMENTOINCORSO, LINGUA) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                 (r.get("id"), r.get("nome"), r.get("cognome"), r.get("email"), r.get("mansione_id"), r.get("livello"), r.get("costo_orario"), r.get("disponibilita"), r.get("termine_progetto"), r.get("offshore"), r.get("stagista"), r.get("movimento_in_corso"), r.get("lingua")))
-        for sk in r.get("skills", []):
-            _execute("INSERT INTO STAFFMATCH_RISORSASKILL (RISORSA_ID, SKILL_ID, LIVELLO) VALUES (?,?,?)",
-                     (r.get("id"), sk.get("skill_id"), sk.get("livello")))
+        _execute("""INSERT INTO STAFFMATCH_RISORSA
+                 (ID, NOME, COGNOME, EMAIL, DATANASCITA, RUOLOID, COSTOORARIO,
+                  LINGUE, ISACTIVE, PASSWORDHASH, GRUPPORUOLOIDS,
+                  DISPONIBILITA, TERMINEPROGETTO, OFFSHORE, STAGISTA, MOVIMENTOINCORSO)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (r.get("id"), r.get("nome"), r.get("cognome"), r.get("email"),
+                  r.get("data_nascita"), r.get("ruolo_id"), r.get("costo_orario",0),
+                  json.dumps(r.get("lingue",[])), r.get("is_active",True),
+                  r.get("password_hash",""), json.dumps(r.get("gruppo_ruolo_ids",[])),
+                  r.get("disponibilita",100), r.get("termine_progetto"),
+                  r.get("offshore",False), r.get("stagista",False),
+                  r.get("movimento_in_corso",False)))
+        for sk in r.get("skill_ids", []):
+            _execute("INSERT INTO STAFFMATCH_RISORSASKILL (RISORSAID, SKILLID, LIVELLO) VALUES (?,?,?)",
+                     (r.get("id"), sk.get("skill_id"), sk.get("livello",1)))
 
 def get_opportunities():
-    needs = _fetchall("SELECT * FROM STAFFMATCH_NEED")
-    result = []
-    for n in needs:
-        n["titolo_progetto"] = n.pop("iniziativa", None)
-        n["data_avvio"] = n.pop("dataavvio", None)
-        n["attiva"] = n.pop("ipotesi", True)
-        n["skills_richieste"] = _fetchall("SELECT SKILL_ID, LIVELLOMINIMO FROM STAFFMATCH_NEEDSKILL WHERE NEED_ID = ?", (n["id"],))
-        result.append(n)
-    return result
+    opps = _fetchall("SELECT ID as id, TITOLO as titolo, CLIENTE as cliente, REFERENTENOME as referente_nome, REFERENTECOGNOME as referente_cognome, MANAGERID as manager_id, DATAINIZIO as data_inizio, DATAFINEPREVISTA as data_fine_prevista, STATO as stato, DESCRIZIONE as descrizione, PRIORITA as priorita FROM STAFFMATCH_OPPORTUNITY")
+    for o in opps:
+        o["referente_it_cliente"] = {"nome": o.pop("referente_nome",""), "cognome": o.pop("referente_cognome","")}
+        o["skill_richieste"] = _fetchall("SELECT SKILLID as skill_id, LIVELLOMINIMO as livello_minimo FROM STAFFMATCH_OPPORTUNITYSKILL WHERE OPPORTUNITYID = ?", (o["id"],))
+        o["slot_risorse"] = _fetchall("SELECT SLOTINDEX as slot_index, MANSIONEID as mansione_id, PERCENTUALEALLOCAZIONE as percentuale_allocazione FROM STAFFMATCH_OPPORTUNITYSLOT WHERE OPPORTUNITYID = ? ORDER BY SLOTINDEX", (o["id"],))
+    return opps
 
 def save_opportunities(data):
-    _execute("DELETE FROM STAFFMATCH_NEEDSKILL")
-    _execute("DELETE FROM STAFFMATCH_NEED")
+    _execute("DELETE FROM STAFFMATCH_OPPORTUNITYSKILL")
+    _execute("DELETE FROM STAFFMATCH_OPPORTUNITYSLOT")
+    _execute("DELETE FROM STAFFMATCH_OPPORTUNITY")
     for o in data:
-        _execute("INSERT INTO STAFFMATCH_NEED (ID, CLIENTE, INIZIATIVA, DESCRIZIONE, OSR, DATAAVVIO, PRIORITA, STATUS, IPOTESI) VALUES (?,?,?,?,?,?,?,?,?)",
-                 (o.get("id"), o.get("cliente"), o.get("titolo_progetto"), o.get("descrizione"), o.get("osr"), o.get("data_avvio"), o.get("priorita"), o.get("status"), o.get("attiva", True)))
-        for sk in o.get("skills_richieste", []):
-            _execute("INSERT INTO STAFFMATCH_NEEDSKILL (NEED_ID, SKILL_ID, LIVELLO_MIN) VALUES (?,?,?)",
-                     (o.get("id"), sk.get("skill_id"), sk.get("livellominimo")))
+        ref = o.get("referente_it_cliente", {})
+        _execute("""INSERT INTO STAFFMATCH_OPPORTUNITY
+                 (ID, TITOLO, CLIENTE, REFERENTENOME, REFERENTECOGNOME,
+                  MANAGERID, DATAINIZIO, DATAFINEPREVISTA, STATO, DESCRIZIONE, PRIORITA)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                 (o.get("id"), o.get("titolo"), o.get("cliente"),
+                  ref.get("nome",""), ref.get("cognome",""),
+                  o.get("manager_id",""), o.get("data_inizio"),
+                  o.get("data_fine_prevista"), o.get("stato","New"),
+                  o.get("descrizione",""), o.get("priorita",0)))
+        for sk in o.get("skill_richieste", []):
+            _execute("INSERT INTO STAFFMATCH_OPPORTUNITYSKILL (OPPORTUNITYID, SKILLID, LIVELLOMINIMO) VALUES (?,?,?)",
+                     (o.get("id"), sk.get("skill_id"), sk.get("livello_minimo",1)))
+        for i, slot in enumerate(o.get("slot_risorse", [])):
+            _execute("INSERT INTO STAFFMATCH_OPPORTUNITYSLOT (OPPORTUNITYID, SLOTINDEX, MANSIONEID, PERCENTUALEALLOCAZIONE) VALUES (?,?,?,?)",
+                     (o.get("id"), i, slot.get("mansione_id",""), slot.get("percentuale_allocazione",100)))
+
+def get_projects():
+    projs = _fetchall("SELECT ID as id, NOME as nome, CLIENTE as cliente, REFERENTENOME as referente_nome, REFERENTECOGNOME as referente_cognome, MANAGERID as manager_id, SKILLPRINCIPALEID as skill_principale_id, SKILLSECONDARIE as skill_secondarie_ids, DATAINIZIO as data_inizio, DATAFINEPREVISTA as data_fine_prevista, STATO as stato, DESCRIZIONE as descrizione FROM STAFFMATCH_PROGETTO")
+    for p in projs:
+        p["referente_it_cliente"] = {"nome": p.pop("referente_nome",""), "cognome": p.pop("referente_cognome","")}
+        try:
+            p["skill_secondarie_ids"] = json.loads(p.get("skill_secondarie_ids") or "[]")
+        except:
+            p["skill_secondarie_ids"] = []
+    return projs
+
+def save_projects(data):
+    _execute("DELETE FROM STAFFMATCH_PROGETTO")
+    for p in data:
+        ref = p.get("referente_it_cliente", {})
+        _execute("""INSERT INTO STAFFMATCH_PROGETTO
+                 (ID, NOME, CLIENTE, REFERENTENOME, REFERENTECOGNOME,
+                  MANAGERID, SKILLPRINCIPALEID, SKILLSECONDARIE,
+                  DATAINIZIO, DATAFINEPREVISTA, STATO, DESCRIZIONE)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (p.get("id"), p.get("nome"), p.get("cliente"),
+                  ref.get("nome",""), ref.get("cognome",""),
+                  p.get("manager_id",""), p.get("skill_principale_id",""),
+                  json.dumps(p.get("skill_secondarie_ids",[])),
+                  p.get("data_inizio"), p.get("data_fine_prevista"),
+                  p.get("stato","Active"), p.get("descrizione","")))
 
 def get_allocations():
-    return _fetchall("SELECT * FROM STAFFMATCH_ALLOCAZIONE")
+    return _fetchall("SELECT ID as id, RISORSAID as risorsa_id, PROGETTOID as progetto_id, PERCENTUALE as percentuale, DATAINIZIO as data_inizio, DATAFINE as data_fine, RUOLONELPROGETTO as ruolo_nel_progetto FROM STAFFMATCH_ALLOCAZIONE")
 
 def save_allocations(data):
     _execute("DELETE FROM STAFFMATCH_ALLOCAZIONE")
     for a in data:
-        _execute("INSERT INTO STAFFMATCH_ALLOCAZIONE (ID, RISORSA_ID, NEED_ID, PERCENTUALE, DATASTART, DATAEND, STATUS) VALUES (?,?,?,?,?,?,?)",
-                 (a.get("id"), a.get("risorsa_id"), a.get("need_id"), a.get("percentuale"), a.get("data_start"), a.get("data_end"), a.get("status")))
+        _execute("INSERT INTO STAFFMATCH_ALLOCAZIONE (ID, RISORSAID, PROGETTOID, PERCENTUALE, DATAINIZIO, DATAFINE, RUOLONELPROGETTO) VALUES (?,?,?,?,?,?,?)",
+                 (a.get("id"), a.get("risorsa_id"), a.get("progetto_id"),
+                  a.get("percentuale",100), a.get("data_inizio"),
+                  a.get("data_fine"), a.get("ruolo_nel_progetto","")))
 
 def get_match_results():
-    return _fetchall("SELECT * FROM STAFFMATCH_MATCHRESULT")
+    return _fetchall("SELECT ID as id, OPPORTUNITYID as opportunity_id, SLOTINDEX as slot_index, RISORSAID as risorsa_id, SCORE as score, MOTIVAZIONE as motivazione, STATO as stato FROM STAFFMATCH_MATCHRESULT")
 
 def save_match_results(data):
     _execute("DELETE FROM STAFFMATCH_MATCHRESULT")
     for m in data:
-        _execute("INSERT INTO STAFFMATCH_MATCHRESULT (ID, NEED_ID, RISORSA_ID, SCORE, MOTIVAZIONE, CREATEDAT) VALUES (?,?,?,?,?,?)",
-                 (m.get("id"), m.get("need_id"), m.get("risorsa_id"), m.get("score"), m.get("motivazione"), m.get("created_at")))
-
-def get_projects():
-    return get_opportunities()
-
-def save_projects(data):
-    pass
+        _execute("INSERT INTO STAFFMATCH_MATCHRESULT (ID, OPPORTUNITYID, SLOTINDEX, RISORSAID, SCORE, MOTIVAZIONE, STATO) VALUES (?,?,?,?,?,?,?)",
+                 (m.get("id"), m.get("opportunity_id"), m.get("slot_index",0),
+                  m.get("risorsa_id"), m.get("score",0),
+                  m.get("motivazione",""), m.get("stato","Proposed")))
 
 def get_promotion_requests():
     return []
