@@ -2,8 +2,17 @@ import os
 import json
 from hdbcli import dbapi
 
+_conn = None
+
 def _get_conn():
-    return dbapi.connect(
+    global _conn
+    try:
+        if _conn is not None:
+            _conn.cursor().execute("SELECT 1 FROM DUMMY")
+            return _conn
+    except:
+        _conn = None
+    _conn = dbapi.connect(
         address=os.environ.get("HANA_ADDRESS", "268718a1-2b08-4eb6-99ec-87a77e84bab0.hna2.prod-eu10.hanacloud.ondemand.com"),
         port=int(os.environ.get("HANA_PORT", "443")),
         user=os.environ.get("HANA_USER", "43986AB4EB174D8AAB87650958CCA6AD_31OU7WNFBO7Y4JDWIWL6COUSQ_RT"),
@@ -19,7 +28,6 @@ def _fetchall(query, params=()):
     cur.execute(query, params)
     cols = [d[0].lower() for d in cur.description]
     rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-    conn.close()
     return rows
 
 def _execute(query, params=()):
@@ -27,7 +35,6 @@ def _execute(query, params=()):
     cur = conn.cursor()
     cur.execute(query, params)
     conn.commit()
-    conn.close()
 
 def get_skills():
     return _fetchall("SELECT ID as id, NOME as nome, CATEGORIA as categoria, DESCRIZIONE as descrizione FROM STAFFMATCH_SKILL")
@@ -176,16 +183,54 @@ def save_match_results(data):
                   m.get("motivazione",""), m.get("stato","Proposed")))
 
 def get_promotion_requests():
-    return []
+    rows = _fetchall("SELECT ID as id, OPPORTUNITYID as opportunity_id, OPPORTUNITYTITOLO as opportunity_titolo, OPPORTUNITYCLIENTE as opportunity_cliente, REQUESTEDBYID as requested_by_id, REQUESTEDBYNOME as requested_by_nome, REQUESTEDAT as requested_at, STATO as stato, NOTEMANAGER as note_manager, NOTEEXECUTIVE as note_executive, REVIEWEDBYID as reviewed_by_id, REVIEWEDAT as reviewed_at, RISOREPERSLOT as risorse_per_slot FROM STAFFMATCH_PROMOTIONREQUEST")
+    for r in rows:
+        try:
+            r["risorse_per_slot"] = json.loads(r.get("risorse_per_slot") or "[]")
+        except:
+            r["risorse_per_slot"] = []
+    return rows
 
 def save_promotion_requests(data):
-    pass
+    _execute("DELETE FROM STAFFMATCH_PROMOTIONREQUEST")
+    for r in data:
+        _execute("""INSERT INTO STAFFMATCH_PROMOTIONREQUEST
+                 (ID, OPPORTUNITYID, OPPORTUNITYTITOLO, OPPORTUNITYCLIENTE,
+                  REQUESTEDBYID, REQUESTEDBYNOME, REQUESTEDAT, STATO,
+                  NOTEMANAGER, NOTEEXECUTIVE, REVIEWEDBYID, REVIEWEDAT, RISOREPERSLOT)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (r.get("id"), r.get("opportunity_id"), r.get("opportunity_titolo",""),
+                  r.get("opportunity_cliente",""), r.get("requested_by_id",""),
+                  r.get("requested_by_nome",""), r.get("requested_at",""),
+                  r.get("stato","Pending"), r.get("note_manager",""),
+                  r.get("note_executive"), r.get("reviewed_by_id"),
+                  r.get("reviewed_at"), json.dumps(r.get("risorse_per_slot",[]))))
 
 def get_project_change_requests():
-    return []
+    rows = _fetchall("SELECT ID as id, PROJECTID as project_id, PROJECTNOME as project_nome, PROJECTCLIENTE as project_cliente, REQUESTEDBYID as requested_by_id, REQUESTEDBYNOME as requested_by_nome, REQUESTEDAT as requested_at, STATO as stato, CHANGETYPE as change_type, PAYLOAD as payload, NOTEMANAGER as note_manager, NOTEEXECUTIVE as note_executive, REVIEWEDBYID as reviewed_by_id, REVIEWEDAT as reviewed_at FROM STAFFMATCH_PROJECTCHANGEREQUEST")
+    for r in rows:
+        try:
+            r["payload"] = json.loads(r.get("payload") or "{}")
+        except:
+            r["payload"] = {}
+    return rows
 
 def save_project_change_requests(data):
-    pass
+    _execute("DELETE FROM STAFFMATCH_PROJECTCHANGEREQUEST")
+    for r in data:
+        _execute("""INSERT INTO STAFFMATCH_PROJECTCHANGEREQUEST
+                 (ID, PROJECTID, PROJECTNOME, PROJECTCLIENTE,
+                  REQUESTEDBYID, REQUESTEDBYNOME, REQUESTEDAT, STATO,
+                  CHANGETYPE, PAYLOAD, NOTEMANAGER, NOTEEXECUTIVE,
+                  REVIEWEDBYID, REVIEWEDAT)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (r.get("id"), r.get("project_id"), r.get("project_nome",""),
+                  r.get("project_cliente",""), r.get("requested_by_id",""),
+                  r.get("requested_by_nome",""), r.get("requested_at",""),
+                  r.get("stato","Pending"), r.get("change_type",""),
+                  json.dumps(r.get("payload",{})), r.get("note_manager",""),
+                  r.get("note_executive"), r.get("reviewed_by_id"),
+                  r.get("reviewed_at")))
 
 def disponibilita_risorsa(risorsa_id: str) -> int:
     allocazioni = [a for a in get_allocations() if a.get("risorsa_id") == risorsa_id]
