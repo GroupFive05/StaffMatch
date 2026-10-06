@@ -309,6 +309,7 @@ def show_sidebar(groups):
             ("📁", "Progetti",        "progetti"),
             ("🎯", "Opportunity",     "opportunity"),
             ("🤖", "Matching AI",     "matching"),
+            ("💬", "Chatbot HANA",    "chatbot"),
         ]
         if is_executive_or_admin(groups):
             pages.append(("📋", "Approvazioni", "approvazioni"))
@@ -985,6 +986,42 @@ def _form_crea_opportunity():
             detail = _api_detail(r)
             st.error(f"Errore: {detail}")
 
+# ── CHATBOT HANA ───────────────────────────────────────────────────────────────
+def show_chatbot(groups):
+    st.markdown('<p class="main-title">💬 Chatbot HANA</p>', unsafe_allow_html=True)
+    st.caption("Fai domande sui dati di risorse, progetti e opportunity · Powered by **Claude** via SAP AI Core")
+    st.markdown("---")
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # mostra la cronologia messaggi
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    question = st.chat_input("Fai una domanda sui dati StaffMatch…")
+    if question:
+        st.session_state.chat_history.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Claude sta elaborando la risposta…"):
+                resp = api("POST", "/chat/", json={"question": question})
+                if resp and resp.status_code == 200:
+                    answer = resp.json().get("answer", "")
+                else:
+                    answer = f"Errore nella risposta del backend ({resp.status_code if resp else 'non raggiungibile'})."
+                st.markdown(answer)
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+
+    if st.session_state.chat_history:
+        if st.button("🗑️ Cancella conversazione", key="chat_clear"):
+            st.session_state.chat_history = []
+            st.rerun()
+
+
 # ── MATCHING AI ────────────────────────────────────────────────────────────────
 def show_matching(groups):
     st.markdown('<p class="main-title">🤖 Matching AI</p>', unsafe_allow_html=True)
@@ -1535,6 +1572,8 @@ def main():
         show_opportunity(groups)
     elif page == "matching":
         show_matching(groups)
+    elif page == "chatbot":
+        show_chatbot(groups)
     elif page == "approvazioni":
         show_approvazioni(groups)
     elif page == "admin":
