@@ -8,6 +8,9 @@ Non inventare dati che non sono nel contesto."""
 
 
 def _build_context() -> str:
+    from datetime import datetime
+    now = datetime.now().strftime("%A %d %B %Y, ore %H:%M")
+
     resources    = db.get_resources()
     projects     = db.get_projects()
     opportunities= db.get_opportunities()
@@ -15,7 +18,7 @@ def _build_context() -> str:
     roles_map    = {r["id"]: r for r in db.get_roles()}
     groups_map   = {g["id"]: g["nome"] for g in db.get_role_groups()}
 
-    lines = ["=== RISORSE (DIPENDENTI) ==="]
+    lines = [f"=== DATA E ORA CORRENTE ===\n{now}\n\n=== RISORSE (DIPENDENTI) ==="]
     for r in resources:
         ruolo = roles_map.get(r.get("ruolo_id", ""), {})
         skill_names = []
