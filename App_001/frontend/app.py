@@ -309,7 +309,7 @@ def show_sidebar(groups):
             ("📁", "Progetti",        "progetti"),
             ("🎯", "Opportunity",     "opportunity"),
             ("🤖", "Matching AI",     "matching"),
-            ("💬", "Chatbot HANA",    "chatbot"),
+            ("💬", "Chatbot StaffMatch", "chatbot"),
         ]
         if is_executive_or_admin(groups):
             pages.append(("📋", "Approvazioni", "approvazioni"))
@@ -988,7 +988,7 @@ def _form_crea_opportunity():
 
 # ── CHATBOT HANA ───────────────────────────────────────────────────────────────
 def show_chatbot(groups):
-    st.markdown('<p class="main-title">💬 Chatbot HANA</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">💬 Chatbot StaffMatch</p>', unsafe_allow_html=True)
     st.caption("Fai domande sui dati di risorse, progetti e opportunity · Powered by **Claude** via SAP AI Core")
     st.markdown("---")
 
