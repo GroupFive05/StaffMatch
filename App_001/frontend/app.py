@@ -20,8 +20,10 @@ st.markdown("""
     /* ── SIDEBAR ── */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%) !important;
-        border-right: 1px solid #2a2a2a;
     }
+    /* nasconde la linea nativa Streamlit tra sidebar e main */
+    [data-testid="stSidebarContent"] { border-right: none !important; }
+    section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stMarkdown p,
     [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] span,
@@ -56,6 +58,14 @@ st.markdown("""
         letter-spacing: -0.5px;
     }
     .sub-title { color: #888; font-size: 0.85rem; margin-top: 2px; }
+    .dashboard-hero-title {
+        color: #A100FF;
+        font-size: 3.2rem;
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        margin: 0 0 0.2rem 0;
+        line-height: 1.1;
+    }
     .page-header {
         background: white;
         border-radius: 16px;
@@ -345,7 +355,7 @@ def show_sidebar(groups):
 <style>
 #sm-topbar {{
     position: fixed; top: 0; right: 52px; z-index: 9999;
-    height: 38px;
+    height: 2.875rem;
     display: flex; align-items: center; gap: 10px;
     padding: 0;
 }}
@@ -389,7 +399,7 @@ def show_sidebar(groups):
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────────
 def show_dashboard(groups):
-    st.markdown('<p class="main-title">🏠 Dashboard</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="dashboard-hero-title">D&A Practice Overview</h1>', unsafe_allow_html=True)
     st.markdown("---")
 
     r_res  = api("GET", "/resources/")
