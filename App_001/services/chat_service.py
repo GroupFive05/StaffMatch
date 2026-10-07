@@ -133,8 +133,20 @@ def _build_context(categories: set) -> str:
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
-def ask(question: str) -> str:
+def ask(question: str, history: list = None) -> str:
     categories = _classify(question)
     context = _build_context(categories)
-    user_message = f"Contesto dati StaffMatch:\n{context}\n\nDomanda: {question}"
-    return ai_service.call_claude(SYSTEM_PROMPT, user_message, max_tokens=1024)
+
+    # Il contesto dati va nel system prompt (sempre aggiornato per la domanda corrente)
+    system_with_context = f"{SYSTEM_PROMPT}\n\n{context}"
+
+    # History: turni precedenti come Q&A puliti, poi la domanda corrente
+    messages = []
+    if history:
+        for msg in history:
+            role = msg.role if hasattr(msg, "role") else msg.get("role")
+            content = msg.content if hasattr(msg, "content") else msg.get("content")
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": question})
+
+    return ai_service.call_claude_messages(system_with_context, messages, max_tokens=1024)

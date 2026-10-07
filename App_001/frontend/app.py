@@ -1008,7 +1008,9 @@ def show_chatbot(groups):
 
         with st.chat_message("assistant"):
             with st.spinner("Claude sta elaborando la risposta…"):
-                resp = api("POST", "/chat/", json={"question": question})
+                # invia la history precedente (esclusa la domanda appena aggiunta)
+                prior_history = st.session_state.chat_history[:-1]
+                resp = api("POST", "/chat/", json={"question": question, "history": prior_history})
                 if resp and resp.status_code == 200:
                     answer = resp.json().get("answer", "")
                 else:

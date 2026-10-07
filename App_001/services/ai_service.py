@@ -30,6 +30,10 @@ def get_token() -> str:
     return _token_cache["token"]
 
 def call_claude(system_prompt: str, user_message: str, max_tokens: int = 2048) -> str:
+    return call_claude_messages(system_prompt, [{"role": "user", "content": user_message}], max_tokens)
+
+
+def call_claude_messages(system_prompt: str, messages: list, max_tokens: int = 2048) -> str:
     token = get_token()
     resp = requests.post(
         f"{BASE_URL}/v2/inference/deployments/{DEPLOYMENT_ID}/invoke",
@@ -42,7 +46,7 @@ def call_claude(system_prompt: str, user_message: str, max_tokens: int = 2048) -
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
             "system": system_prompt,
-            "messages": [{"role": "user", "content": user_message}],
+            "messages": messages,
         },
         timeout=60,
     )
