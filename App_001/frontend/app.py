@@ -45,7 +45,7 @@ st.markdown("""
 
     /* ── MAIN AREA ── */
     .main .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1200px; }
-    .stApp { background: #f5f5f7; }
+    .stApp { background: var(--background-color); }
 
     /* ── TITOLI PAGINA ── */
     .main-title {
