@@ -1,0 +1,5 @@
+[
+  "src/gen/staffmatch.Mansione.hdbtable",
+  "src/gen/staffmatch.Need.hdbtable",
+  "src/gen/staffmatch.NeedSkill.hdbtable"
+]
