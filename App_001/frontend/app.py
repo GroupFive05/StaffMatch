@@ -192,8 +192,12 @@ st.markdown("""
     }
     .stProgress > div > div {
         border-radius: 999px !important;
-        background: #f0e6ff !important;
+        background: rgba(161,0,255,0.15) !important;
     }
+    /* testo percentuale visibile in dark mode */
+    [data-testid="stProgress"] p,
+    [data-testid="stProgress"] span,
+    .stProgress p, .stProgress span { color: var(--text-color) !important; }
 
     /* ── ALERTS ── */
     div[data-testid="stAlert"] {
@@ -349,6 +353,32 @@ def show_sidebar(groups):
                     del st.session_state[k]
                 st.rerun()
         st.markdown("---")
+
+        # Header fisso in alto a destra (prima dei ⋮) con nome + logout
+        nome_hdr = u.get('nome', '')
+        cognome_hdr = u.get('cognome', '')
+        st.markdown(f"""
+<style>
+#sm-topbar {{ position: fixed; top: 7px; right: 58px; z-index: 9999;
+    display: flex; align-items: center; gap: 10px; }}
+#sm-topbar .sm-name {{ font-size: 0.80rem; font-weight: 600;
+    color: var(--text-color); white-space: nowrap; }}
+#sm-topbar .sm-exit {{ font-size: 0.75rem; color: #A100FF;
+    border: 1px solid #A100FF; border-radius: 6px;
+    padding: 2px 10px; background: transparent; cursor: pointer;
+    transition: all 0.2s ease; }}
+#sm-topbar .sm-exit:hover {{ background: #A100FF; color: white; }}
+</style>
+<div id="sm-topbar">
+  <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
+  <button class="sm-exit" onclick="(function(){{
+    var btns = window.parent.document.querySelectorAll('button');
+    for (var i=0; i<btns.length; i++) {{
+      if (btns[i].innerText.trim()==='🚪') {{ btns[i].click(); return; }}
+    }}
+  }})()">Esci</button>
+</div>
+""", unsafe_allow_html=True)
 
         pages = [
             ("🏠", "Dashboard",       "dashboard"),
