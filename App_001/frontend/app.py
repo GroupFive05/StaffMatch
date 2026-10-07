@@ -209,6 +209,45 @@ st.markdown("""
     ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb { background: #A100FF66; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #A100FF; }
+
+    /* ── CHATBOT PANEL — adattivo light/dark via variabili Streamlit ── */
+    .chat-panel {
+        background: var(--secondary-background-color);
+        border-radius: 20px;
+        border: 1.5px solid rgba(161,0,255,0.2);
+        box-shadow: 0 8px 32px rgba(161,0,255,0.10), 0 2px 8px rgba(0,0,0,0.06);
+        padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+        margin-bottom: 1rem;
+        min-height: 300px;
+    }
+    [data-testid="stChatMessage"] {
+        background: var(--background-color) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(161,0,255,0.15) !important;
+        margin-bottom: 8px !important;
+    }
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+        background: var(--secondary-background-color) !important;
+        border-color: rgba(161,0,255,0.3) !important;
+    }
+    [data-testid="stChatMessageContent"] p,
+    [data-testid="stChatMessageContent"] span,
+    [data-testid="stChatMessageContent"] li,
+    [data-testid="stChatMessageContent"] td,
+    [data-testid="stChatMessageContent"] th,
+    [data-testid="stChatMessage"] p,
+    [data-testid="stChatMessage"] span,
+    [data-testid="stChatMessage"] li { color: var(--text-color) !important; }
+    [data-testid="stChatMessage"] strong { color: #A100FF !important; }
+    [data-testid="stChatInput"] textarea {
+        border-radius: 12px !important;
+        border: 1.5px solid rgba(161,0,255,0.3) !important;
+        color: var(--text-color) !important;
+    }
+    [data-testid="stChatInput"] textarea:focus {
+        border-color: #A100FF !important;
+        box-shadow: 0 0 0 3px rgba(161,0,255,0.1) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -294,13 +333,21 @@ def show_sidebar(groups):
         st.markdown("## 🎯 StaffMatch AI")
         st.markdown("---")
         u = st.session_state.user or {}
-        st.markdown(f"**{u.get('nome','')} {u.get('cognome','')}**")
-        st.caption(u.get("email", ""))
-        role_label = ("🔴 Administrator" if "Administrator" in groups
-                      else "🟣 Executive"  if "Executive"      in groups
-                      else "🔵 Manager"    if "Manager"        in groups
-                      else "🟢 Employee")
-        st.markdown(role_label)
+        col_user, col_logout = st.columns([3, 1])
+        with col_user:
+            st.markdown(f"**{u.get('nome','')} {u.get('cognome','')}**")
+            st.caption(u.get("email", ""))
+            role_label = ("🔴 Administrator" if "Administrator" in groups
+                          else "🟣 Executive"  if "Executive"      in groups
+                          else "🔵 Manager"    if "Manager"        in groups
+                          else "🟢 Employee")
+            st.markdown(role_label)
+        with col_logout:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🚪", help="Logout", key="logout_top"):
+                for k in list(st.session_state.keys()):
+                    del st.session_state[k]
+                st.rerun()
         st.markdown("---")
 
         pages = [
@@ -321,12 +368,6 @@ def show_sidebar(groups):
             if st.button(f"{active}{icon} {label}", use_container_width=True, key=f"nav_{key}"):
                 st.session_state.page = key
                 st.rerun()
-
-        st.markdown("---")
-        if st.button("🚪 Logout", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            st.rerun()
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────────
 def show_dashboard(groups):
@@ -990,15 +1031,25 @@ def _form_crea_opportunity():
 def show_chatbot(groups):
     st.markdown('<p class="main-title">💬 Chatbot StaffMatch</p>', unsafe_allow_html=True)
     st.caption("Fai domande sui dati di risorse, progetti e opportunity · Powered by **Claude** via SAP AI Core")
-    st.markdown("---")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # mostra la cronologia messaggi
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    # pannello conversazione
+    st.markdown('<div class="chat-panel">', unsafe_allow_html=True)
+
+    if not st.session_state.chat_history:
+        st.markdown(
+            '<p style="color:#bbb;text-align:center;padding:2rem 0;font-size:0.9rem;">'
+            '💬 Inizia a scrivere per interrogare i dati della practice</p>',
+            unsafe_allow_html=True
+        )
+    else:
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     question = st.chat_input("Fai una domanda sui dati StaffMatch…")
     if question:
@@ -1008,7 +1059,6 @@ def show_chatbot(groups):
 
         with st.chat_message("assistant"):
             with st.spinner("Claude sta elaborando la risposta…"):
-                # invia la history precedente (esclusa la domanda appena aggiunta)
                 prior_history = st.session_state.chat_history[:-1]
                 resp = api("POST", "/chat/", json={"question": question, "history": prior_history})
                 if resp and resp.status_code == 200:
