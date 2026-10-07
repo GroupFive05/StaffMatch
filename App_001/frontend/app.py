@@ -337,46 +337,34 @@ def show_sidebar(groups):
         st.markdown("## 🎯 StaffMatch AI")
         st.markdown("---")
         u = st.session_state.user or {}
-        col_user, col_logout = st.columns([3, 1])
-        with col_user:
-            st.markdown(f"**{u.get('nome','')} {u.get('cognome','')}**")
-            st.caption(u.get("email", ""))
-            role_label = ("🔴 Administrator" if "Administrator" in groups
-                          else "🟣 Executive"  if "Executive"      in groups
-                          else "🔵 Manager"    if "Manager"        in groups
-                          else "🟢 Employee")
-            st.markdown(role_label)
-        with col_logout:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🚪", help="Logout", key="logout_top"):
-                for k in list(st.session_state.keys()):
-                    del st.session_state[k]
-                st.rerun()
-        st.markdown("---")
 
-        # Header fisso in alto a destra (prima dei ⋮) con nome + logout
+        # Header fisso in alto a destra — nome + Logout allineati con ⋮
         nome_hdr = u.get('nome', '')
         cognome_hdr = u.get('cognome', '')
         st.markdown(f"""
 <style>
-#sm-topbar {{ position: fixed; top: 7px; right: 58px; z-index: 9999;
-    display: flex; align-items: center; gap: 10px; }}
-#sm-topbar .sm-name {{ font-size: 0.80rem; font-weight: 600;
-    color: var(--text-color); white-space: nowrap; }}
-#sm-topbar .sm-exit {{ font-size: 0.75rem; color: #A100FF;
+#sm-topbar {{
+    position: fixed; top: 0; right: 52px; z-index: 9999;
+    height: 38px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0;
+}}
+#sm-topbar .sm-name {{
+    font-size: 0.80rem; font-weight: 600;
+    color: var(--text-color); white-space: nowrap; line-height: 1;
+}}
+#sm-topbar .sm-exit {{
+    font-size: 0.75rem; color: #A100FF;
     border: 1px solid #A100FF; border-radius: 6px;
-    padding: 2px 10px; background: transparent; cursor: pointer;
-    transition: all 0.2s ease; }}
+    padding: 3px 12px; background: transparent; cursor: pointer;
+    transition: all 0.2s ease; line-height: 1;
+    text-decoration: none; display: inline-flex; align-items: center;
+}}
 #sm-topbar .sm-exit:hover {{ background: #A100FF; color: white; }}
 </style>
 <div id="sm-topbar">
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
-  <button class="sm-exit" onclick="(function(){{
-    var btns = window.parent.document.querySelectorAll('button');
-    for (var i=0; i<btns.length; i++) {{
-      if (btns[i].innerText.trim()==='🚪') {{ btns[i].click(); return; }}
-    }}
-  }})()">Esci</button>
+  <a href="?logout=1" class="sm-exit">Logout</a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1635,6 +1623,12 @@ def show_admin(groups):
 
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def main():
+    if st.query_params.get("logout") == "1":
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        st.query_params.clear()
+        st.rerun()
+
     if not st.session_state.token:
         show_login()
         return
