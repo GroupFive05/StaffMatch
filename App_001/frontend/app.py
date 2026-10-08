@@ -58,13 +58,28 @@ st.markdown("""
         letter-spacing: -0.5px;
     }
     .sub-title { color: #888; font-size: 0.85rem; margin-top: 2px; }
-    .dashboard-hero-title {
+
+    /* ── LOGIN ── */
+    .login-app-title {
         color: #A100FF;
-        font-size: 3.2rem;
-        font-weight: 800;
-        letter-spacing: -1.5px;
+        font-size: 2.2rem;
+        font-weight: 900;
+        letter-spacing: -1px;
         margin: 0 0 0.2rem 0;
         line-height: 1.1;
+    }
+    .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
+    .login-sub2 { color: #999; font-size: 0.78rem; margin: 0.15rem 0 0 0; }
+
+    /* ── COCKPIT FIXED HEADER (top-left main area) ── */
+    #sm-cockpit-header {
+        position: fixed; top: 0; left: 22rem; z-index: 9998;
+        height: 3.75rem;
+        display: flex; align-items: center; padding-left: 0.5rem;
+    }
+    #sm-cockpit-header .sm-cockpit-name {
+        font-size: 1.05rem; font-weight: 800;
+        color: #A100FF; white-space: nowrap; letter-spacing: -0.3px;
     }
     .page-header {
         background: white;
@@ -328,9 +343,12 @@ def show_login():
     _, col, _ = st.columns([1, 2, 1])
     with col:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown('<p class="main-title">🎯 StaffMatch AI</p>', unsafe_allow_html=True)
-        st.markdown('<p class="sub-title">Staffing intelligente per progetti SAP/IT · Accenture Italy</p>',
-                    unsafe_allow_html=True)
+        st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="login-sub1">Intelligent Staffing &amp; Practice Management Platform</p>'
+            '<p class="login-sub2">D&amp;A Practice · Accenture Italy · Powered by SAP AI Core &amp; Claude</p>',
+            unsafe_allow_html=True
+        )
         st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login"):
@@ -391,6 +409,9 @@ def show_sidebar(groups):
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
   <a href="?logout=1" class="sm-exit">Logout</a>
 </div>
+<div id="sm-cockpit-header">
+  <span class="sm-cockpit-name">D&amp;A Advisory Cockpit</span>
+</div>
 """, unsafe_allow_html=True)
 
         pages = [
@@ -414,7 +435,7 @@ def show_sidebar(groups):
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────────
 def show_dashboard(groups):
-    st.markdown('<h1 class="dashboard-hero-title">D&A Practice Overview</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🏠 D&amp;A Practice Overview</p>', unsafe_allow_html=True)
     st.markdown("---")
 
     r_res  = api("GET", "/resources/")
