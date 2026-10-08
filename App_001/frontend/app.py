@@ -78,8 +78,8 @@ st.markdown("""
         display: flex; align-items: center; padding-left: 0.5rem;
     }
     #sm-cockpit-header .sm-cockpit-name {
-        font-size: 1.05rem; font-weight: 800;
-        color: #A100FF; white-space: nowrap; letter-spacing: -0.3px;
+        font-size: 2.2rem; font-weight: 900;
+        color: #A100FF; white-space: nowrap; letter-spacing: -1px;
     }
     .page-header {
         background: white;
