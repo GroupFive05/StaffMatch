@@ -51,7 +51,7 @@ st.markdown("""
 
     /* ── TITOLI PAGINA ── */
     .main-title {
-        color: #A100FF;
+        color: var(--text-color);
         font-size: 1.8rem;
         font-weight: 800;
         margin-bottom: 0;
@@ -79,7 +79,7 @@ st.markdown("""
     }
     #sm-cockpit-header .sm-cockpit-name {
         font-size: 2.2rem; font-weight: 900;
-        color: #A100FF; white-space: nowrap; letter-spacing: -1px;
+        color: #A100FF !important; white-space: nowrap; letter-spacing: -1px;
     }
     .page-header {
         background: white;
