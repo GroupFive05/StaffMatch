@@ -27,6 +27,6 @@ applications:
     path: ./frontend
     buildpacks:
       - python_buildpack
-    command: streamlit run app.py --server.port $PORT --server.headless true --server.address 0.0.0.0
+    command: python -m streamlit run app.py --server.port $PORT --server.headless true --server.address 0.0.0.0
     env:
       BACKEND_URL: https://staffmatch-ai-backend.cfapps.eu10-004.hana.ondemand.com
