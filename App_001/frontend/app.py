@@ -393,7 +393,7 @@ def show_sidebar(groups):
             ("📁", "Progetti",        "progetti"),
             ("🎯", "Opportunity",     "opportunity"),
             ("🤖", "Matching AI",     "matching"),
-            ("💬", "Chatbot StaffMatch", "chatbot"),
+            ("✨", "Practice Advisor", "chatbot"),
         ]
         if is_executive_or_admin(groups):
             pages.append(("📋", "Approvazioni", "approvazioni"))
@@ -1066,8 +1066,8 @@ def _form_crea_opportunity():
 
 # ── CHATBOT HANA ───────────────────────────────────────────────────────────────
 def show_chatbot(groups):
-    st.markdown('<p class="main-title">💬 Chatbot StaffMatch</p>', unsafe_allow_html=True)
-    st.caption("Fai domande sui dati di risorse, progetti e opportunity · Powered by **Claude** via SAP AI Core")
+    st.markdown('<p class="main-title">✨ Practice Advisor</p>', unsafe_allow_html=True)
+    st.caption("Interroga i dati di risorse, progetti e opportunity della practice · Powered by **Claude** via SAP AI Core")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
