@@ -230,9 +230,19 @@ st.markdown("""
         border-radius: 20px;
         border: 1.5px solid rgba(161,0,255,0.2);
         box-shadow: 0 8px 32px rgba(161,0,255,0.10), 0 2px 8px rgba(0,0,0,0.06);
-        padding: 1.5rem 1.5rem 0.5rem 1.5rem;
-        margin-bottom: 1rem;
-        min-height: 300px;
+        padding: 1.5rem;
+        margin-bottom: 0;
+        height: calc(100vh - 16rem);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    /* area input chat: occupa tutta la larghezza disponibile */
+    [data-testid="stBottom"] { padding: 0.5rem 0 !important; }
+    [data-testid="stChatInput"] {
+        border-radius: 16px !important;
+        border: 1.5px solid rgba(161,0,255,0.3) !important;
+        box-shadow: 0 4px 20px rgba(161,0,255,0.12) !important;
     }
     [data-testid="stChatMessage"] {
         background: var(--background-color) !important;
@@ -1067,25 +1077,28 @@ def show_chatbot(groups):
 
     if not st.session_state.chat_history:
         st.markdown(
-            '<p style="color:#bbb;text-align:center;padding:2rem 0;font-size:0.9rem;">'
-            '💬 Inizia a scrivere per interrogare i dati della practice</p>',
+            '<p style="color:#bbb;text-align:center;padding:4rem 0;font-size:0.9rem;">'
+            '✨ Inizia a scrivere per interrogare i dati della practice</p>',
             unsafe_allow_html=True
         )
     else:
         for msg in st.session_state.chat_history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
+        if st.button("🗑️ Cancella conversazione", key="chat_clear"):
+            st.session_state.chat_history = []
+            st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    question = st.chat_input("Fai una domanda sui dati StaffMatch…")
+    question = st.chat_input("Scrivi qui la tua domanda…")
     if question:
         st.session_state.chat_history.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.markdown(question)
 
         with st.chat_message("assistant"):
-            with st.spinner("Claude sta elaborando la risposta…"):
+            with st.spinner("Claude sta elaborando…"):
                 prior_history = st.session_state.chat_history[:-1]
                 resp = api("POST", "/chat/", json={"question": question, "history": prior_history})
                 if resp and resp.status_code == 200:
@@ -1094,11 +1107,6 @@ def show_chatbot(groups):
                     answer = f"Errore nella risposta del backend ({resp.status_code if resp else 'non raggiungibile'})."
                 st.markdown(answer)
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
-
-    if st.session_state.chat_history:
-        if st.button("🗑️ Cancella conversazione", key="chat_clear"):
-            st.session_state.chat_history = []
-            st.rerun()
 
 
 # ── MATCHING AI ────────────────────────────────────────────────────────────────
