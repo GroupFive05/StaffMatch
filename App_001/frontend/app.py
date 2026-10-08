@@ -232,7 +232,7 @@ st.markdown("""
         box-shadow: 0 8px 32px rgba(161,0,255,0.10), 0 2px 8px rgba(0,0,0,0.06);
         padding: 1.5rem;
         margin-bottom: 0;
-        height: calc(100vh - 22rem);
+        height: 45vh;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
