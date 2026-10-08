@@ -238,11 +238,17 @@ st.markdown("""
         flex-direction: column;
     }
     /* area input chat: occupa tutta la larghezza disponibile */
-    [data-testid="stBottom"] { padding: 0.5rem 0 !important; }
+    [data-testid="stBottom"] { padding: 1rem 0 1.5rem 0 !important; }
     [data-testid="stChatInput"] {
         border-radius: 16px !important;
         border: 1.5px solid rgba(161,0,255,0.3) !important;
         box-shadow: 0 4px 20px rgba(161,0,255,0.12) !important;
+    }
+    [data-testid="stChatInput"] textarea {
+        min-height: 80px !important;
+        padding: 1rem 1.2rem !important;
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
     }
     [data-testid="stChatMessage"] {
         background: var(--background-color) !important;
