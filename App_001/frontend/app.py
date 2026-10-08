@@ -345,7 +345,6 @@ def show_login():
 def show_sidebar(groups):
     with st.sidebar:
         st.markdown("## 🎯 StaffMatch AI")
-        st.markdown("---")
         u = st.session_state.user or {}
 
         # Header fisso in alto a destra — nome + Logout allineati con ⋮
@@ -355,7 +354,7 @@ def show_sidebar(groups):
 <style>
 #sm-topbar {{
     position: fixed; top: 0; right: 52px; z-index: 9999;
-    height: 2.875rem;
+    height: 3.75rem;
     display: flex; align-items: center; gap: 10px;
     padding: 0;
 }}
