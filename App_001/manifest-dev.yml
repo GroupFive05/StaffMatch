@@ -17,9 +17,9 @@ applications:
       JWT_EXPIRE_HOURS: "8"
       HANA_ADDRESS: 268718a1-2b08-4eb6-99ec-87a77e84bab0.hna2.prod-eu10.hanacloud.ondemand.com
       HANA_PORT: "443"
-      HANA_USER: "# TODO: cf service-key staffmatch-db-dev-db key1 → user"
-      HANA_PASSWORD: "# TODO: cf service-key staffmatch-db-dev-db key1 → password"
-      HANA_SCHEMA: "# TODO: cf service-key staffmatch-db-dev-db key1 → schema"
+      HANA_USER: 4EACFC48246E43F895FA2DC85F66749A_397A7YDQLMP8TI3ZEI55RWQ5U_RT
+      HANA_PASSWORD: Ky1sacl19y710T3F_oH9M0jwEzam3OFI8k9Ylw6X6VHnV97KIpyelarMj8ipQLN3EW2LTHCWXXzr4F6pG7wFNQm92WTzYy8kQ6qf2iKsIDSbtOOn6rMZP6zHk1Kqm_ME
+      HANA_SCHEMA: 4EACFC48246E43F895FA2DC85F66749A
 
   - name: staffmatch-ai-frontend-dev
     memory: 512M
