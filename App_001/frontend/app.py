@@ -386,26 +386,27 @@ def show_sidebar(groups):
         cognome_hdr = u.get('cognome', '')
         st.markdown(f"""
 <style>
-#sm-topbar {{
-    position: fixed; top: 0; right: 52px; z-index: 9999;
-    height: 3.75rem;
-    display: flex; align-items: center; gap: 10px;
-    padding: 0;
+#sm-userbar {{
+    background: rgba(161,0,255,0.08);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0 0 0.75rem 0;
+    display: flex; align-items: center; justify-content: space-between;
 }}
-#sm-topbar .sm-name {{
-    font-size: 0.80rem; font-weight: 600;
-    color: var(--text-color); white-space: nowrap; line-height: 1;
+#sm-userbar .sm-name {{
+    font-size: 0.78rem; font-weight: 600;
+    color: #aaaaaa; white-space: nowrap;
 }}
-#sm-topbar .sm-exit {{
-    font-size: 0.75rem; color: #A100FF;
+#sm-userbar .sm-exit {{
+    font-size: 0.70rem; color: #A100FF;
     border: 1px solid #A100FF; border-radius: 6px;
-    padding: 3px 12px; background: transparent; cursor: pointer;
+    padding: 2px 8px; background: transparent; cursor: pointer;
     transition: all 0.2s ease; line-height: 1;
     text-decoration: none; display: inline-flex; align-items: center;
 }}
-#sm-topbar .sm-exit:hover {{ background: #A100FF; color: white; }}
+#sm-userbar .sm-exit:hover {{ background: #A100FF; color: white; }}
 </style>
-<div id="sm-topbar">
+<div id="sm-userbar">
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
   <a href="?logout=1" class="sm-exit">Logout</a>
 </div>
