@@ -20,7 +20,7 @@ modules:
     build-parameters:
       builder: npm-ci
     provides:
-      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+      - name: srv-api
         properties:
           srv-url: ${default-url}
     requires:
@@ -34,8 +34,36 @@ modules:
     requires:
       - name: staffmatch-db-db
 
+  - name: staffmatch-db-dev-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    requires:
+      - name: staffmatch-db-dev-db
+
+  - name: staffmatch-db-prod-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    requires:
+      - name: staffmatch-db-prod-db
+
 resources:
   - name: staffmatch-db-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+
+  - name: staffmatch-db-dev-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+
+  - name: staffmatch-db-prod-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
