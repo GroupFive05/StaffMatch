@@ -140,4 +140,72 @@ entity ProjectChangeRequest {
   noteExecutive       : String(1000);
   reviewedById        : String(20);
   reviewedAt          : String(50);
+}entity RisorsaACN {
+  key id              : String(20);
+  level               : Integer;
+  anniEsperienza      : Integer;
+  disponibilita       : Integer;
+  availableFrom       : Date;
+  isStagista          : Boolean default false;
+}
+
+entity RisorsaLanguage {
+  key id              : String(20);
+  key languageCode    : String(10);
+}
+
+entity CertCatalog {
+  key certId          : String(20);
+  nomeCert            : String(200);
+  vendor              : String(100);
+  categoria           : String(100);
+}
+
+entity RisorsaCert {
+  key id              : String(20);
+  key certId          : String(20);
+}
+
+entity Contract {
+  key contractId      : String(30);
+  contractTitle       : String(200);
+  clientName          : String(200);
+  industrySector      : String(100);
+  country             : String(10);
+  contractManager     : String(100);
+  cal                 : String(100);
+  serviceGroup        : String(50);
+  practiceLead        : String(100);
+  dataInizio          : Date;
+  dataFine            : Date;
+  contractRevenue     : Decimal(15,2);
+  costi               : Decimal(15,2);
+  contractStatus      : String(50);
+  isCrossPractice     : Boolean default false;
+  daPracticePct       : Integer;
+}
+
+entity Milestone {
+  key milestoneId         : String(30);
+  opportunityId           : String(30);
+  poNumber                : String(50);
+  projectPhase            : String(50);
+  milestoneDescription    : String(200);
+  billableAmountEur       : Decimal(15,2);
+  plannedBillingDate      : Date;
+  actualBillingDate       : Date;
+  milestoneStatus         : String(50);
+  invoiceNumber           : String(50);
+}
+
+entity OSR {
+  key osrId           : String(20);
+  id                  : String(20);
+  opportunityId       : String(30);
+  ruoloInProgetto     : String(100);
+  percAllocazione     : Integer;
+  chargeabilityPct    : Integer;
+  dataInizio          : Date;
+  dataFine            : Date;
+  stato               : String(50);
 }
