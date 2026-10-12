@@ -5,7 +5,7 @@ import requests
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(
-    page_title="StaffMatch AI — Accenture Italy",
+    page_title="AI Practice Advisory — Accenture Italy",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -378,7 +378,7 @@ def show_login():
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 def show_sidebar(groups):
     with st.sidebar:
-        st.markdown("## 🎯 StaffMatch AI")
+        st.markdown("## 🎯 AI Practice Advisory")
         u = st.session_state.user or {}
 
         # Header fisso in alto a destra — nome + Logout allineati con ⋮

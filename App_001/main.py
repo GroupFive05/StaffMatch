@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, resources, projects, opportunities, matching, skills, mansioni, role_groups, promotions, project_changes, chat,acn_data
 
 app = FastAPI(
-    title="StaffMatch AI",
+    title="AI Practice Advisory",
     description="Staffing intelligente per progetti SAP/IT — Accenture Italy",
     version="1.0.0",
 )
@@ -30,4 +30,4 @@ app.include_router(chat.router)
 app.include_router(acn_data.router)
 @app.get("/", tags=["Health"])
 def health():
-    return {"status": "ok", "app": "StaffMatch AI", "version": "1.0.0"}
+    return {"status": "ok", "app": "AI Practice Advisory", "version": "1.0.0"}
