@@ -236,3 +236,47 @@ def disponibilita_risorsa(risorsa_id: str) -> int:
     allocazioni = [a for a in get_allocations() if a.get("risorsa_id") == risorsa_id]
     totale = sum(a.get("percentuale", 0) for a in allocazioni)
     return max(0, 100 - totale)
+def get_risorse_acn():
+    return _fetchall(
+        "SELECT ID as id, LEVEL as level, ANNIESPERIENZA as anni_esperienza, "
+        "DISPONIBILITA as disponibilita, AVAILABLEFROM as available_from, "
+        "ISSTAGISTA as is_stagista FROM STAFFMATCH_RISORSAACN"
+    )
+
+def get_cert_catalog():
+    return _fetchall(
+        "SELECT CERTID as cert_id, NOMECERT as nome_cert, VENDOR as vendor, "
+        "CATEGORIA as categoria FROM STAFFMATCH_CERTCATALOG"
+    )
+
+def get_contracts():
+    return _fetchall(
+        "SELECT CONTRACTID as contract_id, CONTRACTTITLE as contract_title, "
+        "CLIENTNAME as client_name, INDUSTRYSECTOR as industry_sector, "
+        "COUNTRY as country, CONTRACTMANAGER as contract_manager, CAL as cal, "
+        "SERVICEGROUP as service_group, PRACTICELEAD as practice_lead, "
+        "DATAINIZIO as data_inizio, DATAFINE as data_fine, "
+        "CONTRACTREVENUE as contract_revenue, COSTI as costi, "
+        "CONTRACTSTATUS as contract_status, ISCROSSPRACTICE as is_cross_practice, "
+        "DAPRACTICEPCT as da_practice_pct FROM STAFFMATCH_CONTRACT"
+    )
+
+def get_milestones():
+    return _fetchall(
+        "SELECT MILESTONEID as milestone_id, OPPORTUNITYID as opportunity_id, "
+        "PONUMBER as po_number, PROJECTPHASE as project_phase, "
+        "MILESTONEDESCRIPTION as milestone_description, "
+        "BILLABLEAMOUNTEUR as billable_amount_eur, "
+        "PLANNEDBILLINGDATE as planned_billing_date, "
+        "ACTUALBILLINGDATE as actual_billing_date, "
+        "MILESTONESTATUS as milestone_status, INVOICENUMBER as invoice_number "
+        "FROM STAFFMATCH_MILESTONE"
+    )
+
+def get_osr():
+    return _fetchall(
+        "SELECT OSRID as osr_id, ID as id, OPPORTUNITYID as opportunity_id, "
+        "RUOLOINPROGETTO as ruolo_in_progetto, PERCALLOCAZIONE as perc_allocazione, "
+        "CHARGEABILITYPCT as chargeability_pct, DATAINIZIO as data_inizio, "
+        "DATAFINE as data_fine, STATO as stato FROM STAFFMATCH_OSR"
+    )

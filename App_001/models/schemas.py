@@ -183,3 +183,57 @@ class TokenResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     password_attuale: str
     nuova_password: str
+class RisorsaACN(BaseModel):
+    id: str
+    level: Optional[int] = None
+    anni_esperienza: Optional[int] = None
+    disponibilita: Optional[int] = None
+    available_from: Optional[str] = None
+    is_stagista: bool = False
+
+class CertCatalog(BaseModel):
+    cert_id: str
+    nome_cert: Optional[str] = None
+    vendor: Optional[str] = None
+    categoria: Optional[str] = None
+
+class Contract(BaseModel):
+    contract_id: str
+    contract_title: Optional[str] = None
+    client_name: Optional[str] = None
+    industry_sector: Optional[str] = None
+    country: Optional[str] = None
+    contract_manager: Optional[str] = None
+    cal: Optional[str] = None
+    service_group: Optional[str] = None
+    practice_lead: Optional[str] = None
+    data_inizio: Optional[str] = None
+    data_fine: Optional[str] = None
+    contract_revenue: Optional[float] = None
+    costi: Optional[float] = None
+    contract_status: Optional[str] = None
+    is_cross_practice: bool = False
+    da_practice_pct: Optional[int] = None
+
+class Milestone(BaseModel):
+    milestone_id: str
+    opportunity_id: Optional[str] = None
+    po_number: Optional[str] = None
+    project_phase: Optional[str] = None
+    milestone_description: Optional[str] = None
+    billable_amount_eur: Optional[float] = None
+    planned_billing_date: Optional[str] = None
+    actual_billing_date: Optional[str] = None
+    milestone_status: Optional[str] = None
+    invoice_number: Optional[str] = None
+
+class OSR(BaseModel):
+    osr_id: str
+    id: Optional[str] = None
+    opportunity_id: Optional[str] = None
+    ruolo_in_progetto: Optional[str] = None
+    perc_allocazione: Optional[int] = None
+    chargeability_pct: Optional[int] = None
+    data_inizio: Optional[str] = None
+    data_fine: Optional[str] = None
+    stato: Optional[str] = None
