@@ -239,19 +239,6 @@ st.markdown("""
     ::-webkit-scrollbar-thumb { background: #A100FF66; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #A100FF; }
 
-    /* ── CHATBOT PANEL — adattivo light/dark via variabili Streamlit ── */
-    .chat-panel {
-        background: var(--secondary-background-color);
-        border-radius: 20px;
-        border: 1.5px solid rgba(161,0,255,0.2);
-        box-shadow: 0 8px 32px rgba(161,0,255,0.10), 0 2px 8px rgba(0,0,0,0.06);
-        padding: 1.5rem;
-        margin-bottom: 0;
-        height: 45vh;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-    }
     /* area input chat: occupa tutta la larghezza disponibile */
     [data-testid="stBottom"] { padding: 1rem 0 1.5rem 0 !important; }
     [data-testid="stChatInput"] {
@@ -1100,15 +1087,8 @@ def show_chatbot(groups):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # pannello conversazione
-    st.markdown('<div class="chat-panel">', unsafe_allow_html=True)
-
     if not st.session_state.chat_history:
-        st.markdown(
-            '<p style="color:#bbb;text-align:center;padding:4rem 0;font-size:0.9rem;">'
-            '✨ Inizia a scrivere per interrogare i dati della practice</p>',
-            unsafe_allow_html=True
-        )
+        st.caption("✨ Inizia a scrivere per interrogare i dati della practice")
     else:
         for msg in st.session_state.chat_history:
             with st.chat_message(msg["role"]):
@@ -1116,8 +1096,6 @@ def show_chatbot(groups):
         if st.button("🗑️ Cancella conversazione", key="chat_clear"):
             st.session_state.chat_history = []
             st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
     question = st.chat_input("Scrivi qui la tua domanda…")
     if question:
