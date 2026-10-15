@@ -21,6 +21,7 @@ def _get_conn():
         sslValidateCertificate=True,
         currentSchema=os.environ.get("HANA_SCHEMA", "43986AB4EB174D8AAB87650958CCA6AD")
     )
+    return _conn
 
 def _fetchall(query, params=()):
     conn = _get_conn()
@@ -236,6 +237,7 @@ def disponibilita_risorsa(risorsa_id: str) -> int:
     allocazioni = [a for a in get_allocations() if a.get("risorsa_id") == risorsa_id]
     totale = sum(a.get("percentuale", 0) for a in allocazioni)
     return max(0, 100 - totale)
+
 def get_risorse_acn():
     return _fetchall(
         "SELECT ID as id, LEVEL as level, ANNIESPERIENZA as anni_esperienza, "
@@ -280,3 +282,90 @@ def get_osr():
         "CHARGEABILITYPCT as chargeability_pct, DATAINIZIO as data_inizio, "
         "DATAFINE as data_fine, STATO as stato FROM STAFFMATCH_OSR"
     )
+
+# ══════════════════════════════════════════════════════════
+# SM_* — nuovo modello dati (Valerio / GroupFive05) — tabelle con dati reali
+# ══════════════════════════════════════════════════════════
+
+def sm_get_risorse():
+    risorse = _fetchall("""
+        SELECT EID as eid, NOME as nome, COGNOME as cognome, LEVEL as level,
+               LEVELNAME as level_name, ANNIESPERIENZA as anni_esperienza,
+               DISPONIBILITA as disponibilita, AVAILABLEFROM as available_from,
+               ISSTAGISTA as is_stagista
+        FROM STAFFMATCH_SM_RISORSA
+    """)
+    for r in risorse:
+        skills = _fetchall(
+            "SELECT SKILLNAME as skill_name FROM STAFFMATCH_SM_RISORSASKILL WHERE EID = ?",
+            (r["eid"],)
+        )
+        r["skills"] = [s["skill_name"] for s in skills]
+        certs = _fetchall(
+            "SELECT CERTID as cert_id FROM STAFFMATCH_SM_RISORSACERT WHERE EID = ?",
+            (r["eid"],)
+        )
+        r["cert_ids"] = [c["cert_id"] for c in certs]
+        langs = _fetchall(
+            "SELECT LANGUAGECODE as language_code FROM STAFFMATCH_SM_RISORSALANGUAGE WHERE EID = ?",
+            (r["eid"],)
+        )
+        r["lingue"] = [l["language_code"] for l in langs]
+    return risorse
+
+
+def sm_get_disponibilita_calcolata(eid):
+    rows = _fetchall(
+        "SELECT PERCALLOCAZIONE as perc FROM STAFFMATCH_SM_OSR WHERE EID = ? AND STATO = 'Active'",
+        (eid,)
+    )
+    allocato = sum(r["perc"] for r in rows)
+    return max(0, 100 - allocato)
+
+
+def sm_get_opportunities():
+    opps = _fetchall("""
+        SELECT OPPORTUNITYID as opportunity_id, OPPORTUNITYTITLE as titolo,
+               CONTRACTID as contract_id, OPPORTUNITYSTAGE as stage,
+               MAINTECHCLUSTER as main_tech_cluster, FUNCTIONALAREA as functional_area,
+               DATAINIZIO as data_inizio, DATAFINE as data_fine,
+               OPPORTUNITYVALUE as valore, OPPORTUNITYSTATUS as stato
+        FROM STAFFMATCH_SM_OPPORTUNITY
+    """)
+    for o in opps:
+        o["cliente"] = None
+        if o["contract_id"]:
+            contratto = _fetchall(
+                "SELECT CLIENTNAME as client_name FROM STAFFMATCH_SM_CONTRACT WHERE CONTRACTID = ?",
+                (o["contract_id"],)
+            )
+            if contratto:
+                o["cliente"] = contratto[0]["client_name"]
+    return opps
+
+
+def _skill_matches_cluster(skill_name, tech_cluster):
+    skill_norm = (skill_name or "").lower().strip()
+    cluster_norm = (tech_cluster or "").lower().strip()
+    return skill_norm in cluster_norm or cluster_norm in skill_norm
+
+
+def sm_match_score(risorsa, opportunity):
+    skill_hit = any(
+        _skill_matches_cluster(s, opportunity["main_tech_cluster"])
+        for s in risorsa["skills"]
+    )
+    skill_score = 60 if skill_hit else 0
+    disp = sm_get_disponibilita_calcolata(risorsa["eid"])
+    disp_score = min(40, int(disp * 0.4))
+    return {
+        "eid": risorsa["eid"],
+        "nome": f"{risorsa['nome']} {risorsa['cognome']}",
+        "score": skill_score + disp_score,
+        "skill_match": skill_hit,
+        "disponibilita": disp,
+        "motivazione": (
+            f"{'Competenza' if skill_hit else 'Nessuna competenza diretta'} su "
+            f"{opportunity['main_tech_cluster']}, disponibilità {disp}%"
+        )
+    }
