@@ -1,5 +1,12 @@
 [
   "src/gen/staffmatch.Mansione.hdbtable",
   "src/gen/staffmatch.Need.hdbtable",
-  "src/gen/staffmatch.NeedSkill.hdbtable"
+  "src/gen/staffmatch.NeedSkill.hdbtable",
+  "src/gen/staffmatch.RisorsaACN.hdbtable",
+  "src/gen/staffmatch.RisorsaLanguage.hdbtable",
+  "src/gen/staffmatch.CertCatalog.hdbtable",
+  "src/gen/staffmatch.RisorsaCert.hdbtable",
+  "src/gen/staffmatch.Contract.hdbtable",
+  "src/gen/staffmatch.Milestone.hdbtable",
+  "src/gen/staffmatch.OSR.hdbtable"
 ]

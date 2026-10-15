@@ -140,33 +140,45 @@ entity ProjectChangeRequest {
   noteExecutive       : String(1000);
   reviewedById        : String(20);
   reviewedAt          : String(50);
-}entity RisorsaACN {
-  key id              : String(20);
+}
+
+// ── SM_ entities (Valerio / GroupFive05) ────────────────────────
+
+@cds.persistence.name: 'SM_RISORSA'
+entity SM_Risorsa {
+  key eid             : Integer;
+  nome                : String(100);
+  cognome             : String(100);
   level               : Integer;
+  levelName           : String(50);
   anniEsperienza      : Integer;
   disponibilita       : Integer;
   availableFrom       : Date;
   isStagista          : Boolean default false;
 }
 
-entity RisorsaLanguage {
-  key id              : String(20);
+@cds.persistence.name: 'SM_RISORSALANGUAGE'
+entity SM_RisorsaLanguage {
+  key eid             : Integer;
   key languageCode    : String(10);
 }
 
-entity CertCatalog {
+@cds.persistence.name: 'SM_CERTCATALOG'
+entity SM_CertCatalog {
   key certId          : String(20);
   nomeCert            : String(200);
   vendor              : String(100);
   categoria           : String(100);
 }
 
-entity RisorsaCert {
-  key id              : String(20);
+@cds.persistence.name: 'SM_RISORSACERT'
+entity SM_RisorsaCert {
+  key eid             : Integer;
   key certId          : String(20);
 }
 
-entity Contract {
+@cds.persistence.name: 'SM_CONTRACT'
+entity SM_Contract {
   key contractId      : String(30);
   contractTitle       : String(200);
   clientName          : String(200);
@@ -185,7 +197,8 @@ entity Contract {
   daPracticePct       : Integer;
 }
 
-entity Milestone {
+@cds.persistence.name: 'SM_MILESTONE'
+entity SM_Milestone {
   key milestoneId         : String(30);
   opportunityId           : String(30);
   poNumber                : String(50);
@@ -198,9 +211,10 @@ entity Milestone {
   invoiceNumber           : String(50);
 }
 
-entity OSR {
+@cds.persistence.name: 'SM_OSR'
+entity SM_OSR {
   key osrId           : String(20);
-  id                  : String(20);
+  eid                 : Integer;
   opportunityId       : String(30);
   ruoloInProgetto     : String(100);
   percAllocazione     : Integer;
@@ -208,4 +222,24 @@ entity OSR {
   dataInizio          : Date;
   dataFine            : Date;
   stato               : String(50);
+}
+
+@cds.persistence.name: 'SM_OPPORTUNITY'
+entity SM_Opportunity {
+  key opportunityId   : String(20);
+  opportunityTitle    : String(200);
+  contractId          : String(30);
+  opportunityStage    : String(50);
+  mainTechCluster     : String(100);
+  functionalArea      : String(100);
+  dataInizio          : Date;
+  dataFine            : Date;
+  opportunityValue    : Decimal(15,2);
+  opportunityStatus   : String(50);
+}
+
+@cds.persistence.name: 'SM_RISORSASKILL'
+entity SM_RisorsaSkill {
+  key eid             : Integer;
+  key skillName       : String(100);
 }
