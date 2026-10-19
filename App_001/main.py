@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, resources, projects, opportunities, matching, skills, mansioni, role_groups, promotions, project_changes, chat,acn_data
+from routers import auth, resources, projects, opportunities, matching, skills, mansioni, role_groups, promotions, project_changes, chat,acn_data, sm_matching
 
 app = FastAPI(
     title="AI Practice Advisory",
@@ -28,6 +28,7 @@ app.include_router(promotions.router)
 app.include_router(project_changes.router)
 app.include_router(chat.router)
 app.include_router(acn_data.router)
+app.include_router(sm_matching.router)
 @app.get("/", tags=["Health"])
 def health():
     return {"status": "ok", "app": "AI Practice Advisory", "version": "1.0.0"}
