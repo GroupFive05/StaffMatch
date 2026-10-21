@@ -149,7 +149,7 @@ entity SM_Risorsa {
   key eid             : Integer;
   nome                : String(100);
   cognome             : String(100);
-  email : String(255);
+  email               : String(255);
   level               : Integer;
   levelName           : String(50);
   anniEsperienza      : Integer;
@@ -174,8 +174,14 @@ entity SM_CertCatalog {
 
 @cds.persistence.name: 'SM_RISORSACERT'
 entity SM_RisorsaCert {
-  key eid             : Integer;
+  key email           : String(255);
   key certId          : String(20);
+  nomeCert            : String(200);
+  city                : String(100);
+  level               : Integer;
+  levelName           : String(50);
+  expirationDate      : Date;
+
 }
 
 @cds.persistence.name: 'SM_CONTRACT'
