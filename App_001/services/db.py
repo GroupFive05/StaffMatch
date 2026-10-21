@@ -369,3 +369,75 @@ def sm_match_score(risorsa, opportunity):
             f"{opportunity['main_tech_cluster']}, disponibilità {disp}%"
         )
     }
+def sm_get_risorse_v2():
+    """
+    Restituisce le risorse del nuovo modello SM_* con:
+    - anagrafica
+    - skill
+    - lingue
+    - certificazioni
+    """
+
+    risorse = _fetchall("""
+        SELECT
+            r.EID            AS eid,
+            r.NOME           AS nome,
+            r.COGNOME        AS cognome,
+            r.EMAIL          AS email,
+            r.LEVEL          AS level,
+            r.LEVELNAME      AS level_name,
+            r.ANNIESPERIENZA AS anni_esperienza,
+            r.DISPONIBILITA  AS disponibilita,
+            r.AVAILABLEFROM  AS available_from,
+            r.ISSTAGISTA     AS is_stagista
+        FROM STAFFMATCH_SM_RISORSA r
+        ORDER BY r.COGNOME, r.NOME
+    """)
+
+    for risorsa in risorse:
+        eid = risorsa.get("eid")
+        email = risorsa.get("email")
+
+        # Skill: join tramite EID
+        risorsa["skills"] = _fetchall("""
+            SELECT
+                SKILLNAME AS skill_name
+            FROM STAFFMATCH_SM_RISORSASKILL
+            WHERE EID = ?
+            ORDER BY SKILLNAME
+        """, (eid,))
+
+        # Lingue: join tramite EID
+        risorsa["languages"] = _fetchall("""
+            SELECT
+                LANGUAGECODE AS language_code
+            FROM STAFFMATCH_SM_RISORSALANGUAGE
+            WHERE EID = ?
+            ORDER BY LANGUAGECODE
+        """, (eid,))
+
+        # Certificazioni: join tramite EMAIL
+        risorsa["certifications"] = _fetchall("""
+            SELECT
+                CERTID         AS cert_id,
+                NOMECERT       AS nome_cert,
+                CITY           AS city,
+                LEVEL          AS level,
+                LEVELNAME      AS level_name,
+                EXPIRATIONDATE AS expiration_date
+            FROM STAFFMATCH_SM_RISORSACERT
+            WHERE LOWER(EMAIL) = LOWER(?)
+            ORDER BY EXPIRATIONDATE, NOMECERT
+        """, (email,))
+
+        # Conversione dei valori HANA per la risposta JSON
+        if risorsa.get("available_from"):
+            risorsa["available_from"] = str(risorsa["available_from"])
+
+        risorsa["is_stagista"] = bool(risorsa.get("is_stagista"))
+
+        for cert in risorsa["certifications"]:
+            if cert.get("expiration_date"):
+                cert["expiration_date"] = str(cert["expiration_date"])
+
+    return risorse

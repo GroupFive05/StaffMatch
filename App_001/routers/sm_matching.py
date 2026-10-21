@@ -3,7 +3,7 @@ Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05)
 NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -dev.
 """
 from fastapi import APIRouter, HTTPException
-from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score
+from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2
 
 router = APIRouter(prefix="/sm", tags=["sm-matching-test"])
 
@@ -43,3 +43,6 @@ def sm_run_match(opportunity_id: str):
         },
         "candidati": risultati[:10],
     }
+@router.get("/risorse-v2")
+def get_risorse_v2():
+    return sm_get_risorse_v2()
