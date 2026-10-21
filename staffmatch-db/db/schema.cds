@@ -149,6 +149,7 @@ entity SM_Risorsa {
   key eid             : Integer;
   nome                : String(100);
   cognome             : String(100);
+  email : String(255);
   level               : Integer;
   levelName           : String(50);
   anniEsperienza      : Integer;
