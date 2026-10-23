@@ -202,6 +202,7 @@ entity SM_Contract {
   contractStatus      : String(50);
   isCrossPractice     : Boolean default false;
   daPracticePct       : Integer;
+  eid                 : Integer;
 }
 
 @cds.persistence.name: 'SM_MILESTONE'

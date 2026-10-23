@@ -214,6 +214,7 @@ class Contract(BaseModel):
     contract_status: Optional[str] = None
     is_cross_practice: bool = False
     da_practice_pct: Optional[int] = None
+    eid: Optional[int] = None
 
 class Milestone(BaseModel):
     milestone_id: str
