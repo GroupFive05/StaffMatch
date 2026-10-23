@@ -3,8 +3,8 @@ Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05)
 NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -dev.
 """
 from fastapi import APIRouter, HTTPException
-from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2
-
+from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2
+from models.schemas import ResourceV2Create
 router = APIRouter(prefix="/sm", tags=["sm-matching-test"])
 
 
@@ -46,3 +46,24 @@ def sm_run_match(opportunity_id: str):
 @router.get("/risorse-v2")
 def get_risorse_v2():
     return sm_get_risorse_v2()
+@router.get("/resource-form-catalogs")
+def get_resource_form_catalogs():
+    return sm_get_resource_form_catalogs()
+@router.post("/risorse-v2")
+def create_resource_v2(payload: ResourceV2Create):
+    try:
+        return sm_create_resource_v2(
+            payload.model_dump()
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante la creazione della risorsa: {str(exc)}"
+        )

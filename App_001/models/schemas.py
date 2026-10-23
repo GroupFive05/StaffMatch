@@ -238,3 +238,20 @@ class OSR(BaseModel):
     data_inizio: Optional[str] = None
     data_fine: Optional[str] = None
     stato: Optional[str] = None
+class ResourceV2Certification(BaseModel):
+    cert_id: str
+    city: Optional[str] = None
+    expiration_date: Optional[str] = None
+
+
+class ResourceV2Create(BaseModel):
+    eid: int
+    nome: str
+    cognome: str
+    email: str
+    level: int
+    anni_esperienza: int = 0
+    is_stagista: bool = False
+    skills: list[str] = []
+    languages: list[str] = []
+    certifications: list[ResourceV2Certification] = []

@@ -645,3 +645,325 @@ def sm_get_risorse_v2():
         )
 
     return resources
+def sm_get_resource_form_catalogs():
+
+    levels = _fetchall("""
+        SELECT DISTINCT
+            LEVEL AS level,
+            LEVELNAME AS level_name
+        FROM STAFFMATCH_SM_RISORSA
+        WHERE LEVEL IS NOT NULL
+        ORDER BY LEVEL
+    """)
+
+    skills = _fetchall("""
+        SELECT DISTINCT
+            SKILLNAME AS skill_name
+        FROM STAFFMATCH_SM_RISORSASKILL
+        WHERE SKILLNAME IS NOT NULL
+        ORDER BY SKILLNAME
+    """)
+
+    languages = _fetchall("""
+        SELECT DISTINCT
+            LANGUAGECODE AS language_code
+        FROM STAFFMATCH_SM_RISORSALANGUAGE
+        WHERE LANGUAGECODE IS NOT NULL
+        ORDER BY LANGUAGECODE
+    """)
+
+    certifications = _fetchall("""
+        SELECT
+            CERTID AS cert_id,
+            NOMECERT AS nome_cert,
+            VENDOR AS vendor,
+            CATEGORIA AS categoria
+        FROM STAFFMATCH_SM_CERTCATALOG
+        ORDER BY NOMECERT
+    """)
+
+    return {
+        "levels": levels,
+        "skills": skills,
+        "languages": languages,
+        "certifications": certifications
+    }
+def sm_create_resource_v2(data):
+    """
+    Crea una risorsa V2 e i relativi dati collegati
+    in un'unica transazione HANA.
+    """
+
+    conn = _get_conn()
+    cur = conn.cursor()
+
+    try:
+        eid = int(data["eid"])
+        nome = str(data["nome"]).strip()
+        cognome = str(data["cognome"]).strip()
+        email = str(data["email"]).strip().lower()
+        level = int(data["level"])
+        anni_esperienza = int(data.get("anni_esperienza") or 0)
+        is_stagista = bool(data.get("is_stagista", False))
+
+        skills = data.get("skills") or []
+        languages = data.get("languages") or []
+        certifications = data.get("certifications") or []
+
+        if not nome:
+            raise ValueError("Il nome è obbligatorio.")
+
+        if not cognome:
+            raise ValueError("Il cognome è obbligatorio.")
+
+        if not email:
+            raise ValueError("L'email è obbligatoria.")
+
+        # ── Controllo EID ──────────────────────────────────────────────────────
+        cur.execute(
+            """
+            SELECT COUNT(*)
+            FROM STAFFMATCH_SM_RISORSA
+            WHERE EID = ?
+            """,
+            (eid,)
+        )
+
+        if cur.fetchone()[0] > 0:
+            raise ValueError(
+                f"Esiste già una risorsa con EID {eid}."
+            )
+
+        # ── Controllo email ────────────────────────────────────────────────────
+        cur.execute(
+            """
+            SELECT COUNT(*)
+            FROM STAFFMATCH_SM_RISORSA
+            WHERE LOWER(EMAIL) = LOWER(?)
+            """,
+            (email,)
+        )
+
+        if cur.fetchone()[0] > 0:
+            raise ValueError(
+                f"Esiste già una risorsa con email {email}."
+            )
+
+        # ── Recupero level name dal DB ─────────────────────────────────────────
+        cur.execute(
+            """
+            SELECT DISTINCT LEVELNAME
+            FROM STAFFMATCH_SM_RISORSA
+            WHERE LEVEL = ?
+            """,
+            (level,)
+        )
+
+        level_row = cur.fetchone()
+
+        if level_row is None:
+            raise ValueError(
+                f"Level {level} non presente nei valori ammessi."
+            )
+
+        level_name = level_row[0]
+
+        # ── Validazione skill ──────────────────────────────────────────────────
+        valid_skills = set()
+
+        cur.execute("""
+            SELECT DISTINCT SKILLNAME
+            FROM STAFFMATCH_SM_RISORSASKILL
+            WHERE SKILLNAME IS NOT NULL
+        """)
+
+        for row in cur.fetchall():
+            valid_skills.add(row[0])
+
+        invalid_skills = [
+            skill
+            for skill in skills
+            if skill not in valid_skills
+        ]
+
+        if invalid_skills:
+            raise ValueError(
+                "Skill non valide: "
+                + ", ".join(invalid_skills)
+            )
+
+        # ── Validazione lingue ─────────────────────────────────────────────────
+        valid_languages = set()
+
+        cur.execute("""
+            SELECT DISTINCT LANGUAGECODE
+            FROM STAFFMATCH_SM_RISORSALANGUAGE
+            WHERE LANGUAGECODE IS NOT NULL
+        """)
+
+        for row in cur.fetchall():
+            valid_languages.add(row[0])
+
+        invalid_languages = [
+            language
+            for language in languages
+            if language not in valid_languages
+        ]
+
+        if invalid_languages:
+            raise ValueError(
+                "Lingue non valide: "
+                + ", ".join(invalid_languages)
+            )
+
+        # ── Catalogo certificazioni ────────────────────────────────────────────
+        cur.execute("""
+            SELECT
+                CERTID,
+                NOMECERT
+            FROM STAFFMATCH_SM_CERTCATALOG
+        """)
+
+        certification_catalog = {
+            row[0]: row[1]
+            for row in cur.fetchall()
+        }
+
+        for certification in certifications:
+            cert_id = certification.get("cert_id")
+
+            if cert_id not in certification_catalog:
+                raise ValueError(
+                    f"Certificazione non valida: {cert_id}."
+                )
+
+        # ── Inserimento risorsa ────────────────────────────────────────────────
+        cur.execute(
+            """
+            INSERT INTO STAFFMATCH_SM_RISORSA (
+                EID,
+                NOME,
+                COGNOME,
+                EMAIL,
+                LEVEL,
+                LEVELNAME,
+                ANNIESPERIENZA,
+                DISPONIBILITA,
+                AVAILABLEFROM,
+                ISSTAGISTA
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                eid,
+                nome,
+                cognome,
+                email,
+                level,
+                level_name,
+                anni_esperienza,
+                100,
+                None,
+                is_stagista
+            )
+        )
+
+        # ── Inserimento skill ──────────────────────────────────────────────────
+        for skill in sorted(set(skills)):
+            cur.execute(
+                """
+                INSERT INTO STAFFMATCH_SM_RISORSASKILL (
+                    EID,
+               SKILLNAME
+                )
+                VALUES (?, ?)
+                """,
+                (
+                    eid,
+                    skill
+                )
+            )
+
+        # ── Inserimento lingue ────────────────────────────────────────────────
+        for language in sorted(set(languages)):
+            cur.execute(
+                """
+                INSERT INTO STAFFMATCH_SM_RISORSALANGUAGE (
+                    EID,
+                    LANGUAGECODE
+                )
+                VALUES (?, ?)
+                """,
+                (
+                    eid,
+                    language
+                )
+            )
+
+        # ── Inserimento certificazioni ─────────────────────────────────────────
+        inserted_certifications = set()
+
+        for certification in certifications:
+            cert_id = certification["cert_id"]
+
+            if cert_id in inserted_certifications:
+                raise ValueError(
+                    f"Certificazione duplicata: {cert_id}."
+                )
+
+            inserted_certifications.add(cert_id)
+
+            expiration_date = certification.get(
+                "expiration_date"
+            )
+
+            city = (
+                certification.get("city")
+                or ""
+            ).strip()
+
+            cur.execute(
+                """
+                INSERT INTO STAFFMATCH_SM_RISORSACERT (
+                    EMAIL,
+                    CERTID,
+                    NOMECERT,
+                    CITY,
+                    LEVEL,
+                    LEVELNAME,
+                    EXPIRATIONDATE
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    email,
+                    cert_id,
+                    certification_catalog[cert_id],
+                    city,
+                    level,
+                    level_name,
+                    expiration_date
+                )
+            )
+
+        # Un solo commit per tutta l'operazione
+        conn.commit()
+
+        return {
+            "success": True,
+            "message": "Risorsa creata correttamente.",
+            "eid": eid,
+            "email": email,
+            "skills_inserted": len(set(skills)),
+            "languages_inserted": len(set(languages)),
+            "certifications_inserted": len(
+                inserted_certifications
+            )
+        }
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cur.close()
