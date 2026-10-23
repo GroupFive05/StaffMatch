@@ -1646,17 +1646,13 @@ def show_admin(groups):
     with tab_edit_dip:
         _form_modifica_dipendente()
 # ── RISORSA V2 ────────────────────────────────────────────────────────────────
+# ── RISORSA V2 ────────────────────────────────────────────────────────────────
 def show_risorsa_v2(groups):
     st.markdown(
         '<p class="main-title">👥 Risorsa v2</p>',
         unsafe_allow_html=True
     )
-    st.caption(
-        "Nuovo modello dati SM_* · Anagrafica, skill, lingue e certificazioni"
-    )
-    st.markdown("---")
 
-    # Recupero dati dal nuovo endpoint
     response = api("GET", "/sm/risorse-v2")
 
     if response is None:
@@ -1673,69 +1669,35 @@ def show_risorsa_v2(groups):
         st.info("Nessuna risorsa presente.")
         return
 
-    # ── KPI ───────────────────────────────────────────────────────────────────
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "👥 Risorse",
-        len(resources)
-    )
-
-    col2.metric(
-        "🎓 Con certificazioni",
-        sum(
-            1 for r in resources
-            if r.get("certifications")
-        )
-    )
-
-    col3.metric(
-        "🛠 Con skill",
-        sum(
-            1 for r in resources
-            if r.get("skills")
-        )
-    )
-
-    col4.metric(
-        "✅ Disponibili",
-        sum(
-            1 for r in resources
-            if int(r.get("disponibilita") or 0) > 0
-        )
-    )
-
-    st.markdown("---")
-
-    # ── VALORI PER I FILTRI ───────────────────────────────────────────────────
+    # ── Valori disponibili per i filtri ──────────────────────────────────────
     all_levels = sorted({
-        r.get("level_name")
-        for r in resources
-        if r.get("level_name")
+        resource.get("level_name")
+        for resource in resources
+        if resource.get("level_name")
     })
 
     all_skills = sorted({
         skill.get("skill_name")
-        for r in resources
-        for skill in r.get("skills", [])
+        for resource in resources
+        for skill in resource.get("skills", [])
         if skill.get("skill_name")
     })
 
     all_languages = sorted({
         language.get("language_code")
-        for r in resources
-        for language in r.get("languages", [])
+        for resource in resources
+        for language in resource.get("languages", [])
         if language.get("language_code")
     })
 
     all_certifications = sorted({
-        cert.get("nome_cert")
-        for r in resources
-        for cert in r.get("certifications", [])
-        if cert.get("nome_cert")
+        certification.get("nome_cert")
+        for resource in resources
+        for certification in resource.get("certifications", [])
+        if certification.get("nome_cert")
     })
 
-    # ── FILTRI PRIMA RIGA ─────────────────────────────────────────────────────
+    # ── Filtri ────────────────────────────────────────────────────────────────
     filter_row_1 = st.columns([3, 2, 2])
 
     with filter_row_1[0]:
@@ -1751,13 +1713,12 @@ def show_risorsa_v2(groups):
             key="risorsa_v2_levels"
         )
 
-        with filter_row_1[2]:
-            only_available = st.checkbox(
-                "Solo risorse disponibili",
-                key="risorsa_v2_available"
-            )
+    with filter_row_1[2]:
+        only_available = st.checkbox(
+            "Solo risorse disponibili",
+            key="risorsa_v2_available"
+        )
 
-        # ── FILTRI SECONDA RIGA ───────────────────────────────────────────────────
     filter_row_2 = st.columns(3)
 
     with filter_row_2[0]:
@@ -1780,90 +1741,150 @@ def show_risorsa_v2(groups):
             all_languages,
             key="risorsa_v2_languages"
         )
-    # ── APPLICAZIONE FILTRI ───────────────────────────────────────────────────
+
+    # ── Applicazione filtri ───────────────────────────────────────────────────
     filtered_resources = resources
 
     if search:
-        search_value = search.lower()
+        search_value = search.strip().lower()
+
         filtered_resources = [
-            r for r in filtered_resources
+            resource
+            for resource in filtered_resources
             if search_value in (
-                f"{r.get('nome', '')} "
-                f"{r.get('cognome', '')} "
-                f"{r.get('email', '')}"
+                f"{resource.get('nome', '')} "
+                f"{resource.get('cognome', '')} "
+                f"{resource.get('email', '')}"
             ).lower()
         ]
 
     if selected_levels:
         filtered_resources = [
-            r for r in filtered_resources
-            if r.get("level_name") in selected_levels
-        ]
-
-    if only_available:
-        filtered_resources = [
-            r for r in filtered_resources
-            if int(r.get("disponibilita") or 0) > 0
+            resource
+            for resource in filtered_resources
+            if resource.get("level_name") in selected_levels
         ]
 
     if selected_skills:
         filtered_resources = [
-            r for r in filtered_resources
+            resource
+            for resource in filtered_resources
             if set(selected_skills).issubset({
                 skill.get("skill_name")
-                for skill in r.get("skills", [])
+                for skill in resource.get("skills", [])
             })
         ]
 
     if selected_certifications:
         filtered_resources = [
-            r for r in filtered_resources
+            resource
+            for resource in filtered_resources
             if set(selected_certifications).issubset({
-                cert.get("nome_cert")
-                for cert in r.get("certifications", [])
+                certification.get("nome_cert")
+                for certification
+                in resource.get("certifications", [])
             })
         ]
 
     if selected_languages:
         filtered_resources = [
-            r for r in filtered_resources
+            resource
+            for resource in filtered_resources
             if set(selected_languages).issubset({
                 language.get("language_code")
-                for language in r.get("languages", [])
+                for language in resource.get("languages", [])
             })
+        ]
+
+    # Verdi + arancioni, cioè disponibilità maggiore di zero
+    if only_available:
+        filtered_resources = [
+            resource
+            for resource in filtered_resources
+            if int(resource.get("disponibilita") or 0) > 0
         ]
 
     filtered_resources = sorted(
         filtered_resources,
-        key=lambda r: (
-            r.get("cognome", ""),
-            r.get("nome", "")
+        key=lambda resource: (
+            resource.get("cognome", ""),
+            resource.get("nome", "")
         )
     )
 
-    st.caption(
-        f"{len(filtered_resources)} risorse trovate su {len(resources)}"
+    # ── KPI dinamici: calcolati dopo i filtri ────────────────────────────────
+    total_filtered = len(filtered_resources)
+
+    certified_count = sum(
+        1
+        for resource in filtered_resources
+        if resource.get("certifications")
     )
 
-    # ── VISTE ─────────────────────────────────────────────────────────────────
+    available_count = sum(
+        1
+        for resource in filtered_resources
+        if int(resource.get("disponibilita") or 0) > 0
+    )
+
+    not_available_count = sum(
+        1
+        for resource in filtered_resources
+        if int(resource.get("disponibilita") or 0) == 0
+    )
+
+    kpi_1, kpi_2, kpi_3, kpi_4 = st.columns(4)
+
+    kpi_1.metric(
+        "👥 Risorse",
+        total_filtered
+    )
+
+    kpi_2.metric(
+        "🎓 Con certificazioni",
+        certified_count
+    )
+
+    kpi_3.metric(
+        "✅ Disponibili",
+        available_count
+    )
+
+    kpi_4.metric(
+        "🔴 Non disponibili",
+        not_available_count
+    )
+
+    st.markdown("---")
+
+    st.caption(
+        f"{total_filtered} risorse trovate su {len(resources)}"
+    )
+
+    # ── Schede e tabella ─────────────────────────────────────────────────────
     tab_cards, tab_table = st.tabs([
         "🗂 Schede",
         "📋 Tabella"
     ])
 
+    # ── Vista schede ─────────────────────────────────────────────────────────
     with tab_cards:
         for resource in filtered_resources:
-
             availability = int(
                 resource.get("disponibilita") or 0
             )
 
-            if availability >= 50:
-                availability_icon = "🟢"
-            elif availability > 0:
-                availability_icon = "🟡"
-            else:
+            availability_status = resource.get(
+                "availability_status",
+                "green"
+            )
+
+            if availability_status == "red":
                 availability_icon = "🔴"
+            elif availability_status == "orange":
+                availability_icon = "🟠"
+            else:
+                availability_icon = "🟢"
 
             level_name = (
                 resource.get("level_name")
@@ -1884,12 +1905,12 @@ def show_risorsa_v2(groups):
             )
 
             with st.expander(label):
-
-                col_anagrafica, col_skills, col_cert = st.columns(
-                    [1.2, 1, 1.8]
+                col_profile, col_skills, col_certifications = st.columns(
+                    [1.3, 1, 1.8]
                 )
 
-                with col_anagrafica:
+                # ── Anagrafica ────────────────────────────────────────────────
+                with col_profile:
                     st.markdown("#### Anagrafica")
 
                     st.markdown(
@@ -1911,21 +1932,53 @@ def show_risorsa_v2(groups):
                         f"**{resource.get('anni_esperienza') or 0} anni**"
                     )
 
-                    if resource.get("available_from"):
+                    available_from = resource.get("available_from")
+
+                    if available_from:
                         st.markdown(
-                            f"📅 Disponibile dal: "
-                            f"{resource.get('available_from')}"
+                            f"📅 Disponibile dal: **{available_from}**"
+                        )
+                    else:
+                        st.markdown(
+                            "📅 Disponibile dal: **Subito**"
                         )
 
                     st.markdown(
                         f"**Disponibilità: {availability}%**"
                     )
 
-                    st.progress(availability / 100)
+                    st.progress(
+                        min(max(availability, 0), 100) / 100
+                    )
+
+                    managers = resource.get("managers", [])
+
+                    st.markdown("#### Manager di riferimento")
+
+                    if managers:
+                        for manager in managers:
+                            manager_name = (
+                                f"{manager.get('nome', '')} "
+                                f"{manager.get('cognome', '')}"
+                            ).strip()
+
+                            st.markdown(
+                                f"👤 **{manager_name}**"
+                            )
+
+                            if manager.get("email"):
+                                st.caption(
+                                    manager.get("email")
+                                )
+                    else:
+                        st.caption(
+                            "Manager non disponibile."
+                        )
 
                     languages = [
                         language.get("language_code")
-                        for language in resource.get("languages", [])
+                        for language
+                        in resource.get("languages", [])
                         if language.get("language_code")
                     ]
 
@@ -1934,8 +1987,11 @@ def show_risorsa_v2(groups):
                             "🌐 " + " · ".join(languages)
                         )
                     else:
-                        st.caption("Nessuna lingua registrata.")
+                        st.caption(                  
+                            "Nessuna lingua registrata."
+                        )
 
+                # ── Skill ─────────────────────────────────────────────────────
                 with col_skills:
                     st.markdown("#### Skill")
 
@@ -1947,9 +2003,12 @@ def show_risorsa_v2(groups):
                                 f"• {skill.get('skill_name', '')}"
                             )
                     else:
-                        st.caption("Nessuna skill registrata.")
+                        st.caption(
+                            "Nessuna skill registrata."
+                        )
 
-                with col_cert:
+                # ── Certificazioni ────────────────────────────────────────────
+                with col_certifications:
                     st.markdown("#### Certificazioni")
 
                     certifications = resource.get(
@@ -1958,33 +2017,51 @@ def show_risorsa_v2(groups):
                     )
 
                     if certifications:
-                        for cert in certifications:
-
-                            expiration = (
-                                cert.get("expiration_date")
+                        for certification in certifications:
+                            expiration_date = (
+                                certification.get(
+                                    "expiration_date"
+                                )
                                 or "—"
                             )
 
                             st.markdown(
-                                f"🎓 **{cert.get('nome_cert', '')}**"
+                                f"🎓 **"
+                                f"{certification.get('nome_cert', '')}"
+                                f"**"
                             )
 
                             st.caption(
-                                f"{cert.get('cert_id', '')}"
-                                f" · Scadenza: {expiration}"
+                                f"{certification.get('cert_id', '')}"
+                                f" · Scadenza: {expiration_date}"
                             )
                     else:
                         st.caption(
                             "Nessuna certificazione registrata."
                         )
 
+    # ── Vista tabellare ───────────────────────────────────────────────────────
     with tab_table:
-
         table_rows = []
 
         for resource in filtered_resources:
+            managers = ", ".join(
+                (
+                    f"{manager.get('nome', '')} "
+                    f"{manager.get('cognome', '')}"
+                ).strip()
+                for manager in resource.get("managers", [])
+            )
 
             table_rows.append({
+                "Stato": {
+                    "green": "Verde",
+                    "orange": "Arancione",
+                    "red": "Rosso"
+                }.get(
+                    resource.get("availability_status"),
+                    ""
+                ),
                 "EID": resource.get("eid", ""),
                 "Nome": (
                     f"{resource.get('nome', '')} "
@@ -1995,31 +2072,38 @@ def show_risorsa_v2(groups):
                 "Anni esperienza": (
                     resource.get("anni_esperienza") or 0
                 ),
+                "Allocazione attiva %": (
+                    resource.get("active_allocation") or 0
+                ),
                 "Disponibilità %": (
                     resource.get("disponibilita") or 0
                 ),
+                "Disponibile dal": (
+                    resource.get("available_from")
+                    or "Subito"
+                ),
+                "Manager": managers,
                 "Skill": ", ".join(
                     skill.get("skill_name", "")
                     for skill in resource.get("skills", [])
                 ),
                 "Lingue": ", ".join(
                     language.get("language_code", "")
-                    for language in resource.get("languages", [])
+                    for language
+                    in resource.get("languages", [])
                 ),
                 "Certificazioni": ", ".join(
-                    cert.get("nome_cert", "")
-                    for cert in resource.get(
-                        "certifications",
-                        []
-                    )
-                ),
+                    certification.get("nome_cert", "")
+                    for certification
+                    in resource.get("certifications", [])
+                )
             })
 
         st.dataframe(
             table_rows,
             use_container_width=True,
             hide_index=True
-        )    
+        )
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI v2 — Nuovo modello dati</p>', unsafe_allow_html=True)

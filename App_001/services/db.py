@@ -371,73 +371,277 @@ def sm_match_score(risorsa, opportunity):
     }
 def sm_get_risorse_v2():
     """
-    Restituisce le risorse del nuovo modello SM_* con:
+    Risorse V2 con:
     - anagrafica
     - skill
     - lingue
     - certificazioni
+    - disponibilità calcolata dalle OSR
+    - manager di riferimento
     """
 
-    risorse = _fetchall("""
+    from datetime import date, datetime
+
+    def to_date(value):
+        if value is None:
+            return None
+
+        if isinstance(value, datetime):
+            return value.date()
+
+        if isinstance(value, date):
+            return value
+
+        value = str(value)[:10]
+
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    today = date.today()
+
+    # ── Anagrafica risorse ────────────────────────────────────────────────────
+    resources = _fetchall("""
         SELECT
-            r.EID            AS eid,
-            r.NOME           AS nome,
-            r.COGNOME        AS cognome,
-            r.EMAIL          AS email,
-            r.LEVEL          AS level,
-            r.LEVELNAME      AS level_name,
-            r.ANNIESPERIENZA AS anni_esperienza,
-            r.DISPONIBILITA  AS disponibilita,
-            r.AVAILABLEFROM  AS available_from,
-            r.ISSTAGISTA     AS is_stagista
-        FROM STAFFMATCH_SM_RISORSA r
-        ORDER BY r.COGNOME, r.NOME
+            EID            AS eid,
+            NOME           AS nome,
+            COGNOME        AS cognome,
+            EMAIL          AS email,
+            LEVEL          AS level,
+            LEVELNAME      AS level_name,
+            ANNIESPERIENZA AS anni_esperienza,
+            ISSTAGISTA     AS is_stagista
+        FROM STAFFMATCH_SM_RISORSA
+        ORDER BY COGNOME, NOME
     """)
 
-    for risorsa in risorse:
-        eid = risorsa.get("eid")
-        email = risorsa.get("email")
+    # ── Skill ─────────────────────────────────────────────────────────────────
+    skill_rows = _fetchall("""
+        SELECT
+            EID       AS eid,
+            SKILLNAME AS skill_name
+        FROM STAFFMATCH_SM_RISORSASKILL
+        ORDER BY EID, SKILLNAME
+    """)
 
-        # Skill: join tramite EID
-        risorsa["skills"] = _fetchall("""
-            SELECT
-                SKILLNAME AS skill_name
-            FROM STAFFMATCH_SM_RISORSASKILL
-            WHERE EID = ?
-            ORDER BY SKILLNAME
-        """, (eid,))
+    skills_by_eid = {}
 
-        # Lingue: join tramite EID
-        risorsa["languages"] = _fetchall("""
-            SELECT
-                LANGUAGECODE AS language_code
-            FROM STAFFMATCH_SM_RISORSALANGUAGE
-            WHERE EID = ?
-            ORDER BY LANGUAGECODE
-        """, (eid,))
+    for row in skill_rows:
+        skills_by_eid.setdefault(
+            row["eid"],
+            []
+        ).append({
+            "skill_name": row.get("skill_name")
+        })
 
-        # Certificazioni: join tramite EMAIL
-        risorsa["certifications"] = _fetchall("""
-            SELECT
-                CERTID         AS cert_id,
-                NOMECERT       AS nome_cert,
-                CITY           AS city,
-                LEVEL          AS level,
-                LEVELNAME      AS level_name,
-                EXPIRATIONDATE AS expiration_date
-            FROM STAFFMATCH_SM_RISORSACERT
-            WHERE LOWER(EMAIL) = LOWER(?)
-            ORDER BY EXPIRATIONDATE, NOMECERT
-        """, (email,))
+    # ── Lingue ────────────────────────────────────────────────────────────────
+    language_rows = _fetchall("""
+        SELECT
+            EID          AS eid,
+            LANGUAGECODE AS language_code
+        FROM STAFFMATCH_SM_RISORSALANGUAGE
+        ORDER BY EID, LANGUAGECODE
+    """)
 
-        # Conversione dei valori HANA per la risposta JSON
-        if risorsa.get("available_from"):
-            risorsa["available_from"] = str(risorsa["available_from"])
+    languages_by_eid = {}
 
-        risorsa["is_stagista"] = bool(risorsa.get("is_stagista"))
+    for row in language_rows:
+        languages_by_eid.setdefault(
+            row["eid"],
+            []
+        ).append({
+            "language_code": row.get("language_code")
+        })
 
-        for cert in risorsa["certifications"]:
-            if cert.get("expiration_date"):
-                cert["expiration_date"] = str(cert["expiration_date"])
+    # ── Certificazioni: join tramite email ────────────────────────────────────
+    certification_rows = _fetchall("""
+        SELECT
+            EMAIL          AS email,
+            CERTID         AS cert_id,
+            NOMECERT       AS nome_cert,
+            CITY           AS city,
+            LEVEL          AS level,
+            LEVELNAME      AS level_name,
+            EXPIRATIONDATE AS expiration_date
+        FROM STAFFMATCH_SM_RISORSACERT
+        ORDER BY EMAIL, EXPIRATIONDATE, NOMECERT
+    """)
 
-    return risorse
+    certifications_by_email = {}
+
+    for row in certification_rows:
+        email = (row.get("email") or "").strip().lower()
+
+        expiration_date = to_date(
+            row.get("expiration_date")
+        )
+
+        certifications_by_email.setdefault(
+            email,
+            []
+        ).append({
+            "cert_id": row.get("cert_id"),
+            "nome_cert": row.get("nome_cert"),
+            "city": row.get("city"),
+            "level": row.get("level"),
+            "level_name": row.get("level_name"),
+            "expiration_date": (
+                expiration_date.isoformat()
+                if expiration_date
+                else None
+            )
+        })
+
+    # ── OSR + risalita al manager ─────────────────────────────────────────────
+    osr_rows = _fetchall("""
+        SELECT
+            o.EID              AS eid,
+            o.OSRID            AS osr_id,
+            o.OPPORTUNITYID    AS opportunity_id,
+            o.PERCALLOCAZIONE  AS perc_allocazione,
+            o.DATAINIZIO       AS data_inizio,
+            o.DATAFINE         AS data_fine,
+            c.EID              AS manager_eid,
+            m.NOME             AS manager_nome,
+            m.COGNOME          AS manager_cognome,
+            m.EMAIL            AS manager_email
+        FROM STAFFMATCH_SM_OSR o
+
+        LEFT JOIN STAFFMATCH_SM_OPPORTUNITY op
+            ON op.OPPORTUNITYID = o.OPPORTUNITYID
+
+        LEFT JOIN STAFFMATCH_SM_CONTRACT c
+            ON c.CONTRACTID = op.CONTRACTID
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA m
+            ON m.EID = c.EID
+
+        ORDER BY o.EID, o.DATAFINE
+    """)
+
+    osr_by_eid = {}
+
+    for row in osr_rows:
+        row["data_inizio_date"] = to_date(
+            row.get("data_inizio")
+        )
+
+        row["data_fine_date"] = to_date(
+            row.get("data_fine")
+        )
+
+        osr_by_eid.setdefault(
+            row["eid"],
+            []
+        ).append(row)
+
+    # ── Composizione risultato ────────────────────────────────────────────────
+    for resource in resources:
+        eid = resource.get("eid")
+
+        email = (
+            resource.get("email")
+            or ""
+        ).strip().lower()
+
+        resource["skills"] = skills_by_eid.get(
+            eid,
+            []
+        )
+
+        resource["languages"] = languages_by_eid.get(
+            eid,
+            []
+        )
+
+        resource["certifications"] = certifications_by_email.get(
+            email,
+            []
+        )
+
+        resource_osr = osr_by_eid.get(
+            eid,
+            []
+        )
+
+        # OSR ancora valide in base alla data fine
+        valid_osr = [
+            osr for osr in resource_osr
+            if osr.get("data_fine_date")
+            and osr["data_fine_date"] >= today
+        ]
+
+        active_allocation = sum(
+            int(osr.get("perc_allocazione") or 0)
+            for osr in valid_osr
+        )
+
+        availability = max(
+            0,
+            100 - active_allocation
+        )
+
+        # Stato semaforico
+        if active_allocation == 0:
+            availability_status = "green"
+        elif active_allocation < 100:
+            availability_status = "orange"
+        else:
+            availability_status = "red"
+
+        # Prima data futura in cui termina una OSR valida
+        if valid_osr:
+            next_available_date = min(
+                osr["data_fine_date"]
+                for osr in valid_osr
+            )
+        else:
+            # Se tutte le OSR sono terminate,
+            # mostriamo la data fine più recente
+            expired_dates = [
+                osr.get("data_fine_date")
+                for osr in resource_osr
+                if osr.get("data_fine_date")
+            ]
+
+            next_available_date = (
+                max(expired_dates)
+                if expired_dates
+                else None
+            )
+        # Manager associati esclusivamente alle OSR ancora valide
+        managers = {}
+
+        for osr in valid_osr:
+            manager_eid = osr.get("manager_eid")
+
+            if manager_eid is not None:
+                managers[manager_eid] = {
+                    "eid": manager_eid,
+                    "nome": osr.get("manager_nome"),
+                    "cognome": osr.get("manager_cognome"),
+                    "email": osr.get("manager_email")
+                }
+
+        resource["active_allocation"] = active_allocation
+        resource["disponibilita"] = availability
+        resource["availability_status"] = availability_status
+        resource["has_valid_osr"] = bool(valid_osr)
+        resource["has_osr"] = bool(resource_osr)
+
+        resource["available_from"] = (
+            next_available_date.isoformat()
+            if next_available_date
+            else None
+        )
+
+        resource["managers"] = list(
+            managers.values()
+        )
+
+        resource["is_stagista"] = bool(
+            resource.get("is_stagista")
+        )
+
+    return resources
