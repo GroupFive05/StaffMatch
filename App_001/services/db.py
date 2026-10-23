@@ -967,3 +967,268 @@ def sm_create_resource_v2(data):
 
     finally:
         cur.close()
+def sm_get_dashboard_v2():
+    """
+    Restituisce i dati live per Dashboard v2.
+
+    Nessun KPI è hardcoded:
+    contratti, opportunity, OSR e risorse
+    vengono letti da HANA a ogni chiamata.
+    """
+
+    # ── OPPORTUNITY + CONTRATTO + MANAGER ─────────────────────────────────────
+    commercial_rows = _fetchall("""
+        SELECT
+            op.OPPORTUNITYID      AS opportunity_id,
+            op.OPPORTUNITYTITLE   AS opportunity_title,
+            op.OPPORTUNITYSTAGE   AS opportunity_stage,
+            op.OPPORTUNITYSTATUS  AS opportunity_status,
+            op.MAINTECHCLUSTER    AS main_tech_cluster,
+            op.FUNCTIONALAREA     AS functional_area,
+            op.OPPORTUNITYVALUE   AS opportunity_value,
+            op.DATAINIZIO         AS opportunity_start_date,
+            op.DATAFINE           AS opportunity_end_date,
+
+            c.CONTRACTID          AS contract_id,
+            c.CONTRACTTITLE       AS contract_title,
+            c.CLIENTNAME          AS client_name,
+            c.INDUSTRYSECTOR      AS industry_sector,
+            c.COUNTRY             AS country,
+            c.SERVICEGROUP        AS service_group,
+            c.CONTRACTSTATUS      AS contract_status,
+            c.CONTRACTREVENUE     AS contract_revenue,
+            c.COSTI               AS contract_costs,
+            c.DATAINIZIO          AS contract_start_date,
+            c.DATAFINE            AS contract_end_date,
+            c.EID                 AS manager_eid,
+
+            manager.NOME          AS manager_nome,
+            manager.COGNOME       AS manager_cognome,
+            manager.EMAIL         AS manager_email
+
+        FROM STAFFMATCH_SM_OPPORTUNITY op
+
+        LEFT JOIN STAFFMATCH_SM_CONTRACT c
+            ON c.CONTRACTID = op.CONTRACTID
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA manager
+            ON manager.EID = c.EID
+
+        ORDER BY
+            op.OPPORTUNITYSTATUS,
+            op.MAINTECHCLUSTER,
+            op.OPPORTUNITYID
+    """)
+
+    # ── CONTRATTI ──────────────────────────────────────────────────────────────
+    contract_rows = _fetchall("""
+        SELECT
+            c.CONTRACTID       AS contract_id,
+            c.CONTRACTTITLE    AS contract_title,
+            c.CLIENTNAME       AS client_name,
+            c.INDUSTRYSECTOR   AS industry_sector,
+            c.COUNTRY          AS country,
+            c.SERVICEGROUP     AS service_group,
+            c.CONTRACTSTATUS   AS contract_status,
+            c.CONTRACTREVENUE  AS contract_revenue,
+            c.COSTI            AS contract_costs,
+            c.DATAINIZIO       AS contract_start_date,
+            c.DATAFINE         AS contract_end_date,
+            c.EID              AS manager_eid,
+
+            manager.NOME       AS manager_nome,
+            manager.COGNOME    AS manager_cognome,
+            manager.EMAIL      AS manager_email
+
+        FROM STAFFMATCH_SM_CONTRACT c
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA manager
+            ON manager.EID = c.EID
+
+        ORDER BY
+            c.CONTRACTSTATUS,
+            c.CLIENTNAME,
+            c.CONTRACTID
+    """)
+
+    # ── OSR ────────────────────────────────────────────────────────────────────
+    osr_rows = _fetchall("""
+        SELECT
+            o.OSRID             AS osr_id,
+            o.EID               AS resource_eid,
+            o.OPPORTUNITYID     AS opportunity_id,
+            o.RUOLOINPROGETTO   AS project_role,
+            o.PERCALLOCAZIONE   AS allocation_pct,
+            o.CHARGEABILITYPCT  AS chargeability_pct,
+            o.DATAINIZIO        AS start_date,
+            o.DATAFINE          AS end_date,
+            o.STATO             AS osr_status
+        FROM STAFFMATCH_SM_OSR o
+        ORDER BY
+            o.STATO,
+            o.DATAFINE,
+            o.OSRID
+    """)
+
+    # Riutilizziamo la stessa logica già validata in Risorsa v2:
+    # disponibilità da OSR, manager delle OSR valide,
+    # certificazioni, skill e lingue.
+    resource_rows = sm_get_risorse_v2()
+
+    # ── NORMALIZZAZIONE DATE E NUMERI ─────────────────────────────────────────
+    commercial_date_fields = [
+        "opportunity_start_date",
+        "opportunity_end_date",
+        "contract_start_date",
+        "contract_end_date"
+    ]
+
+    for row in commercial_rows:
+        for field in commercial_date_fields:
+            if row.get(field) is not None:
+                row[field] = str(row[field])
+
+        row["opportunity_value"] = float(
+            row.get("opportunity_value") or 0
+        )
+
+        row["contract_revenue"] = float(
+            row.get("contract_revenue") or 0
+        )
+
+        row["contract_costs"] = float(
+            row.get("contract_costs") or 0
+        )
+
+        row["contract_margin"] = (
+            row["contract_revenue"]
+            - row["contract_costs"]
+        )
+
+    for row in contract_rows:
+        if row.get("contract_start_date") is not None:
+            row["contract_start_date"] = str(
+                row["contract_start_date"]
+            )
+
+        if row.get("contract_end_date") is not None:
+            row["contract_end_date"] = str(
+                row["contract_end_date"]
+            )
+
+        row["contract_revenue"] = float(
+            row.get("contract_revenue") or 0
+        )
+
+        row["contract_costs"] = float(
+            row.get("contract_costs") or 0
+        )
+
+        row["contract_margin"] = (
+            row["contract_revenue"]
+            - row["contract_costs"]
+        )
+
+    for row in osr_rows:
+        if row.get("start_date") is not None:
+            row["start_date"] = str(
+                row["start_date"]
+            )
+
+        if row.get("end_date") is not None:
+            row["end_date"] = str(
+                row["end_date"]
+            )
+
+        row["allocation_pct"] = int(
+            row.get("allocation_pct") or 0
+        )
+
+        row["chargeability_pct"] = int(
+            row.get("chargeability_pct") or 0
+        )
+
+    # ── FILTRI DINAMICI ────────────────────────────────────────────────────────
+    filters = {
+        "industries": sorted({
+            row.get("industry_sector")
+            for row in commercial_rows
+            if row.get("industry_sector")
+        }),
+
+        "clients": sorted({
+            row.get("client_name")
+            for row in commercial_rows
+            if row.get("client_name")
+        }),
+
+        "technologies": sorted({
+            row.get("main_tech_cluster")
+            for row in commercial_rows
+            if row.get("main_tech_cluster")
+        }),
+
+        "opportunity_statuses": sorted({
+            row.get("opportunity_status")
+            for row in commercial_rows
+            if row.get("opportunity_status")
+        }),
+
+        "opportunity_stages": sorted({
+            row.get("opportunity_stage")
+            for row in commercial_rows
+            if row.get("opportunity_stage")
+        }),
+
+        "service_groups": sorted({
+            row.get("service_group")
+            for row in commercial_rows
+            if row.get("service_group")
+        }),
+
+        "managers": sorted(
+            {
+                (
+                    row.get("manager_eid"),
+                    (
+                        f"{row.get('manager_nome') or ''} "
+                        f"{row.get('manager_cognome') or ''}"
+                    ).strip(),
+                    row.get("manager_email")
+                )
+                for row in commercial_rows
+                if row.get("manager_eid") is not None
+            },
+            key=lambda manager: manager[1]
+        ),
+
+        "levels": sorted({
+            resource.get("level_name")
+            for resource in resource_rows
+            if resource.get("level_name")
+        }),
+
+        "skills": sorted({
+            skill.get("skill_name")
+            for resource in resource_rows
+            for skill in resource.get("skills", [])
+            if skill.get("skill_name")
+        })
+    }
+
+    filters["managers"] = [
+        {
+            "eid": manager[0],
+            "name": manager[1],
+            "email": manager[2]
+        }
+        for manager in filters["managers"]
+    ]
+
+    return {
+        "commercial_rows": commercial_rows,
+        "contract_rows": contract_rows,
+        "osr_rows": osr_rows,
+        "resource_rows": resource_rows,
+        "filters": filters
+    }        

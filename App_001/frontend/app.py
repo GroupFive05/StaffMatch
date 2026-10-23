@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import requests
+import plotly.graph_objects as go
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
@@ -406,6 +407,7 @@ def show_sidebar(groups):
             ("🏠", "Dashboard",       "dashboard"),
             ("👥", "Risorse",         "risorse"),
             ("🧑‍💻", "Risorsa v2",      "risorsa_v2"),
+            ("📊", "Dashboard v2",    "dashboard_v2"),
             ("📁", "Progetti",        "progetti"),
             ("🎯", "Opportunity",     "opportunity"),
             ("🤖", "Matching AI",     "matching"),
@@ -2406,7 +2408,941 @@ def show_risorsa_v2(groups):
             hide_index=True
         )
 
+# ── DASHBOARD V2 ──────────────────────────────────────────────────────────────
+def show_dashboard_v2(groups):
+    st.markdown(
+        '<p class="main-title">📊 StaffMatch Dashboard</p>',
+        unsafe_allow_html=True
+    )
 
+    response = api(
+        "GET",
+        "/sm/dashboard-v2"
+    )
+
+    if response is None:
+        st.error("Nessuna risposta dal backend.")
+        return
+
+    if response.status_code != 200:
+        st.error(
+            f"Errore nel caricamento dashboard: {_api_detail(response)}"
+        )
+        return
+
+    data = response.json()
+
+    commercial_rows = data.get("commercial_rows", [])
+    contract_rows = data.get("contract_rows", [])
+    osr_rows = data.get("osr_rows", [])
+    resource_rows = data.get("resource_rows", [])
+    filters = data.get("filters", {})
+
+    # ── PALETTE ────────────────────────────────────────────────────────────────
+    purple = "#7B2CBF"
+    purple_dark = "#5A189A"
+    purple_light = "#C77DFF"
+
+    # ── FILTRI ────────────────────────────────────────────────────────────────
+    st.markdown("#### Filtri")
+
+    filter_1, filter_2, filter_3 = st.columns(3)
+
+    with filter_1:
+        selected_industries = st.multiselect(
+            "Industry",
+            filters.get("industries", [])
+        )
+
+    with filter_2:
+        selected_clients = st.multiselect(
+            "Cliente",
+            filters.get("clients", [])
+        )
+
+    with filter_3:
+        selected_technologies = st.multiselect(
+            "Technology",
+            filters.get("technologies", [])
+        )
+
+    filter_4, filter_5, filter_6 = st.columns(3)
+
+    with filter_4:
+        selected_statuses = st.multiselect(
+            "Opportunity Status",
+            filters.get("opportunity_statuses", [])
+        )
+
+    with filter_5:
+        selected_service_groups = st.multiselect(
+            "Service Group",
+            filters.get("service_groups", [])
+        )
+
+    manager_options = {
+        manager.get("name"): manager.get("eid")
+        for manager in filters.get("managers", [])
+        if manager.get("name")
+    }
+
+    with filter_6:
+        selected_manager_names = st.multiselect(
+            "Manager",
+            list(manager_options.keys())
+        )
+
+    selected_manager_eids = {
+        manager_options[name]
+        for name in selected_manager_names
+    }
+
+    # ── FILTRO OPPORTUNITY ────────────────────────────────────────────────────
+    filtered_commercial = commercial_rows
+
+    if selected_industries:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("industry_sector") in selected_industries
+        ]
+
+    if selected_clients:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("client_name") in selected_clients
+        ]
+
+    if selected_technologies:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("main_tech_cluster") in selected_technologies
+        ]
+
+    if selected_statuses:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("opportunity_status") in selected_statuses
+        ]
+
+    if selected_service_groups:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("service_group") in selected_service_groups
+        ]
+
+    if selected_manager_eids:
+        filtered_commercial = [
+            row
+            for row in filtered_commercial
+            if row.get("manager_eid") in selected_manager_eids
+        ]
+
+    # ── FILTER CONTRACTS ──────────────────────────────────────────────────────
+    filtered_contracts = contract_rows
+
+    if selected_industries:
+        filtered_contracts = [
+            row
+            for row in filtered_contracts
+            if row.get("industry_sector") in selected_industries
+        ]
+
+    if selected_clients:
+        filtered_contracts = [
+            row
+            for row in filtered_contracts
+            if row.get("client_name") in selected_clients
+        ]
+
+    if selected_service_groups:
+        filtered_contracts = [
+            row
+            for row in filtered_contracts
+            if row.get("service_group") in selected_service_groups
+        ]
+
+    if selected_manager_eids:
+        filtered_contracts = [
+            row
+            for row in filtered_contracts
+            if row.get("manager_eid") in selected_manager_eids
+        ]
+
+    # Se filtro Technology o Opportunity Status,
+    # considero solo i contratti collegati alle opportunity rimaste.
+    if selected_technologies or selected_statuses:
+        visible_contract_ids = {
+            row.get("contract_id")
+            for row in filtered_commercial
+            if row.get("contract_id")
+        }
+
+        filtered_contracts = [
+            row
+            for row in filtered_contracts
+            if row.get("contract_id") in visible_contract_ids
+        ]
+
+    # ── KPI LIVE ──────────────────────────────────────────────────────────────
+    opportunity_value = sum(
+        float(row.get("opportunity_value") or 0)
+        for row in filtered_commercial
+    )
+
+    pipeline_value = sum(
+        float(row.get("opportunity_value") or 0)
+        for row in filtered_commercial
+        if row.get("opportunity_status") == "Pipeline"
+    )
+
+    contract_revenue = sum(
+        float(row.get("contract_revenue") or 0)
+        for row in filtered_contracts
+    )
+
+    contract_costs = sum(
+        float(row.get("contract_costs") or 0)
+        for row in filtered_contracts
+    )
+
+    contract_margin = (
+        contract_revenue
+        - contract_costs
+    )
+
+    opportunity_count = len(
+        filtered_commercial
+    )
+
+    active_contract_count = sum(
+        1
+        for row in filtered_contracts
+        if row.get("contract_status") == "Active"
+    )
+
+    available_resources = sum(
+        1
+        for resource in resource_rows
+        if int(resource.get("disponibilita") or 0) > 0
+    )
+
+    fully_allocated_resources = sum(
+        1
+        for resource in resource_rows
+        if int(resource.get("disponibilita") or 0) == 0
+    )
+
+    # ── KPI COMMERCIALI ───────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Commercial Overview")
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+    kpi1.metric(
+        "Opportunity Value",
+        f"€ {opportunity_value / 1_000_000:.2f} M"
+    )
+
+    kpi2.metric(
+        "Pipeline Value",
+        f"€ {pipeline_value / 1_000_000:.2f} M"
+    )
+
+    kpi3.metric(
+        "Contract Revenue",
+        f"€ {contract_revenue / 1_000_000:.2f} M"
+    )
+
+    kpi4.metric(
+        "Margin",
+        f"€ {contract_margin / 1_000_000:.2f} M"
+    )
+
+    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+
+    kpi5.metric(
+        "Opportunity",
+        opportunity_count
+    )
+
+    kpi6.metric(
+        "Contratti attivi",
+        active_contract_count
+    )
+
+    kpi7.metric(
+        "Risorse disponibili",
+        available_resources
+    )
+
+    kpi8.metric(
+        "Fully allocated",
+        fully_allocated_resources
+    )
+        # ── GRAFICI COMMERCIALI ───────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Commercial Performance")
+
+    # Aggregazione Opportunity per Technology
+    technology_value = {}
+
+    for row in filtered_commercial:
+        technology = row.get("main_tech_cluster") or "Non classificata"
+
+        technology_value[technology] = (
+            technology_value.get(technology, 0)
+            + float(row.get("opportunity_value") or 0)
+        )
+
+    technology_sorted = sorted(
+        technology_value.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    # Aggregazione Opportunity per numero
+    technology_count = {}
+
+    for row in filtered_commercial:
+        technology = row.get("main_tech_cluster") or "Non classificata"
+
+        technology_count[technology] = (
+            technology_count.get(technology, 0) + 1
+        )
+
+    technology_count_sorted = sorted(
+        technology_count.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    # Aggregazione Revenue per Industry
+    industry_revenue = {}
+
+    for row in filtered_contracts:
+        industry = row.get("industry_sector") or "Non classificata"
+
+        industry_revenue[industry] = (
+            industry_revenue.get(industry, 0)
+            + float(row.get("contract_revenue") or 0)
+        )
+
+    industry_sorted = sorted(
+        industry_revenue.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    chart_col1, chart_col2 = st.columns(2)
+
+    # ── Opportunity Value by Technology ───────────────────────────────────────
+    with chart_col1:
+        st.markdown("#### Opportunity Value by Technology")
+
+        fig_technology_value = go.Figure()
+
+        fig_technology_value.add_trace(
+            go.Bar(
+                x=[
+                    item[0]
+                    for item in technology_sorted
+                ],
+                y=[
+                    item[1]
+                    for item in technology_sorted
+                ],
+                marker_color=purple,
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    "Value: €%{y:,.0f}"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+        fig_technology_value.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=20,
+                t=20,
+                b=80
+            ),
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            yaxis_title="Opportunity Value (€)",
+            xaxis_title=""
+        )
+
+        st.plotly_chart(
+            fig_technology_value,
+            use_container_width=True
+        )
+
+    # ── Technology Distribution ───────────────────────────────────────────────
+    with chart_col2:
+        st.markdown("#### Technology Distribution")
+
+        fig_technology_distribution = go.Figure(
+            data=[
+                go.Pie(
+                    labels=[
+                        item[0]
+                        for item in technology_sorted
+                    ],
+                    values=[
+                        item[1]
+                        for item in technology_sorted
+                    ],
+                    hole=0.58,
+                    marker=dict(
+                        colors=[
+                            "#5A189A",
+                            "#7B2CBF",
+                            "#9D4EDD",
+                            "#C77DFF",
+                            "#E0AAFF",
+                            "#B185DB",
+                            "#8F5FBF",
+                            "#6A3D9A"
+                        ]
+                    ),
+                    hovertemplate=(
+                        "<b>%{label}</b><br>"
+                        "Value: €%{value:,.0f}<br>"
+                        "%{percent}"
+                        "<extra></extra>"
+                    )
+                )
+            ]
+        )
+
+        fig_technology_distribution.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=20,
+                t=20,
+                b=20
+            ),
+            showlegend=True,
+            legend=dict(
+                orientation="v"
+            ),
+            paper_bgcolor="white"
+        )
+
+        st.plotly_chart(
+            fig_technology_distribution,
+            use_container_width=True
+        )
+
+    chart_col3, chart_col4 = st.columns(2)
+
+    # ── Revenue by Industry ───────────────────────────────────────────────────
+    with chart_col3:
+        st.markdown("#### Contract Revenue by Industry")
+
+        fig_industry = go.Figure()
+
+        fig_industry.add_trace(
+            go.Bar(
+                x=[
+                    item[0]
+                    for item in industry_sorted
+                ],
+                y=[
+                    item[1]
+                    for item in industry_sorted
+                ],
+                marker_color=purple_light,
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    "Revenue: €%{y:,.0f}"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+        fig_industry.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=20,
+                t=20,
+                b=80
+            ),
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            yaxis_title="Revenue (€)",
+            xaxis_title=""
+        )
+
+        st.plotly_chart(
+            fig_industry,
+            use_container_width=True
+        )
+
+    # ── Technology Ranking ────────────────────────────────────────────────────
+    with chart_col4:
+        st.markdown("#### Technology Ranking")
+
+        ranking_desc = technology_count_sorted[:10]
+        ranking_display = list(
+            reversed(ranking_desc)
+        )
+
+        fig_ranking = go.Figure()
+
+        fig_ranking.add_trace(
+            go.Bar(
+                x=[
+                    item[1]
+                    for item in ranking_display
+                ],
+                y=[
+                    item[0]
+                    for item in ranking_display
+                ],
+                orientation="h",
+                marker_color=purple_dark,
+                text=[
+                    item[1]
+                    for item in ranking_display
+                ],
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Opportunity: %{x}"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+        fig_ranking.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=40,
+                t=20,
+                b=20
+            ),
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            xaxis_title="Numero Opportunity",
+            yaxis_title=""
+        )
+
+        st.plotly_chart(
+            fig_ranking,
+            use_container_width=True
+        )
+        # ── STAFFING OVERVIEW ─────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Staffing Overview")
+
+    # Se sono attivi filtri commerciali, mostriamo le risorse
+    # associate alle opportunity rimaste dopo i filtri.
+    commercial_filters_active = any([
+        selected_industries,
+        selected_clients,
+        selected_technologies,
+        selected_statuses,
+        selected_service_groups,
+        selected_manager_eids
+    ])
+
+    filtered_resources = resource_rows
+
+    if commercial_filters_active:
+        visible_opportunity_ids = {
+            row.get("opportunity_id")
+            for row in filtered_commercial
+            if row.get("opportunity_id")
+        }
+
+        visible_resource_eids = {
+            row.get("resource_eid")
+            for row in osr_rows
+            if row.get("opportunity_id") in visible_opportunity_ids
+        }
+
+        filtered_resources = [
+            resource
+            for resource in resource_rows
+            if resource.get("eid") in visible_resource_eids
+        ]
+
+    # ── KPI STAFFING DINAMICI ─────────────────────────────────────────────────
+    staffing_total = len(filtered_resources)
+
+    staffing_available = sum(
+        1
+        for resource in filtered_resources
+        if int(resource.get("disponibilita") or 0) > 0
+    )
+
+    staffing_fully_allocated = sum(
+        1
+        for resource in filtered_resources
+        if int(resource.get("disponibilita") or 0) == 0
+    )
+
+    staffing_average_allocation = (
+        sum(
+            min(
+                int(resource.get("active_allocation") or 0),
+                100
+            )
+            for resource in filtered_resources
+        ) / staffing_total
+        if staffing_total > 0
+        else 0
+    )
+
+    staffing_kpi1, staffing_kpi2, staffing_kpi3, staffing_kpi4 = st.columns(4)
+
+    staffing_kpi1.metric(
+        "Risorse",
+        staffing_total
+    )
+
+    staffing_kpi2.metric(
+        "Disponibili",
+        staffing_available
+    )
+
+    staffing_kpi3.metric(
+        "Fully allocated",
+        staffing_fully_allocated
+    )
+
+    staffing_kpi4.metric(
+        "Allocazione media",
+        f"{staffing_average_allocation:.1f}%"
+    )
+
+    # ── AGGREGAZIONI STAFFING ─────────────────────────────────────────────────
+    availability_distribution = {
+        "Disponibili": 0,
+        "Parzialmente allocate": 0,
+        "Fully allocated": 0
+    }
+
+    level_distribution = {}
+    skill_distribution = {}
+    manager_distribution = {}
+
+    for resource in filtered_resources:
+        availability_status = resource.get(
+            "availability_status",
+            "green"
+        )
+
+        if availability_status == "red":
+            availability_distribution[
+                "Fully allocated"
+            ] += 1
+
+        elif availability_status == "orange":
+            availability_distribution[
+                "Parzialmente allocate"
+            ] += 1
+
+        else:
+            availability_distribution[
+                "Disponibili"
+            ] += 1
+
+        level_name = (
+            resource.get("level_name")
+            or "Non classificato"
+        )
+
+        level_distribution[level_name] = (
+            level_distribution.get(level_name, 0) + 1
+        )
+
+        for skill in resource.get("skills", []):
+            skill_name = skill.get("skill_name")
+
+            if skill_name:
+                skill_distribution[skill_name] = (
+                    skill_distribution.get(skill_name, 0) + 1
+                )
+
+        for manager in resource.get("managers", []):
+            manager_name = (
+                f"{manager.get('nome', '')} "
+                f"{manager.get('cognome', '')}"
+            ).strip()
+
+            if manager_name:
+                manager_distribution[manager_name] = (
+                    manager_distribution.get(
+                        manager_name,
+                        0
+                    ) + 1
+                )
+
+    level_sorted = sorted(
+        level_distribution.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    skill_sorted = sorted(
+        skill_distribution.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )[:10]
+
+    manager_sorted = sorted(
+        manager_distribution.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )[:10]
+
+    staffing_col1, staffing_col2 = st.columns(2)
+
+    # ── RESOURCE AVAILABILITY ─────────────────────────────────────────────────
+    with staffing_col1:
+        st.markdown("#### Resource Availability")
+
+        fig_availability = go.Figure(
+            data=[
+                go.Pie(
+                    labels=list(
+                        availability_distribution.keys()
+                    ),
+                    values=list(
+                        availability_distribution.values()
+                    ),
+                    hole=0.60,
+                    marker=dict(
+                        colors=[
+                            "#2E8B57",
+                            "#F4A261",
+                            "#D62828"
+                        ]
+                    ),
+                    hovertemplate=(
+                        "<b>%{label}</b><br>"
+                        "Risorse: %{value}<br>"
+                        "%{percent}"
+                        "<extra></extra>"
+                    )
+                )
+            ]
+        )
+
+        fig_availability.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=20,
+                t=20,
+                b=20
+            ),
+            showlegend=True,
+            paper_bgcolor="white",
+            annotations=[
+                dict(
+                    text=str(staffing_total),
+                    x=0.5,
+                    y=0.5,
+                    font_size=28,
+                    showarrow=False
+                )
+            ]
+        )
+
+        st.plotly_chart(
+            fig_availability,
+            use_container_width=True
+        )
+
+    # ── RESOURCES BY LEVEL ────────────────────────────────────────────────────
+    with staffing_col2:
+        st.markdown("#### Resources by Level")
+
+        level_display = list(
+            reversed(level_sorted)
+        )
+
+        fig_levels = go.Figure()
+
+        fig_levels.add_trace(
+            go.Bar(
+                x=[
+                    item[1]
+                    for item in level_display
+                ],
+                y=[
+                    item[0]
+                    for item in level_display
+                ],
+                orientation="h",
+                marker_color=purple,
+                text=[
+                    item[1]
+                    for item in level_display
+                ],
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Risorse: %{x}"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+        fig_levels.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=40,
+                t=20,
+                b=20
+            ),
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            xaxis_title="Numero risorse",
+            yaxis_title=""
+        )
+
+        st.plotly_chart(
+            fig_levels,
+            use_container_width=True
+        )
+
+    staffing_col3, staffing_col4 = st.columns(2)
+
+    # ── TOP SKILLS ─────────────────────────────────────────────────────────────
+    with staffing_col3:
+        st.markdown("#### Top Skills")
+
+        skill_display = list(
+            reversed(skill_sorted)
+        )
+
+        fig_skills = go.Figure()
+
+        fig_skills.add_trace(
+            go.Bar(
+                x=[
+                    item[1]
+                    for item in skill_display
+                ],
+                y=[
+                    item[0]
+                    for item in skill_display
+                ],
+                orientation="h",
+                marker_color=purple_light,
+                text=[
+                    item[1]
+                    for item in skill_display
+                ],
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Risorse: %{x}"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+        fig_skills.update_layout(
+            height=380,
+            margin=dict(
+                l=20,
+                r=40,
+                t=20,
+                b=20
+            ),
+            showlegend=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            xaxis_title="Numero risorse",
+            yaxis_title=""
+        )
+
+        st.plotly_chart(
+            fig_skills,
+            use_container_width=True
+        )
+
+    # ── STAFFING BY MANAGER ───────────────────────────────────────────────────
+    with staffing_col4:
+        st.markdown("#### Staffing by Manager")
+
+        manager_display = list(
+            reversed(manager_sorted)
+        )
+
+        if manager_display:
+            fig_managers = go.Figure()
+
+            fig_managers.add_trace(
+                go.Bar(
+                    x=[
+                        item[1]
+                        for item in manager_display
+                    ],
+                    y=[
+                        item[0]
+                        for item in manager_display
+                    ],
+                    orientation="h",
+                    marker_color=purple_dark,
+                    text=[
+                        item[1]
+                        for item in manager_display
+                    ],
+                    textposition="outside",
+                    hovertemplate=(
+                        "<b>%{y}</b><br>"
+                        "Risorse: %{x}"
+                        "<extra></extra>"
+                    )
+                )
+            )
+
+            fig_managers.update_layout(
+                height=380,
+                margin=dict(
+                    l=20,
+                    r=40,
+                    t=20,
+                    b=20
+                ),
+                showlegend=False,
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                xaxis_title="Risorse su OSR valide",
+                yaxis_title=""
+            )
+
+            st.plotly_chart(
+                fig_managers,
+                use_container_width=True
+            )
+
+        else:
+            st.info(
+                "Nessun manager associato alle OSR valide "
+                "per i filtri selezionati."
+            )
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI v2 — Nuovo modello dati</p>', unsafe_allow_html=True)
@@ -2479,6 +3415,8 @@ def main():
         show_risorse(groups)
     elif page == "risorsa_v2":
         show_risorsa_v2(groups)
+    elif page == "dashboard_v2":
+        show_dashboard_v2(groups)  
     elif page == "progetti":
         show_progetti(groups)
     elif page == "opportunity":
