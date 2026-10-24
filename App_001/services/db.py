@@ -1230,5 +1230,326 @@ def sm_get_dashboard_v2():
         "contract_rows": contract_rows,
         "osr_rows": osr_rows,
         "resource_rows": resource_rows,
-        "filters": filters
+        "filters": filters       
     }        
+def sm_get_staffing_management_v2():
+    from datetime import date, datetime
+    import calendar
+
+    today = date.today()
+
+    # Aggiunge 3 mesi di calendario senza dipendenze esterne
+    target_month = today.month + 3
+    target_year = today.year + (target_month - 1) // 12
+    target_month = (target_month - 1) % 12 + 1
+
+    last_day = calendar.monthrange(
+        target_year,
+        target_month
+    )[1]
+
+    rolling_off_limit = date(
+        target_year,
+        target_month,
+        min(today.day, last_day)
+    )
+
+    def to_date(value):
+        if value is None:
+            return None
+
+        if isinstance(value, datetime):
+            return value.date()
+
+        if isinstance(value, date):
+            return value
+
+        try:
+            return datetime.strptime(
+                str(value)[:10],
+                "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return None
+
+    def calculate_osr_status(end_date):
+        end_date = to_date(end_date)
+
+        if end_date is None:
+            return "Unknown"
+
+        if end_date < today:
+            return "Closed"
+
+        if end_date <= rolling_off_limit:
+            return "Rolling-off"
+
+        return "Active"
+
+    # ── OSR ───────────────────────────────────────────────────────────────────
+    osr_rows = _fetchall("""
+        SELECT
+            o.OSRID            AS osr_id,
+            o.EID              AS resource_eid,
+            r.NOME             AS resource_nome,
+            r.COGNOME          AS resource_cognome,
+            r.EMAIL            AS resource_email,
+
+            o.OPPORTUNITYID    AS opportunity_id,
+            op.OPPORTUNITYTITLE AS opportunity_title,
+
+            o.RUOLOINPROGETTO  AS project_role,
+            o.PERCALLOCAZIONE  AS allocation_pct,
+            o.CHARGEABILITYPCT AS chargeability_pct,
+            o.DATAINIZIO       AS start_date,
+            o.DATAFINE         AS end_date,
+
+            c.CONTRACTID       AS contract_id,
+            c.CLIENTNAME       AS client_name,
+
+            manager.EID        AS manager_eid,
+            manager.NOME       AS manager_nome,
+            manager.COGNOME    AS manager_cognome
+
+        FROM STAFFMATCH_SM_OSR o
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA r
+            ON r.EID = o.EID
+
+        LEFT JOIN STAFFMATCH_SM_OPPORTUNITY op
+            ON op.OPPORTUNITYID = o.OPPORTUNITYID
+
+        LEFT JOIN STAFFMATCH_SM_CONTRACT c
+            ON c.CONTRACTID = op.CONTRACTID
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA manager
+            ON manager.EID = c.EID
+
+        ORDER BY o.DATAFINE, o.OSRID
+    """)
+
+    for row in osr_rows:
+        start_date = to_date(row.get("start_date"))
+        end_date = to_date(row.get("end_date"))
+
+        row["start_date"] = (
+            start_date.isoformat()
+            if start_date
+            else None
+        )
+
+        row["end_date"] = (
+            end_date.isoformat()
+            if end_date
+            else None
+        )
+
+        row["calculated_status"] = calculate_osr_status(
+            end_date
+        )
+
+        row["resource_missing"] = (
+            row.get("resource_nome") is None
+        )
+
+        row["allocation_pct"] = int(
+            row.get("allocation_pct") or 0
+        )
+
+        row["chargeability_pct"] = int(
+            row.get("chargeability_pct") or 0
+        )
+
+    # ── OPPORTUNITY ───────────────────────────────────────────────────────────
+    opportunity_rows = _fetchall("""
+        SELECT
+            op.OPPORTUNITYID      AS opportunity_id,
+            op.OPPORTUNITYTITLE   AS opportunity_title,
+            op.CONTRACTID         AS contract_id,
+            c.CONTRACTTITLE       AS contract_title,
+            c.CLIENTNAME          AS client_name,
+
+            op.OPPORTUNITYSTAGE   AS opportunity_stage,
+            op.OPPORTUNITYSTATUS  AS opportunity_status,
+            op.MAINTECHCLUSTER    AS main_tech_cluster,
+            op.FUNCTIONALAREA     AS functional_area,
+            op.DATAINIZIO         AS start_date,
+            op.DATAFINE           AS end_date,
+            op.OPPORTUNITYVALUE   AS opportunity_value,
+
+            COUNT(o.OSRID)        AS osr_count,
+            COALESCE(
+                SUM(o.PERCALLOCAZIONE),
+                0
+            )                     AS total_allocation
+
+        FROM STAFFMATCH_SM_OPPORTUNITY op
+
+        LEFT JOIN STAFFMATCH_SM_CONTRACT c
+            ON c.CONTRACTID = op.CONTRACTID
+
+        LEFT JOIN STAFFMATCH_SM_OSR o
+            ON o.OPPORTUNITYID = op.OPPORTUNITYID
+
+        GROUP BY
+            op.OPPORTUNITYID,
+            op.OPPORTUNITYTITLE,
+            op.CONTRACTID,
+            c.CONTRACTTITLE,
+            c.CLIENTNAME,
+            op.OPPORTUNITYSTAGE,
+            op.OPPORTUNITYSTATUS,
+            op.MAINTECHCLUSTER,
+            op.FUNCTIONALAREA,
+            op.DATAINIZIO,
+            op.DATAFINE,
+            op.OPPORTUNITYVALUE
+
+        ORDER BY op.OPPORTUNITYID
+    """)
+
+    for row in opportunity_rows:
+        start_date = to_date(row.get("start_date"))
+        end_date = to_date(row.get("end_date"))
+
+        row["start_date"] = (
+            start_date.isoformat()
+            if start_date
+            else None
+        )
+
+        row["end_date"] = (
+            end_date.isoformat()
+            if end_date
+            else None
+        )
+
+        row["opportunity_value"] = float(
+            row.get("opportunity_value") or 0
+        )
+
+        row["osr_count"] = int(
+            row.get("osr_count") or 0
+        )
+
+        row["total_allocation"] = int(
+            row.get("total_allocation") or 0
+        )
+
+        row["contract_missing"] = (
+            row.get("contract_id") is None
+            or row.get("contract_title") is None
+        )
+
+    # ── CONTRATTI ──────────────────────────────────────────────────────────────
+    contract_rows = _fetchall("""
+        SELECT
+            c.CONTRACTID          AS contract_id,
+            c.CONTRACTTITLE       AS contract_title,
+            c.CLIENTNAME          AS client_name,
+            c.INDUSTRYSECTOR      AS industry_sector,
+            c.COUNTRY             AS country,
+            c.CAL                 AS cal,
+            c.SERVICEGROUP        AS service_group,
+            c.PRACTICELEAD        AS practice_lead,
+            c.DATAINIZIO          AS start_date,
+            c.DATAFINE            AS end_date,
+
+            c.CONTRACTREVENUE     AS contract_revenue,
+            c.COSTI               AS contract_costs,
+            c.CONTRACTSTATUS      AS contract_status,
+            c.ISCROSSPRACTICE     AS is_cross_practice,
+            c.DAPRACTICEPCT       AS da_practice_pct,
+
+            c.EID                 AS manager_eid,
+            manager.NOME          AS manager_nome,
+            manager.COGNOME       AS manager_cognome,
+            manager.EMAIL         AS manager_email,
+
+            COUNT(
+                DISTINCT op.OPPORTUNITYID
+            )                     AS opportunity_count,
+
+            COUNT(
+                DISTINCT osr.OSRID
+            )                     AS osr_count
+
+        FROM STAFFMATCH_SM_CONTRACT c
+
+        LEFT JOIN STAFFMATCH_SM_RISORSA manager
+            ON manager.EID = c.EID
+
+        LEFT JOIN STAFFMATCH_SM_OPPORTUNITY op
+            ON op.CONTRACTID = c.CONTRACTID
+
+        LEFT JOIN STAFFMATCH_SM_OSR osr
+            ON osr.OPPORTUNITYID = op.OPPORTUNITYID
+
+        GROUP BY
+            c.CONTRACTID,
+            c.CONTRACTTITLE,
+            c.CLIENTNAME,
+            c.INDUSTRYSECTOR,
+            c.COUNTRY,
+            c.CAL,
+            c.SERVICEGROUP,
+            c.PRACTICELEAD,
+            c.DATAINIZIO,
+            c.DATAFINE,
+            c.CONTRACTREVENUE,
+            c.COSTI,
+            c.CONTRACTSTATUS,
+            c.ISCROSSPRACTICE,
+            c.DAPRACTICEPCT,
+            c.EID,
+            manager.NOME,
+            manager.COGNOME,
+            manager.EMAIL
+
+        ORDER BY c.CONTRACTID
+    """)
+
+    for row in contract_rows:
+        start_date = to_date(row.get("start_date"))
+        end_date = to_date(row.get("end_date"))
+
+        row["start_date"] = (
+            start_date.isoformat()
+            if start_date
+            else None
+        )
+
+        row["end_date"] = (
+            end_date.isoformat()
+            if end_date
+            else None
+        )
+
+        row["contract_revenue"] = float(
+            row.get("contract_revenue") or 0
+        )
+
+        row["contract_costs"] = float(
+            row.get("contract_costs") or 0
+        )
+
+        row["contract_margin"] = (
+            row["contract_revenue"]
+            - row["contract_costs"]
+        )
+
+        row["opportunity_count"] = int(
+            row.get("opportunity_count") or 0
+        )
+
+        row["osr_count"] = int(
+            row.get("osr_count") or 0
+        )
+
+    return {
+        "today": today.isoformat(),
+        "rolling_off_limit": rolling_off_limit.isoformat(),
+        "osr": osr_rows,
+        "opportunities": opportunity_rows,
+        "contracts": contract_rows
+    }

@@ -408,6 +408,7 @@ def show_sidebar(groups):
             ("👥", "Risorse",         "risorse"),
             ("🧑‍💻", "Risorsa v2",      "risorsa_v2"),
             ("📊", "Dashboard v2",    "dashboard_v2"),
+            ("🗂", "Gestione Staffing v2", "staffing_management_v2"),
             ("📁", "Progetti",        "progetti"),
             ("🎯", "Opportunity",     "opportunity"),
             ("🤖", "Matching AI",     "matching"),
@@ -3343,6 +3344,845 @@ def show_dashboard_v2(groups):
                 "Nessun manager associato alle OSR valide "
                 "per i filtri selezionati."
             )
+# ── GESTIONE STAFFING V2 ─────────────────────────────────────────────────────
+def show_staffing_management_v2(groups):
+
+    if "staffing_v2_view" not in st.session_state:
+        st.session_state["staffing_v2_view"] = "osr"
+
+    st.markdown(
+        '<p class="main-title">🗂 Gestione Staffing v2</p>',
+        unsafe_allow_html=True
+    )
+
+    # ── NAVIGAZIONE ───────────────────────────────────────────────────────────
+    nav_osr, nav_opp, nav_contract = st.columns(3)
+
+    with nav_osr:
+        if st.button(
+            "👥 OSR",
+            use_container_width=True,
+            type="primary"
+            if st.session_state["staffing_v2_view"] == "osr"
+            else "secondary",
+            key="staffing_nav_osr"
+        ):
+            st.session_state["staffing_v2_view"] = "osr"
+            st.rerun()
+
+    with nav_opp:
+        if st.button(
+            "💼 Opportunity",
+            use_container_width=True,
+            type="primary"
+            if st.session_state["staffing_v2_view"] == "opportunity"
+            else "secondary",
+            key="staffing_nav_opportunity"
+        ):
+            st.session_state["staffing_v2_view"] = "opportunity"
+            st.rerun()
+
+    with nav_contract:
+        if st.button(
+            "📄 Contratti",
+            use_container_width=True,
+            type="primary"
+            if st.session_state["staffing_v2_view"] == "contract"
+            else "secondary",
+            key="staffing_nav_contract"
+        ):
+            st.session_state["staffing_v2_view"] = "contract"
+            st.rerun()
+
+    st.markdown("---")
+
+    # ── DATI LIVE ─────────────────────────────────────────────────────────────
+    response = api(
+        "GET",
+        "/sm/staffing-management-v2"
+    )
+
+    if response is None:
+        st.error("Nessuna risposta dal backend.")
+        return
+
+    if response.status_code != 200:
+        st.error(
+            f"Errore nel caricamento: {_api_detail(response)}"
+        )
+        return
+
+    data = response.json()
+
+    osr_rows = data.get("osr", [])
+    opportunity_rows = data.get("opportunities", [])
+    contract_rows = data.get("contracts", [])
+
+    # ── VISTA OSR ─────────────────────────────────────────────────────────────
+    if st.session_state["staffing_v2_view"] == "osr":
+
+        st.markdown("### OSR")
+
+        filter_1, filter_2, filter_3 = st.columns([3, 2, 2])
+
+        with filter_1:
+            osr_search = st.text_input(
+                "🔍 Cerca OSR, risorsa, EID, opportunity o cliente",
+                key="staffing_osr_search"
+            )
+
+        osr_statuses = sorted({
+            row.get("calculated_status")
+            for row in osr_rows
+            if row.get("calculated_status")
+        })
+
+        with filter_2:
+            selected_osr_statuses = st.multiselect(
+                "Stato OSR",
+                osr_statuses,
+                key="staffing_osr_status"
+            )
+
+        with filter_3:
+            only_missing_resources = st.checkbox(
+                "OSR senza risorsa",
+                key="staffing_osr_missing_resource"
+            )
+
+        filter_4, filter_5, filter_6 = st.columns(3)
+
+        opportunity_options = sorted({
+            row.get("opportunity_title")
+            for row in osr_rows
+            if row.get("opportunity_title")
+        })
+
+        with filter_4:
+            selected_osr_opportunities = st.multiselect(
+                "Opportunity",
+                opportunity_options,
+                key="staffing_osr_opportunity"
+            )
+
+        role_options = sorted({
+            row.get("project_role")
+            for row in osr_rows
+            if row.get("project_role")
+        })
+
+        with filter_5:
+            selected_roles = st.multiselect(
+                "Ruolo",
+                role_options,
+                key="staffing_osr_role"
+            )
+
+        manager_options = sorted({
+            (
+                f"{row.get('manager_nome') or ''} "
+                f"{row.get('manager_cognome') or ''}"
+            ).strip()
+            for row in osr_rows
+            if row.get("manager_eid") is not None
+        })
+
+        with filter_6:
+            selected_osr_managers = st.multiselect(
+                "Manager",
+                manager_options,
+                key="staffing_osr_manager"
+            )
+
+        # ── APPLICAZIONE FILTRI OSR ───────────────────────────────────────────
+        filtered_osr = osr_rows
+
+        if osr_search:
+            search_value = osr_search.strip().lower()
+
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if search_value in (
+                    f"{row.get('osr_id', '')} "
+                    f"{row.get('resource_eid', '')} "
+                    f"{row.get('resource_nome', '')} "
+                    f"{row.get('resource_cognome', '')} "
+                    f"{row.get('opportunity_id', '')} "
+                    f"{row.get('opportunity_title', '')} "
+                    f"{row.get('client_name', '')}"
+                ).lower()
+            ]
+
+        if selected_osr_statuses:
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if row.get("calculated_status")
+                in selected_osr_statuses
+            ]
+
+        if only_missing_resources:
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if row.get("resource_missing") is True
+            ]
+
+        if selected_osr_opportunities:
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if row.get("opportunity_title")
+                in selected_osr_opportunities
+            ]
+
+        if selected_roles:
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if row.get("project_role")
+                in selected_roles
+            ]
+
+        if selected_osr_managers:
+            filtered_osr = [
+                row
+                for row in filtered_osr
+                if (
+                    f"{row.get('manager_nome') or ''} "
+                    f"{row.get('manager_cognome') or ''}"
+                ).strip()
+                in selected_osr_managers
+            ]
+
+        # ── KPI OSR DINAMICI ──────────────────────────────────────────────────
+        active_osr = sum(
+            1 for row in filtered_osr
+            if row.get("calculated_status") == "Active"
+        )
+
+        rolling_off_osr = sum(
+            1 for row in filtered_osr
+            if row.get("calculated_status") == "Rolling-off"
+        )
+
+        closed_osr = sum(
+            1 for row in filtered_osr
+            if row.get("calculated_status") == "Closed"
+        )
+
+        missing_resource_osr = sum(
+            1 for row in filtered_osr
+            if row.get("resource_missing") is True
+        )
+
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+        kpi1.metric(
+            "🟢 Active",
+            active_osr
+        )
+
+        kpi2.metric(
+            "🟠 Rolling-off",
+            rolling_off_osr
+        )
+
+        kpi3.metric(
+            "🔴 Closed",
+            closed_osr
+        )
+
+        kpi4.metric(
+            "⚠️ Senza risorsa",
+            missing_resource_osr
+        )
+
+        st.caption(
+            f"{len(filtered_osr)} OSR trovate su {len(osr_rows)}"
+        )
+
+        # ── TABELLA OSR ───────────────────────────────────────────────────────
+        osr_table = []
+
+        for row in filtered_osr:
+
+            resource_name = (
+                f"{row.get('resource_nome') or ''} "
+                f"{row.get('resource_cognome') or ''}"
+            ).strip()
+
+            manager_name = (
+                f"{row.get('manager_nome') or ''} "
+                f"{row.get('manager_cognome') or ''}"
+            ).strip()
+
+            status = row.get("calculated_status")
+
+            status_label = {
+                "Active": "🟢 Active",
+                "Rolling-off": "🟠 Rolling-off",
+                "Closed": "🔴 Closed"
+            }.get(
+                status,
+                status or "—"
+            )
+
+            osr_table.append({
+                "Stato": status_label,
+                "OSR ID": row.get("osr_id", ""),
+                "EID": row.get("resource_eid", ""),
+                "Risorsa": resource_name or "⚠️ Non censita",
+                "Opportunity": row.get(
+                    "opportunity_title",
+                    ""
+                ),
+                "Cliente": row.get(
+                    "client_name",
+                    ""
+                ),
+                "Ruolo": row.get(
+                    "project_role",
+                    ""
+                ),
+                "Allocazione %": row.get(
+                    "allocation_pct",
+                    0
+                ),
+                "Chargeability %": row.get(
+                    "chargeability_pct",
+                    0
+                ),
+                "Data inizio": row.get(
+                    "start_date",
+                    ""
+                ),
+                "Data fine": row.get(
+                    "end_date",
+                    ""
+                ),
+                "Manager": manager_name
+            })
+
+        st.dataframe(
+            osr_table,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    # ── VISTA OPPORTUNITY - PLACEHOLDER ───────────────────────────────────────
+    elif st.session_state["staffing_v2_view"] == "opportunity":
+
+        st.markdown("### Opportunity")
+
+        # ── FILTRI OPPORTUNITY ────────────────────────────────────────────────
+        filter_1, filter_2, filter_3 = st.columns([3, 2, 2])
+
+        with filter_1:
+            opportunity_search = st.text_input(
+                "🔍 Cerca ID, titolo, cliente o contratto",
+                key="staffing_opportunity_search"
+            )
+
+        stage_options = sorted({
+            row.get("opportunity_stage")
+            for row in opportunity_rows
+            if row.get("opportunity_stage")
+        })
+
+        with filter_2:
+            selected_stages = st.multiselect(
+                "Stage",
+                stage_options,
+                key="staffing_opportunity_stage"
+            )
+
+        status_options = sorted({
+            row.get("opportunity_status")
+            for row in opportunity_rows
+            if row.get("opportunity_status")
+        })
+
+        with filter_3:
+            selected_statuses = st.multiselect(
+                "Status",
+                status_options,
+                key="staffing_opportunity_status"
+            )
+
+        filter_4, filter_5, filter_6 = st.columns(3)
+
+        technology_options = sorted({
+            row.get("main_tech_cluster")
+            for row in opportunity_rows
+            if row.get("main_tech_cluster")
+        })
+
+        with filter_4:
+            selected_technologies = st.multiselect(
+                "Technology",
+                technology_options,
+                key="staffing_opportunity_technology"
+            )
+
+        functional_area_options = sorted({
+            row.get("functional_area")
+            for row in opportunity_rows
+            if row.get("functional_area")
+        })
+
+        with filter_5:
+            selected_functional_areas = st.multiselect(
+                "Functional Area",
+                functional_area_options,
+                key="staffing_opportunity_functional_area"
+            )
+
+        client_options = sorted({
+            row.get("client_name")
+            for row in opportunity_rows
+            if row.get("client_name")
+        })
+
+        with filter_6:
+            selected_clients = st.multiselect(
+                "Cliente",
+                client_options,
+                key="staffing_opportunity_client"
+            )
+
+        only_without_contract = st.checkbox(
+            "Opportunity senza contratto",
+            key="staffing_opportunity_without_contract"
+        )
+
+        # ── APPLICAZIONE FILTRI ───────────────────────────────────────────────
+        filtered_opportunities = opportunity_rows
+
+        if opportunity_search:
+            search_value = opportunity_search.strip().lower()
+
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if search_value in (
+                    f"{row.get('opportunity_id', '')} "
+                    f"{row.get('opportunity_title', '')} "
+                    f"{row.get('client_name', '')} "
+                    f"{row.get('contract_id', '')} "
+                    f"{row.get('contract_title', '')}"
+                ).lower()
+            ]
+
+        if selected_stages:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("opportunity_stage") in selected_stages
+            ]
+
+        if selected_statuses:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("opportunity_status") in selected_statuses
+            ]
+
+        if selected_technologies:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("main_tech_cluster") in selected_technologies
+            ]
+
+        if selected_functional_areas:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("functional_area") in selected_functional_areas
+            ]
+
+        if selected_clients:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("client_name") in selected_clients
+            ]
+
+        if only_without_contract:
+            filtered_opportunities = [
+                row
+                for row in filtered_opportunities
+                if row.get("contract_missing") is True
+            ]
+
+        # ── KPI ────────────────────────────────────────────────────────────────
+        opportunity_value = sum(
+            float(row.get("opportunity_value") or 0)
+            for row in filtered_opportunities
+        )
+
+        opportunity_osr_count = sum(
+            int(row.get("osr_count") or 0)
+            for row in filtered_opportunities
+        )
+
+        opportunities_without_contract = sum(
+            1
+            for row in filtered_opportunities
+            if row.get("contract_missing") is True
+        )
+
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+        kpi1.metric(
+            "Opportunity",
+            len(filtered_opportunities)
+        )
+
+        kpi2.metric(
+            "Valore",
+            f"€ {opportunity_value:,.0f}"
+        )
+
+        kpi3.metric(
+            "OSR collegate",
+            opportunity_osr_count
+        )
+
+        kpi4.metric(
+            "Senza contratto",
+            opportunities_without_contract
+        )
+
+        st.caption(
+            f"{len(filtered_opportunities)} opportunity "
+            f"trovate su {len(opportunity_rows)}"
+        )
+
+        # ── TABELLA ───────────────────────────────────────────────────────────
+        opportunity_table = []
+
+        for row in filtered_opportunities:
+            opportunity_table.append({
+                "Opportunity ID":
+                    row.get("opportunity_id", ""),
+
+                "Titolo":
+                    row.get("opportunity_title", ""),
+
+                "Contratto":
+                    row.get("contract_id")
+                    or "⚠️ Nessun contratto",
+
+                "Cliente":
+                    row.get("client_name", ""),
+
+                "Stage":
+                    row.get("opportunity_stage", ""),
+
+                "Status":
+                    row.get("opportunity_status", ""),
+
+                "Technology":
+                    row.get("main_tech_cluster", ""),
+
+                "Functional Area":
+                    row.get("functional_area", ""),
+
+                "Data inizio":
+                    row.get("start_date", ""),
+
+                "Data fine":
+                    row.get("end_date", ""),
+
+                "Valore":
+                    row.get("opportunity_value", 0),
+
+                "OSR":
+                    row.get("osr_count", 0),
+
+                "Allocazione totale %":
+                    row.get("total_allocation", 0)
+            })
+
+        st.dataframe(
+            opportunity_table,
+            use_container_width=True,
+            hide_index=True
+        )   
+    # ── VISTA CONTRATTI - PLACEHOLDER ─────────────────────────────────────────
+    elif st.session_state["staffing_v2_view"] == "contract":
+
+        st.markdown("### Contratti")
+
+        # ── FILTRI CONTRATTI ──────────────────────────────────────────────────
+        filter_1, filter_2, filter_3 = st.columns([3, 2, 2])
+
+        with filter_1:
+            contract_search = st.text_input(
+                "🔍 Cerca ID, titolo o cliente",
+                key="staffing_contract_search"
+            )
+
+        contract_status_options = sorted({
+            row.get("contract_status")
+            for row in contract_rows
+            if row.get("contract_status")
+        })
+
+        with filter_2:
+            selected_contract_statuses = st.multiselect(
+                "Status",
+                contract_status_options,
+                key="staffing_contract_status"
+            )
+
+        industry_options = sorted({
+            row.get("industry_sector")
+            for row in contract_rows
+            if row.get("industry_sector")
+        })
+
+        with filter_3:
+            selected_industries = st.multiselect(
+                "Industry",
+                industry_options,
+                key="staffing_contract_industry"
+            )
+
+        filter_4, filter_5, filter_6 = st.columns(3)
+
+        country_options = sorted({
+            row.get("country")
+            for row in contract_rows
+            if row.get("country")
+        })
+
+        with filter_4:
+            selected_countries = st.multiselect(
+                "Country",
+                country_options,
+                key="staffing_contract_country"
+            )
+
+        service_group_options = sorted({
+            row.get("service_group")
+            for row in contract_rows
+            if row.get("service_group")
+        })
+
+        with filter_5:
+            selected_service_groups = st.multiselect(
+                "Service Group",
+                service_group_options,
+                key="staffing_contract_service_group"
+            )
+
+        manager_options = sorted({
+            (
+                f"{row.get('manager_nome') or ''} "
+                f"{row.get('manager_cognome') or ''}"
+            ).strip()
+            for row in contract_rows
+            if row.get("manager_eid") is not None
+        })
+
+        with filter_6:
+            selected_contract_managers = st.multiselect(
+                "Manager",
+                manager_options,
+                key="staffing_contract_manager"
+            )
+
+        only_cross_practice = st.checkbox(
+            "Solo Cross-Practice",
+            key="staffing_contract_cross_practice"
+        )
+
+        # ── APPLICAZIONE FILTRI ───────────────────────────────────────────────
+        filtered_contracts = contract_rows
+
+        if contract_search:
+            search_value = contract_search.strip().lower()
+
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if search_value in (
+                    f"{row.get('contract_id', '')} "
+                    f"{row.get('contract_title', '')} "
+                    f"{row.get('client_name', '')}"
+                ).lower()
+            ]
+
+        if selected_contract_statuses:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if row.get("contract_status")
+                in selected_contract_statuses
+            ]
+
+        if selected_industries:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if row.get("industry_sector")
+                in selected_industries
+            ]
+
+        if selected_countries:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if row.get("country")
+                in selected_countries
+            ]
+
+        if selected_service_groups:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if row.get("service_group")
+                in selected_service_groups
+            ]
+
+        if selected_contract_managers:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if (
+                    f"{row.get('manager_nome') or ''} "
+                    f"{row.get('manager_cognome') or ''}"
+                ).strip()
+                in selected_contract_managers
+            ]
+
+        if only_cross_practice:
+            filtered_contracts = [
+                row
+                for row in filtered_contracts
+                if bool(row.get("is_cross_practice")) is True
+            ]
+
+        # ── KPI ────────────────────────────────────────────────────────────────
+        total_revenue = sum(
+            float(row.get("contract_revenue") or 0)
+            for row in filtered_contracts
+        )
+
+        total_costs = sum(
+            float(row.get("contract_costs") or 0)
+            for row in filtered_contracts
+        )
+
+        total_margin = (
+            total_revenue
+            - total_costs
+        )
+
+        active_contracts = sum(
+            1
+            for row in filtered_contracts
+            if row.get("contract_status") == "Active"
+        )
+
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+        kpi1.metric(
+            "Contratti",
+            len(filtered_contracts)
+        )
+
+        kpi2.metric(
+            "Attivi",
+            active_contracts
+        )
+
+        kpi3.metric(
+            "Revenue",
+            f"€ {total_revenue:,.0f}"
+        )
+
+        kpi4.metric(
+            "Margine",
+            f"€ {total_margin:,.0f}"
+        )
+
+        st.caption(
+            f"{len(filtered_contracts)} contratti "
+            f"trovati su {len(contract_rows)}"
+        )
+
+        # ── TABELLA ───────────────────────────────────────────────────────────
+        contract_table = []
+
+        for row in filtered_contracts:
+            manager_name = (
+                f"{row.get('manager_nome') or ''} "
+                f"{row.get('manager_cognome') or ''}"
+            ).strip()
+
+            contract_table.append({
+                "Contract ID":
+                    row.get("contract_id", ""),
+
+                "Titolo":
+                    row.get("contract_title", ""),
+
+                "Cliente":
+                    row.get("client_name", ""),
+
+                "Industry":
+                    row.get("industry_sector", ""),
+
+                "Country":
+                    row.get("country", ""),
+
+                "Service Group":
+                    row.get("service_group", ""),
+
+                "Manager":
+                    manager_name,
+
+                "Data inizio":
+                    row.get("start_date", ""),
+
+                "Data fine":
+                    row.get("end_date", ""),
+
+                "Revenue":
+                    row.get("contract_revenue", 0),
+
+                "Costi":
+                    row.get("contract_costs", 0),
+
+                "Margine":
+                    row.get("contract_margin", 0),
+
+                "Status":
+                    row.get("contract_status", ""),
+
+                "Cross-Practice":
+                    row.get("is_cross_practice", False),
+
+                "DA Practice %":
+                    row.get("da_practice_pct", 0),
+
+                "Opportunity":
+                    row.get("opportunity_count", 0),
+
+                "OSR":
+                    row.get("osr_count", 0)
+            })
+
+        st.dataframe(
+            contract_table,
+            use_container_width=True,
+            hide_index=True
+        )
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI v2 — Nuovo modello dati</p>', unsafe_allow_html=True)
@@ -3417,6 +4257,8 @@ def main():
         show_risorsa_v2(groups)
     elif page == "dashboard_v2":
         show_dashboard_v2(groups)  
+    elif page == "staffing_management_v2":
+        show_staffing_management_v2(groups)    
     elif page == "progetti":
         show_progetti(groups)
     elif page == "opportunity":
