@@ -406,7 +406,7 @@ def show_sidebar(groups):
         pages = [
             ("🧑‍💻", "Risorse",      "risorsa_v2"),
             ("📊", "Dashboard ",    "dashboard_v2"),
-            ("🗂", "Gestione Staffing ", "staffing_management_v2"),
+            ("🐈", "Gestione Staffing ", "staffing_management_v2"),
             ("🧪", "Matching AI v2",  "matching_v2"),
             ("✨", "Practice Advisor", "chatbot"),
         ]
@@ -3367,7 +3367,7 @@ def show_staffing_management_v2(groups):
         st.session_state["staffing_v2_view"] = "osr"
 
     st.markdown(
-        '<p class="main-title">🗂 Gestione Staffing v2</p>',
+        '<p class="main-title">🐈 Gestione Staffing </p>',
         unsafe_allow_html=True
     )
 
@@ -3858,8 +3858,8 @@ def show_staffing_management_v2(groups):
         )
 
         kpi2.metric(
-            "Valore",
-            f"€ {opportunity_value:,.0f}"
+            "Value",
+            f"€ {opportunity_value / 1_000_000:.2f} M"
         )
 
         kpi3.metric(
@@ -3913,8 +3913,8 @@ def show_staffing_management_v2(groups):
                 "Data fine":
                     row.get("end_date", ""),
 
-                "Valore":
-                    row.get("opportunity_value", 0),
+                "Value":
+                    f"€ {float(row.get('opportunity_value') or 0):,.0f}",
 
                 "OSR":
                     row.get("osr_count", 0),
@@ -4119,12 +4119,12 @@ def show_staffing_management_v2(groups):
 
         kpi3.metric(
             "Revenue",
-            f"€ {total_revenue:,.0f}"
+            f"€ {total_revenue / 1_000_000:.2f} M"
         )
 
         kpi4.metric(
-            "Margine",
-            f"€ {total_margin:,.0f}"
+            "Margin",
+            f"€ {total_margin / 1_000_000:.2f} M"
         )
 
         st.caption(
@@ -4170,13 +4170,13 @@ def show_staffing_management_v2(groups):
                     row.get("end_date", ""),
 
                 "Revenue":
-                    row.get("contract_revenue", 0),
+                    f"€ {float(row.get('contract_revenue') or 0):,.0f}",
 
-                "Costi":
-                    row.get("contract_costs", 0),
+                "Costs":
+                    f"€ {float(row.get('contract_costs') or 0):,.0f}",
 
-                "Margine":
-                    row.get("contract_margin", 0),
+                "Margin":
+                    f"€ {float(row.get('contract_margin') or 0):,.0f}",
 
                 "Status":
                     row.get("contract_status", ""),
