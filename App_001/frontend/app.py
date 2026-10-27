@@ -298,10 +298,10 @@ def api(method: str, endpoint: str, **kwargs):
         return requests.request(method, f"{BACKEND_URL}{endpoint}",
                                 headers=headers, timeout=60, **kwargs)
     except requests.exceptions.ConnectionError:
-        st.error(f"Backend non raggiungibile ({BACKEND_URL}).")
+        st.error(f"Backend unavailable ({BACKEND_URL}).")
         return None
     except Exception as _e:
-        st.error(f"Errore chiamata API: {type(_e).__name__}: {_e}")
+        st.error(f"API call error: {type(_e).__name__}: {_e}")
         return None
 
 def get_groups():
@@ -340,13 +340,13 @@ def show_login():
         st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login"):
-            email    = st.text_input("Email aziendale", placeholder="nome.cognome@accenture.com")
+            email    = st.text_input("Email aziendale", placeholder="name.surname@staffmatch-demo.com")
             password = st.text_input("Password", type="password")
-            ok       = st.form_submit_button("Accedi →", use_container_width=True, type="primary")
+            ok       = st.form_submit_button("Sign in →", use_container_width=True, type="primary")
 
         if ok:
             if not email or not password:
-                st.error("Inserisci email e password.")
+                st.error("Enter email and password.")
                 return
             resp = api("POST", "/auth/login", json={"email": email, "password": password})
             if resp is None:
@@ -357,11 +357,11 @@ def show_login():
                 me = api("GET", "/auth/me")
                 if me and me.status_code == 200:
                     st.session_state.user = me.json()
-                st.session_state.page = "dashboard"
+                st.session_state.page = "dashboard_v2"
                 st.session_state.pop("cached_groups", None)
                 st.rerun()
             else:
-                st.error("Credenziali non valide.")
+                st.error("Invalid credentials.")
 
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 def show_sidebar(groups):
@@ -404,16 +404,16 @@ def show_sidebar(groups):
 """, unsafe_allow_html=True)
 
         pages = [
-            ("🧑‍💻", "Risorse",      "risorsa_v2"),
-            ("📊", "Dashboard ",    "dashboard_v2"),
-            ("🐈", "Gestione Staffing ", "staffing_management_v2"),
+            ("🧑‍💻", "Resources",      "risorsa_v2"),
+            ("📊", "Dashboard",    "dashboard_v2"),
+            ("🐈", "Staffing Management", "staffing_management_v2"),
             ("🧪", "Matching AI v2",  "matching_v2"),
             ("✨", "Practice Advisor", "chatbot"),
         ]
         if is_executive_or_admin(groups):
-            pages.append(("📋", "Approvazioni", "approvazioni"))
+            pages.append(("📋", "Approvals", "approvazioni"))
         if is_admin(groups):
-            pages.append(("⚙️", "Amministrazione", "admin"))
+            pages.append(("⚙️", "Administration", "admin"))
 
         for icon, label, key in pages:
             active = "→ " if st.session_state.page == key else "   "
@@ -535,7 +535,7 @@ def show_risorse(groups):
         with tabs[1]:
             _form_crea_risorsa()
 
-def _api_detail(r, fallback="Nessuna risposta dal backend"):
+def _api_detail(r, fallback="No response from backend"):
     if r is None:
         return fallback
     try:
@@ -1082,35 +1082,35 @@ def _form_crea_opportunity():
 # ── CHATBOT HANA ───────────────────────────────────────────────────────────────
 def show_chatbot(groups):
     st.markdown('<p class="main-title">✨ Practice Advisor</p>', unsafe_allow_html=True)
-    st.caption("Interroga i dati di risorse, progetti e opportunity della practice · Powered by **Claude** via SAP AI Core")
+    st.caption("Ask questions about practice resources, staffing and opportunities  · Powered by **Claude** via SAP AI Core")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     if not st.session_state.chat_history:
-        st.caption("✨ Inizia a scrivere per interrogare i dati della practice")
+        st.caption("✨ Start typing to explore practice data")
     else:
         for msg in st.session_state.chat_history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
-        if st.button("🗑️ Cancella conversazione", key="chat_clear"):
+        if st.button("🗑️ Clear conversation", key="chat_clear"):
             st.session_state.chat_history = []
             st.rerun()
 
-    question = st.chat_input("Scrivi qui la tua domanda…")
+    question = st.chat_input("Type your question here…")
     if question:
         st.session_state.chat_history.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.markdown(question)
 
         with st.chat_message("assistant"):
-            with st.spinner("Claude sta elaborando…"):
+            with st.spinner("Claude is processing your request…"):
                 prior_history = st.session_state.chat_history[:-1]
                 resp = api("POST", "/chat/", json={"question": question, "history": prior_history})
                 if resp and resp.status_code == 200:
                     answer = resp.json().get("answer", "")
                 else:
-                    answer = f"Errore nella risposta del backend ({resp.status_code if resp else 'non raggiungibile'})."
+                    answer = f"Backend response error ({resp.status_code if resp else 'non raggiungibile'})."
                 st.markdown(answer)
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
 
@@ -1231,21 +1231,21 @@ def show_matching(groups):
 
 # ── APPROVAZIONI ──────────────────────────────────────────────────────────────
 def show_approvazioni(groups):
-    st.markdown('<p class="main-title">📋 Approvazioni Promozione</p>', unsafe_allow_html=True)
-    st.caption("Richieste di promozione Opportunity → Progetto Attivo")
+    st.markdown('<p class="main-title">📋 Promotion Approvals</p>', unsafe_allow_html=True)
+    st.caption("Opportunity promotion requests → Active Project")
     st.markdown("---")
 
-    tab_pending, tab_history = st.tabs(["⏳ In Attesa", "📜 Storico"])
+    tab_pending, tab_history = st.tabs(["⏳ Pending", "📜 History"])
 
     with tab_pending:
         r = api("GET", "/promotions/pending")  # noqa: E501
         if not r or r.status_code != 200:
-            st.error("Errore nel caricamento richieste.")
+            st.error("Error loading requests.")
             return
         pending = r.json()
 
         if not pending:
-            st.info("Nessuna richiesta in attesa.")
+            st.info("No pending requests.")
         else:
             for req in pending:
                 opp = req.get("opportunity", {})
@@ -1253,51 +1253,51 @@ def show_approvazioni(groups):
                     st.markdown(f"### 🎯 {req.get('opportunity_titolo','')} — {req.get('opportunity_cliente','')}")
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.markdown(f"**Richiesta da:** {req.get('requested_by_nome','')}")
-                        st.markdown(f"**Data richiesta:** {req.get('requested_at','')[:10]}")
+                        st.markdown(f"**Requested by:** {req.get('requested_by_nome','')}")
+                        st.markdown(f"**Request Date:** {req.get('requested_at','')[:10]}")
                         note = req.get("note_manager","")
                         if note:
-                            st.markdown(f"**Note Manager:** {note}")
+                            st.markdown(f"**Manager Notes:** {note}")
                     with c2:
-                        st.markdown("**Risorse confermate per slot:**")
+                        st.markdown("**Confirmed Resources by Slot:**")
                         for sd in req.get("slots_dettaglio", []):
                             st.markdown(f"  • Slot {sd['slot_index']+1}: {sd.get('nome','')} — **{sd.get('percentuale_allocazione','')}%**")
 
                     st.markdown("---")
                     note_col, btn_col = st.columns([3, 2])
                     with note_col:
-                        nota_exec = st.text_input("Note Executive (opzionale)",
+                        nota_exec = st.text_input("Executive Notes (optional)",
                                                   key=f"nota_{req['id']}", label_visibility="collapsed",
-                                                  placeholder="Note Executive (opzionale)")
+                                                  placeholder="Executive Notes (optional)")
                     with btn_col:
                         col_ok, col_no = st.columns(2)
                         with col_ok:
-                            if st.button("✅ Approva", key=f"appr_{req['id']}", type="primary"):
+                            if st.button("✅ Approve", key=f"appr_{req['id']}", type="primary"):
                                 rv = api("PATCH", f"/promotions/{req['id']}/review",
                                          params={"decision": "Approved", "note_executive": nota_exec})
                                 if rv and rv.status_code == 200:
-                                    st.success("✅ Opportunity promossa a Progetto Attivo!")
+                                    st.success("✅ Opportunity promoted to Active Project!")
                                     st.rerun()
                                 else:
                                     detail = _api_detail(rv)
                                     st.error(f"Errore: {detail}")
                         with col_no:
-                            if st.button("❌ Rifiuta", key=f"rif_{req['id']}"):
+                            if st.button("❌ Reject", key=f"rif_{req['id']}"):
                                 rv = api("PATCH", f"/promotions/{req['id']}/review",
                                          params={"decision": "Rejected", "note_executive": nota_exec})
                                 if rv and rv.status_code == 200:
-                                    st.warning("Richiesta rifiutata — Opportunity riportata in stato New.")
+                                    st.warning("Request rejected — Opportunity returned to New status.")
                                     st.rerun()
                                 else:
                                     detail = _api_detail(rv)
-                                    st.error(f"Errore: {detail}")
+                                    st.error(f"Error: {detail}")
 
     with tab_history:
         r2 = api("GET", "/promotions/")
         if r2 and r2.status_code == 200:
             all_reqs = [x for x in r2.json() if x.get("stato") != "Pending"]
             if not all_reqs:
-                st.info("Nessuna richiesta elaborata.")
+                st.info("No processed requests.")
             for req in reversed(all_reqs):
                 icon = "✅" if req.get("stato") == "Approved" else "❌"
                 st.markdown(f"{icon} **{req.get('opportunity_titolo','')}** — "
@@ -1478,12 +1478,12 @@ def _form_modifica_dipendente():
 
 # ── ADMIN ──────────────────────────────────────────────────────────────────────
 def show_admin(groups):
-    st.markdown('<p class="main-title">⚙️ Amministrazione</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">⚙️ Administration</p>', unsafe_allow_html=True)
     st.markdown("---")
 
     tab_users, tab_groups, tab_skills, tab_new_dip, tab_edit_dip = st.tabs([
-        "👥 Assegna Ruolo", "🔐 Ruoli Autorizzativi", "🛠 Skills",
-        "👤 Nuovo Dipendente", "✏️ Modifica Dipendente"
+        "👥 Assign Role", "🔐 Access Roles", "🛠 Skills",
+        "👤 New Employee", "✏️ Edit Employee"
     ])
 
     with tab_users:
@@ -1653,13 +1653,13 @@ def show_risorsa_v2(groups):
 
     with title_col:
         st.markdown(
-            '<p class="main-title">👥 Risorsa v2</p>',
+            '<p class="main-title">👥 Resources</p>',
             unsafe_allow_html=True
         )
 
     with button_col:
         if st.button(
-            "➕ Nuova risorsa",
+            "➕ New Resource",
             type="primary",
             use_container_width=True,
             key="open_new_resource_v2"
@@ -1677,7 +1677,7 @@ def show_risorsa_v2(groups):
             catalog_response is None
             or catalog_response.status_code != 200
         ):
-            st.error("Impossibile caricare i valori del form.")
+            st.error("Unable to load form values..")
 
         else:
             catalogs = catalog_response.json()
@@ -1693,11 +1693,11 @@ def show_risorsa_v2(groups):
             form_title_col, close_col = st.columns([4, 1])
 
             with form_title_col:
-                st.markdown("### ➕ Nuova risorsa")
+                st.markdown("### ➕ New Resource")
 
             with close_col:
                 if st.button(
-                    "✖ Chiudi",
+                    "✖ Close",
                     key="close_new_resource_v2",
                     use_container_width=True
                 ):
@@ -1705,7 +1705,7 @@ def show_risorsa_v2(groups):
                     st.rerun()
 
             with st.form("new_resource_v2_form"):
-                st.markdown("#### Anagrafica")
+                st.markdown("#### Resource Profile")
 
                 col1, col2 = st.columns(2)
 
@@ -1717,11 +1717,11 @@ def show_risorsa_v2(groups):
                     )
 
                     new_nome = st.text_input(
-                        "Nome *"
+                        "First Name *"
                     )
 
                     new_cognome = st.text_input(
-                        "Cognome *"
+                        "Last Name *"
                     )
 
                     new_email = st.text_input(
@@ -1742,18 +1742,18 @@ def show_risorsa_v2(groups):
                     new_level = level_options[selected_level_label]
 
                     new_anni_esperienza = st.number_input(
-                        "Anni di esperienza",
+                        "Years of Experience",
                         min_value=0,
                         max_value=60,
                         step=1
                     )
 
                     new_is_stagista = st.checkbox(
-                        "Stagista"
+                        "Intern"
                     )
 
                 # ── SKILL E LINGUE ─────────────────────────────────────────────
-                st.markdown("#### Skill e lingue")
+                st.markdown("#### Skills & Languages")
 
                 col3, col4 = st.columns(2)
 
@@ -1769,18 +1769,18 @@ def show_risorsa_v2(groups):
 
                 with col3:
                     new_skills = st.multiselect(
-                        "Skill",
+                        "Skills",
                         skill_options
                     )
 
                 with col4:
                     new_languages = st.multiselect(
-                        "Lingue",
+                        "Languages",
                         language_options
                     )
 
                 # ── CERTIFICAZIONI ─────────────────────────────────────────────
-                st.markdown("#### Certificazioni")
+                st.markdown("#### Certifications")
 
                 certification_options = {
                     f"{item['cert_id']} - {item['nome_cert']}": item["cert_id"]
@@ -1788,7 +1788,7 @@ def show_risorsa_v2(groups):
                 }
 
                 selected_new_certifications = st.multiselect(
-                    "Certificazioni",
+                    "Certifications",
                     list(certification_options.keys())
                 )
 
@@ -1813,7 +1813,7 @@ def show_risorsa_v2(groups):
 
                     with cert_col2:
                         cert_expiration = st.date_input(
-                            "Data scadenza",
+                            "Expiration Date",
                             key=f"new_resource_expiration_{cert_id}"
                         )
 
@@ -1827,7 +1827,7 @@ def show_risorsa_v2(groups):
                 st.markdown("---")
 
                 save_resource = st.form_submit_button(
-                    "💾 Salva risorsa",
+                    "💾 Save Resource",
                     type="primary",
                     use_container_width=True
                 )
@@ -1839,7 +1839,7 @@ def show_risorsa_v2(groups):
                         or not new_email.strip()
                     ):
                         st.error(
-                            "EID, Nome, Cognome ed Email sono obbligatori."
+                            "EID, First Name, Last Name and Email are required."
                         )
 
                     else:
@@ -1869,7 +1869,7 @@ def show_risorsa_v2(groups):
 
                         elif create_response.status_code == 200:
                             st.success(
-                                "✅ Risorsa creata correttamente."
+                                "✅ Resource created successfully."
                             )
 
                             st.session_state[
@@ -1890,19 +1890,19 @@ def show_risorsa_v2(groups):
     )
 
     if response is None:
-        st.error("Nessuna risposta dal backend.")
+        st.error("No response from backend.")
         return
 
     if response.status_code != 200:
         st.error(
-            f"Errore nel caricamento: {_api_detail(response)}"
+            f"Loading error: {_api_detail(response)}"
         )
         return
 
     resources = response.json()
 
     if not resources:
-        st.info("Nessuna risorsa presente.")
+        st.info("No resources available.")
         return
 
     # ── VALORI FILTRI ─────────────────────────────────────────────────────────
@@ -1938,7 +1938,7 @@ def show_risorsa_v2(groups):
 
     with filter_row_1[0]:
         search = st.text_input(
-            "🔍 Cerca per nome, cognome o email",
+            "🔍 Search by name or email",
             key="risorsa_v2_search"
         )
 
@@ -1951,7 +1951,7 @@ def show_risorsa_v2(groups):
 
     with filter_row_1[2]:
         only_available = st.checkbox(
-            "Solo risorse disponibili",
+            "Available Resources Only",
             key="risorsa_v2_available"
         )
 
@@ -1966,14 +1966,14 @@ def show_risorsa_v2(groups):
 
     with filter_row_2[1]:
         selected_certifications_filter = st.multiselect(
-            "Certificazioni",
+            "Certifications",
             all_certifications,
             key="risorsa_v2_certifications"
         )
 
     with filter_row_2[2]:
         selected_languages = st.multiselect(
-            "Lingue",
+            "Languages",
             all_languages,
             key="risorsa_v2_languages"
         )
@@ -2074,35 +2074,35 @@ def show_risorsa_v2(groups):
     kpi_1, kpi_2, kpi_3, kpi_4 = st.columns(4)
 
     kpi_1.metric(
-        "👥 Risorse",
+        "👥 Resources",
         total_filtered
     )
 
     kpi_2.metric(
-        "🎓 Con certificazioni",
+        "🎓 Certified Resources",
         certified_count
     )
 
     kpi_3.metric(
-        "✅ Disponibili",
+        "✅ Available",
         available_count
     )
 
     kpi_4.metric(
-        "🔴 Non disponibili",
+        "🔴 Fully Allocated",
         not_available_count
     )
 
     st.markdown("---")
 
     st.caption(
-        f"{total_filtered} risorse trovate su {len(resources)}"
+        f"{total_filtered} resources found out of {len(resources)}"
     )
 
     # ── VISTE ─────────────────────────────────────────────────────────────────
     tab_cards, tab_table = st.tabs([
-        "🗂 Schede",
-        "📋 Tabella"
+        "📋 Cards",
+        "▦ Table"
     ])
 
    
@@ -2128,11 +2128,11 @@ def show_risorsa_v2(groups):
 
             level_name = (
                 resource.get("level_name")
-                or "Level non indicato"
+                or "Level not specified"
             )
 
             intern_label = (
-                " · 🌱 Stagista"
+                " · 🌱 Intern"
                 if resource.get("is_stagista")
                 else ""
             )
@@ -2151,7 +2151,7 @@ def show_risorsa_v2(groups):
 
                 # ── ANAGRAFICA ────────────────────────────────────────────────
                 with col_profile:
-                    st.markdown("#### Anagrafica")
+                    st.markdown("#### Resource Profile")
 
                     st.markdown(
                         f"🆔 EID: `{resource.get('eid', '')}`"
@@ -2168,7 +2168,7 @@ def show_risorsa_v2(groups):
                     )
 
                     st.markdown(
-                        f"⏳ Esperienza: "
+                        f"⏳ Experience: "
                         f"**{resource.get('anni_esperienza') or 0} anni**"
                     )
 
@@ -2178,16 +2178,16 @@ def show_risorsa_v2(groups):
 
                     if available_from:
                         st.markdown(
-                            f"📅 Disponibile dal: "
+                            f"📅 available_from: "
                             f"**{available_from}**"
                         )
                     else:
                         st.markdown(
-                            "📅 Disponibile dal: **Subito**"
+                            "📅 Available From: **Immediately**"
                         )
 
                     st.markdown(
-                        f"**Disponibilità: {availability}%**"
+                        f"**Availability: {availability}%**"
                     )
 
                     st.progress(
@@ -2201,7 +2201,7 @@ def show_risorsa_v2(groups):
                     )
 
                     st.markdown(
-                        "#### Manager di riferimento"
+                        "#### Reference Manager"
                     )
 
                     if managers:
@@ -2221,7 +2221,7 @@ def show_risorsa_v2(groups):
                                 )
                     else:
                         st.caption(
-                            "Manager non disponibile."
+                            "No Reference Manager available."
                         )
 
                     # ── LINGUE ────────────────────────────────────────────────
@@ -2240,7 +2240,7 @@ def show_risorsa_v2(groups):
                         )
                     else:
                         st.caption(
-                            "Nessuna lingua registrata."
+                            "No languages available."
                         )
 
                 # ── SKILL ─────────────────────────────────────────────────────
@@ -2259,13 +2259,13 @@ def show_risorsa_v2(groups):
                             )
                     else:
                         st.caption(
-                            "Nessuna skill registrata."
+                            "No skills available."
                         )
 
                 # ── CERTIFICAZIONI ────────────────────────────────────────────
                 with col_certifications:
                     st.markdown(
-                        "#### Certificazioni"
+                        "#### Certifications"
                     )
 
                     certifications = resource.get(
@@ -2294,7 +2294,7 @@ def show_risorsa_v2(groups):
                             )
                     else:
                         st.caption(
-                            "Nessuna certificazione registrata."
+                            "No certifications available."
                         )
 
     # ── VISTA TABELLA ─────────────────────────────────────────────────────────
@@ -2315,9 +2315,9 @@ def show_risorsa_v2(groups):
 
             table_rows.append({
                 "Stato": {
-                    "green": "Verde",
-                    "orange": "Arancione",
-                    "red": "Rosso"
+                    "green": "Available",
+                    "orange": "Partially Allocated",
+                    "red": "Fully Allocated"
                 }.get(
                     resource.get("availability_status"),
                     ""
@@ -2326,7 +2326,7 @@ def show_risorsa_v2(groups):
                 "EID":
                     resource.get("eid", ""),
 
-                "Nome":
+                "Name":
                     (
                         f"{resource.get('nome', '')} "
                         f"{resource.get('cognome', '')}"
@@ -2338,26 +2338,25 @@ def show_risorsa_v2(groups):
                 "Level":
                     resource.get("level_name", ""),
 
-                "Anni esperienza":
+                "Years of Experience":
                     resource.get(
                         "anni_esperienza"
                     ) or 0,
 
-                "Allocazione attiva %":
+                "Active Allocation %":
                     resource.get(
                         "active_allocation"
                     ) or 0,
 
-                "Disponibilità %":
+                "Availability %":
                     resource.get(
                         "disponibilita"
                     ) or 0,
 
-                "Disponibile dal":
+                "Available From":
                     resource.get(
                         "available_from"
-                    ) or "Subito",
-
+                    ) or "Immediately",
                 "Manager":
                     managers_text,
 
@@ -2373,7 +2372,7 @@ def show_risorsa_v2(groups):
                         )
                     ),
 
-                "Lingue":
+                "Languages":
                     ", ".join(
                         language.get(
                             "language_code",
@@ -2385,7 +2384,7 @@ def show_risorsa_v2(groups):
                         )
                     ),
 
-                "Certificazioni":
+                "Certifications":
                     ", ".join(
                         certification.get(
                             "nome_cert",
@@ -2417,12 +2416,12 @@ def show_dashboard_v2(groups):
     )
 
     if response is None:
-        st.error("Nessuna risposta dal backend.")
+        st.error("No response from backend.")
         return
 
     if response.status_code != 200:
         st.error(
-            f"Errore nel caricamento dashboard: {_api_detail(response)}"
+            f"Dashboard loading error: {_api_detail(response)}"
         )
         return
 
@@ -2452,7 +2451,7 @@ def show_dashboard_v2(groups):
 ]
 
     # ── FILTRI ────────────────────────────────────────────────────────────────
-    st.markdown("#### Filtri")
+    st.markdown("#### Filters")
 
     filter_1, filter_2, filter_3 = st.columns(3)
 
@@ -2464,7 +2463,7 @@ def show_dashboard_v2(groups):
 
     with filter_2:
         selected_clients = st.multiselect(
-            "Cliente",
+            "Client",
             filters.get("clients", [])
         )
 
@@ -2674,22 +2673,22 @@ def show_dashboard_v2(groups):
     kpi5, kpi6, kpi7, kpi8 = st.columns(4)
 
     kpi5.metric(
-        "Opportunity",
+        "Opportunities",
         opportunity_count
     )
 
     kpi6.metric(
-        "Contratti attivi",
+        "Active Contracts",
         active_contract_count
     )
 
     kpi7.metric(
-        "Risorse disponibili",
+        "Available Resources",
         available_resources
     )
 
     kpi8.metric(
-        "Fully allocated",
+        "Fully Allocated",
         fully_allocated_resources
     )
         # ── GRAFICI COMMERCIALI ───────────────────────────────────────────────────
@@ -2700,7 +2699,7 @@ def show_dashboard_v2(groups):
     technology_value = {}
 
     for row in filtered_commercial:
-        technology = row.get("main_tech_cluster") or "Non classificata"
+        technology = row.get("main_tech_cluster") or "Unclassified"
 
         technology_value[technology] = (
             technology_value.get(technology, 0)
@@ -2717,7 +2716,7 @@ def show_dashboard_v2(groups):
     technology_count = {}
 
     for row in filtered_commercial:
-        technology = row.get("main_tech_cluster") or "Non classificata"
+        technology = row.get("main_tech_cluster") or "Unclassified"
 
         technology_count[technology] = (
             technology_count.get(technology, 0) + 1
@@ -2733,7 +2732,7 @@ def show_dashboard_v2(groups):
     industry_revenue = {}
 
     for row in filtered_contracts:
-        industry = row.get("industry_sector") or "Non classificata"
+        industry = row.get("industry_sector") or "Unclassified"
 
         industry_revenue[industry] = (
             industry_revenue.get(industry, 0)
@@ -2945,7 +2944,7 @@ def show_dashboard_v2(groups):
             showlegend=False,
             plot_bgcolor="white",
             paper_bgcolor="white",
-            xaxis_title="Numero Opportunity",
+            xaxis_title="Number of Opportunities",
             yaxis_title=""
         )
 
@@ -3019,12 +3018,12 @@ def show_dashboard_v2(groups):
     staffing_kpi1, staffing_kpi2, staffing_kpi3, staffing_kpi4 = st.columns(4)
 
     staffing_kpi1.metric(
-        "Risorse",
+        "Resources",
         staffing_total
     )
 
     staffing_kpi2.metric(
-        "Disponibili",
+        "Available",
         staffing_available
     )
 
@@ -3034,14 +3033,14 @@ def show_dashboard_v2(groups):
     )
 
     staffing_kpi4.metric(
-        "Allocazione media",
+        "Average Allocation",
         f"{staffing_average_allocation:.1f}%"
     )
 
     # ── AGGREGAZIONI STAFFING ─────────────────────────────────────────────────
     availability_distribution = {
-        "Disponibili": 0,
-        "Parzialmente allocate": 0,
+        "Available": 0,
+        "Partially Allocated": 0,
         "Fully allocated": 0
     }
 
@@ -3062,12 +3061,12 @@ def show_dashboard_v2(groups):
 
         elif availability_status == "orange":
             availability_distribution[
-                "Parzialmente allocate"
+                "Partially Allocated"
             ] += 1
 
         else:
             availability_distribution[
-                "Disponibili"
+                "Available"
             ] += 1
 
         level_name = (
