@@ -404,15 +404,10 @@ def show_sidebar(groups):
 """, unsafe_allow_html=True)
 
         pages = [
-            ("🏠", "Dashboard",       "dashboard"),
-            ("👥", "Risorse",         "risorse"),
-            ("🧑‍💻", "Risorsa v2",      "risorsa_v2"),
-            ("📊", "Dashboard v2",    "dashboard_v2"),
-            ("🗂", "Gestione Staffing v2", "staffing_management_v2"),
-            ("📁", "Progetti",        "progetti"),
-            ("🎯", "Opportunity",     "opportunity"),
-            ("🤖", "Matching AI",     "matching"),
-    ("🧪", "Matching AI v2",  "matching_v2"),
+            ("🧑‍💻", "Risorse",      "risorsa_v2"),
+            ("📊", "Dashboard ",    "dashboard_v2"),
+            ("🗂", "Gestione Staffing ", "staffing_management_v2"),
+            ("🧪", "Matching AI v2",  "matching_v2"),
             ("✨", "Practice Advisor", "chatbot"),
         ]
         if is_executive_or_admin(groups):
