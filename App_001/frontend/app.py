@@ -2438,6 +2438,18 @@ def show_dashboard_v2(groups):
     purple = "#7B2CBF"
     purple_dark = "#5A189A"
     purple_light = "#C77DFF"
+    dashboard_palette = [
+    "#2563EB",  # blu
+    "#06B6D4",  # cyan
+    "#14B8A6",  # teal
+    "#22C55E",  # verde
+    "#F59E0B",  # amber
+    "#F97316",  # arancio
+    "#EC4899",  # pink
+    "#8B5CF6",  # violet
+    "#6366F1",  # indigo
+    "#EF4444"   # rosso
+]
 
     # ── FILTRI ────────────────────────────────────────────────────────────────
     st.markdown("#### Filtri")
@@ -2752,7 +2764,10 @@ def show_dashboard_v2(groups):
                     item[1]
                     for item in technology_sorted
                 ],
-                marker_color=purple,
+                marker_color=[
+                    dashboard_palette[i % len(dashboard_palette)]
+                    for i in range(len(technology_sorted))
+                ],
                 hovertemplate=(
                     "<b>%{x}</b><br>"
                     "Value: €%{y:,.0f}"
@@ -2798,16 +2813,7 @@ def show_dashboard_v2(groups):
                     ],
                     hole=0.58,
                     marker=dict(
-                        colors=[
-                            "#5A189A",
-                            "#7B2CBF",
-                            "#9D4EDD",
-                            "#C77DFF",
-                            "#E0AAFF",
-                            "#B185DB",
-                            "#8F5FBF",
-                            "#6A3D9A"
-                        ]
+                        colors=dashboard_palette
                     ),
                     hovertemplate=(
                         "<b>%{label}</b><br>"
@@ -2857,7 +2863,10 @@ def show_dashboard_v2(groups):
                     item[1]
                     for item in industry_sorted
                 ],
-                marker_color=purple_light,
+                marker_color=[
+                    dashboard_palette[i % len(dashboard_palette)]
+                    for i in range(len(industry_sorted))
+                ],
                 hovertemplate=(
                     "<b>%{x}</b><br>"
                     "Revenue: €%{y:,.0f}"
@@ -2908,7 +2917,10 @@ def show_dashboard_v2(groups):
                     for item in ranking_display
                 ],
                 orientation="h",
-                marker_color=purple_dark,
+                marker_color=[
+                    dashboard_palette[i % len(dashboard_palette)]
+                    for i in range(len(ranking_display))
+                ],
                 text=[
                     item[1]
                     for item in ranking_display
@@ -3125,9 +3137,9 @@ def show_dashboard_v2(groups):
                     hole=0.60,
                     marker=dict(
                         colors=[
-                            "#2E8B57",
-                            "#F4A261",
-                            "#D62828"
+                            "#DC2626",  # Disponibili,
+                            "#F59E0B",  # Parzialmente allocate
+                            "#16A34A"   # Fully allocated
                         ]
                     ),
                     hovertemplate=(
@@ -3187,7 +3199,10 @@ def show_dashboard_v2(groups):
                     for item in level_display
                 ],
                 orientation="h",
-                marker_color=purple,
+                marker_color=[
+                    dashboard_palette[i % len(dashboard_palette)]
+                    for i in range(len(level_display))
+                ],
                 text=[
                     item[1]
                     for item in level_display
@@ -3244,7 +3259,10 @@ def show_dashboard_v2(groups):
                     for item in skill_display
                 ],
                 orientation="h",
-                marker_color=purple_light,
+                marker_color=[
+                    dashboard_palette[i % len(dashboard_palette)]
+                    for i in range(len(skill_display))
+                ],
                 text=[
                     item[1]
                     for item in skill_display
@@ -3300,7 +3318,10 @@ def show_dashboard_v2(groups):
                         for item in manager_display
                     ],
                     orientation="h",
-                    marker_color=purple_dark,
+                    marker_color=[
+                        dashboard_palette[i % len(dashboard_palette)]
+                        for i in range(len(manager_display))
+                    ],
                     text=[
                         item[1]
                         for item in manager_display
