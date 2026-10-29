@@ -3028,7 +3028,7 @@ def show_dashboard_v2(groups):
     )
 
     staffing_kpi3.metric(
-        "Fully allocated",
+        "Fully Allocated",
         staffing_fully_allocated
     )
 
@@ -3041,7 +3041,7 @@ def show_dashboard_v2(groups):
     availability_distribution = {
         "Available": 0,
         "Partially Allocated": 0,
-        "Fully allocated": 0
+        "Fully Allocated": 0
     }
 
     level_distribution = {}
@@ -3056,7 +3056,7 @@ def show_dashboard_v2(groups):
 
         if availability_status == "red":
             availability_distribution[
-                "Fully allocated"
+                "Fully Allocated"
             ] += 1
 
         elif availability_status == "orange":
@@ -3071,7 +3071,7 @@ def show_dashboard_v2(groups):
 
         level_name = (
             resource.get("level_name")
-            or "Non classificato"
+            or "Unclassified"
         )
 
         level_distribution[level_name] = (
@@ -3143,7 +3143,7 @@ def show_dashboard_v2(groups):
                     ),
                     hovertemplate=(
                         "<b>%{label}</b><br>"
-                        "Risorse: %{value}<br>"
+                        "Resources: %{value}<br>"
                         "%{percent}"
                         "<extra></extra>"
                     )
@@ -3209,7 +3209,7 @@ def show_dashboard_v2(groups):
                 textposition="outside",
                 hovertemplate=(
                     "<b>%{y}</b><br>"
-                    "Risorse: %{x}"
+                    "Resources: %{x}"
                     "<extra></extra>"
                 )
             )
@@ -3226,7 +3226,7 @@ def show_dashboard_v2(groups):
             showlegend=False,
             plot_bgcolor="white",
             paper_bgcolor="white",
-            xaxis_title="Numero risorse",
+            xaxis_title="Number of Resources",
             yaxis_title=""
         )
 
@@ -3269,7 +3269,7 @@ def show_dashboard_v2(groups):
                 textposition="outside",
                 hovertemplate=(
                     "<b>%{y}</b><br>"
-                    "Risorse: %{x}"
+                    "Resources: %{x}"
                     "<extra></extra>"
                 )
             )
@@ -3286,7 +3286,7 @@ def show_dashboard_v2(groups):
             showlegend=False,
             plot_bgcolor="white",
             paper_bgcolor="white",
-            xaxis_title="Numero risorse",
+            xaxis_title="Number of Resources",
             yaxis_title=""
         )
 
@@ -3328,7 +3328,7 @@ def show_dashboard_v2(groups):
                     textposition="outside",
                     hovertemplate=(
                         "<b>%{y}</b><br>"
-                        "Risorse: %{x}"
+                        "Resources: %{x}"
                         "<extra></extra>"
                     )
                 )
@@ -3345,7 +3345,7 @@ def show_dashboard_v2(groups):
                 showlegend=False,
                 plot_bgcolor="white",
                 paper_bgcolor="white",
-                xaxis_title="Risorse su OSR valide",
+                xaxis_title="Resources on Active OSRs",
                 yaxis_title=""
             )
 
@@ -3356,8 +3356,8 @@ def show_dashboard_v2(groups):
 
         else:
             st.info(
-                "Nessun manager associato alle OSR valide "
-                "per i filtri selezionati."
+                "No managers associated with active OSRs "
+                "for the selected filters."
             )
 # ── GESTIONE STAFFING V2 ─────────────────────────────────────────────────────
 def show_staffing_management_v2(groups):
@@ -3366,7 +3366,7 @@ def show_staffing_management_v2(groups):
         st.session_state["staffing_v2_view"] = "osr"
 
     st.markdown(
-        '<p class="main-title">🐈 Gestione Staffing </p>',
+        '<p class="main-title">🐈 Staffing Management </p>',
         unsafe_allow_html=True
     )
 
@@ -3399,7 +3399,7 @@ def show_staffing_management_v2(groups):
 
     with nav_contract:
         if st.button(
-            "📄 Contratti",
+            "📄 Contracts",
             use_container_width=True,
             type="primary"
             if st.session_state["staffing_v2_view"] == "contract"
@@ -3418,12 +3418,12 @@ def show_staffing_management_v2(groups):
     )
 
     if response is None:
-        st.error("Nessuna risposta dal backend.")
+        st.error("No response from backend.")
         return
 
     if response.status_code != 200:
         st.error(
-            f"Errore nel caricamento: {_api_detail(response)}"
+            f"Loading error: {_api_detail(response)}"
         )
         return
 
@@ -3442,7 +3442,7 @@ def show_staffing_management_v2(groups):
 
         with filter_1:
             osr_search = st.text_input(
-                "🔍 Cerca OSR, risorsa, EID, opportunity o cliente",
+                "🔍 Search OSR, resource, EID, opportunity or client",
                 key="staffing_osr_search"
             )
 
@@ -3454,14 +3454,14 @@ def show_staffing_management_v2(groups):
 
         with filter_2:
             selected_osr_statuses = st.multiselect(
-                "Stato OSR",
+                "OSR Status",
                 osr_statuses,
                 key="staffing_osr_status"
             )
 
         with filter_3:
             only_missing_resources = st.checkbox(
-                "OSR senza risorsa",
+                "OSRs without Resource",
                 key="staffing_osr_missing_resource"
             )
 
@@ -3488,7 +3488,7 @@ def show_staffing_management_v2(groups):
 
         with filter_5:
             selected_roles = st.multiselect(
-                "Ruolo",
+                "Project Role",
                 role_options,
                 key="staffing_osr_role"
             )
@@ -3610,12 +3610,12 @@ def show_staffing_management_v2(groups):
         )
 
         kpi4.metric(
-            "⚠️ Senza risorsa",
+            "⚠️ Without Resource",
             missing_resource_osr
         )
 
         st.caption(
-            f"{len(filtered_osr)} OSR trovate su {len(osr_rows)}"
+            f"{len(filtered_osr)} OSRs found out of {len(osr_rows)}"
         )
 
         # ── TABELLA OSR ───────────────────────────────────────────────────────
@@ -3645,23 +3645,23 @@ def show_staffing_management_v2(groups):
             )
 
             osr_table.append({
-                "Stato": status_label,
+                "Status": status_label,
                 "OSR ID": row.get("osr_id", ""),
                 "EID": row.get("resource_eid", ""),
-                "Risorsa": resource_name or "⚠️ Non censita",
+                "Resource": resource_name or "⚠️ Non censita",
                 "Opportunity": row.get(
                     "opportunity_title",
                     ""
                 ),
-                "Cliente": row.get(
+                "Client": row.get(
                     "client_name",
                     ""
                 ),
-                "Ruolo": row.get(
+                "Project Role": row.get(
                     "project_role",
                     ""
                 ),
-                "Allocazione %": row.get(
+                "Allocation %": row.get(
                     "allocation_pct",
                     0
                 ),
@@ -3669,11 +3669,11 @@ def show_staffing_management_v2(groups):
                     "chargeability_pct",
                     0
                 ),
-                "Data inizio": row.get(
+                "Start Date": row.get(
                     "start_date",
                     ""
                 ),
-                "Data fine": row.get(
+                "End Date": row.get(
                     "end_date",
                     ""
                 ),
@@ -3696,7 +3696,7 @@ def show_staffing_management_v2(groups):
 
         with filter_1:
             opportunity_search = st.text_input(
-                "🔍 Cerca ID, titolo, cliente o contratto",
+                "🔍 Search ID, title, client or contract",
                 key="staffing_opportunity_search"
             )
 
@@ -3762,13 +3762,13 @@ def show_staffing_management_v2(groups):
 
         with filter_6:
             selected_clients = st.multiselect(
-                "Cliente",
+                "Client",
                 client_options,
                 key="staffing_opportunity_client"
             )
 
         only_without_contract = st.checkbox(
-            "Opportunity senza contratto",
+            "Opportunities without Contract",
             key="staffing_opportunity_without_contract"
         )
 
@@ -3852,7 +3852,7 @@ def show_staffing_management_v2(groups):
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
         kpi1.metric(
-            "Opportunity",
+            "Opportunities",
             len(filtered_opportunities)
         )
 
@@ -3862,18 +3862,18 @@ def show_staffing_management_v2(groups):
         )
 
         kpi3.metric(
-            "OSR collegate",
+            "Linked OSRs",
             opportunity_osr_count
         )
 
         kpi4.metric(
-            "Senza contratto",
+            "Without Contract",
             opportunities_without_contract
         )
 
         st.caption(
             f"{len(filtered_opportunities)} opportunity "
-            f"trovate su {len(opportunity_rows)}"
+            f"found out of {len(opportunity_rows)}"
         )
 
         # ── TABELLA ───────────────────────────────────────────────────────────
@@ -3884,14 +3884,14 @@ def show_staffing_management_v2(groups):
                 "Opportunity ID":
                     row.get("opportunity_id", ""),
 
-                "Titolo":
+                "Title":
                     row.get("opportunity_title", ""),
 
-                "Contratto":
+                "Contract":
                     row.get("contract_id")
-                    or "⚠️ Nessun contratto",
+                    or "⚠️ No Contract",
 
-                "Cliente":
+                "Client":
                     row.get("client_name", ""),
 
                 "Stage":
@@ -3906,10 +3906,10 @@ def show_staffing_management_v2(groups):
                 "Functional Area":
                     row.get("functional_area", ""),
 
-                "Data inizio":
+                "Start Date":
                     row.get("start_date", ""),
 
-                "Data fine":
+                "End Date":
                     row.get("end_date", ""),
 
                 "Value":
@@ -3918,7 +3918,7 @@ def show_staffing_management_v2(groups):
                 "OSR":
                     row.get("osr_count", 0),
 
-                "Allocazione totale %":
+                "Total Allocation %":
                     row.get("total_allocation", 0)
             })
 
@@ -3930,14 +3930,14 @@ def show_staffing_management_v2(groups):
     # ── VISTA CONTRATTI - PLACEHOLDER ─────────────────────────────────────────
     elif st.session_state["staffing_v2_view"] == "contract":
 
-        st.markdown("### Contratti")
+        st.markdown("### Contracts")
 
         # ── FILTRI CONTRATTI ──────────────────────────────────────────────────
         filter_1, filter_2, filter_3 = st.columns([3, 2, 2])
 
         with filter_1:
             contract_search = st.text_input(
-                "🔍 Cerca ID, titolo o cliente",
+                "🔍 Search ID, title or client",
                 key="staffing_contract_search"
             )
 
@@ -4012,7 +4012,7 @@ def show_staffing_management_v2(groups):
             )
 
         only_cross_practice = st.checkbox(
-            "Solo Cross-Practice",
+            "Cross-Practice Only",
             key="staffing_contract_cross_practice"
         )
 
@@ -4107,12 +4107,12 @@ def show_staffing_management_v2(groups):
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
         kpi1.metric(
-            "Contratti",
+            "Contracts",
             len(filtered_contracts)
         )
 
         kpi2.metric(
-            "Attivi",
+            "Active",
             active_contracts
         )
 
@@ -4200,31 +4200,30 @@ def show_staffing_management_v2(groups):
         )
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
-    st.markdown('<p class="main-title">🤖 Matching AI v2 — Nuovo modello dati</p>', unsafe_allow_html=True)
-    st.caption("Basato sulle 9 tabelle SM_* con dati reali (Valerio) — 150 risorse, 57 opportunity")
+    st.markdown('<p class="main-title">🤖 Matching AI</p>', unsafe_allow_html=True)
     st.markdown("---")
 
     r = api("GET", "/sm/opportunities")
     if r is None or r.status_code != 200:
-        st.error("Impossibile caricare le opportunity.")
+        st.error("Unable to load opportunities.")
         return
     opportunities = r.json()
     if not opportunities:
-        st.warning("Nessuna opportunity trovata.")
+        st.warning("No opportunities found.")
         return
 
     options = {
         f"{o['titolo']} ({o['main_tech_cluster']})": o["opportunity_id"]
         for o in opportunities
     }
-    selected_label = st.selectbox("Scegli un'opportunity", list(options.keys()))
+    selected_label = st.selectbox("Select an Opportunity", list(options.keys()))
     selected_id = options[selected_label]
 
-    if st.button("Esegui matching", type="primary"):
-        with st.spinner("Calcolo in corso..."):
+    if st.button("Run Matching", type="primary"):
+        with st.spinner("Matching in progress..."):
             r = api("GET", f"/sm/match/{selected_id}")
             if r is None or r.status_code != 200:
-                st.error("Errore durante il matching.")
+                st.error("Matching error.")
                 return
             result = r.json()
 
@@ -4232,11 +4231,11 @@ def show_matching_v2(groups):
         st.subheader(f"📋 {opp['titolo']}")
         col1, col2, col3 = st.columns(3)
         col1.metric("Tech cluster", opp["main_tech_cluster"])
-        col2.metric("Cliente", opp["cliente"] or "—")
-        col3.metric("Candidati trovati", len(result["candidati"]))
+        col2.metric("Client", opp["cliente"] or "—")
+        col3.metric("Candidates Found", len(result["candidati"]))
 
         st.markdown("---")
-        st.subheader("🏆 Classifica candidati")
+        st.subheader("🏆 Candidate Ranking")
 
         for i, c in enumerate(result["candidati"], start=1):
             emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
