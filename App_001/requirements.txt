@@ -6,3 +6,6 @@ python-jose[cryptography]
 bcrypt
 pydantic[email]
 hdbcli>=2.30.0
+
+openpyxl
+python-multipart

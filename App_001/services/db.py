@@ -1,6 +1,7 @@
 import os
 import json
 from hdbcli import dbapi
+from datetime import date, datetime
 
 _conn = None
 
@@ -1553,3 +1554,245 @@ def sm_get_staffing_management_v2():
         "opportunities": opportunity_rows,
         "contracts": contract_rows
     }
+
+def _normalize_osr_text(value):
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    return value if value else None
+
+
+def _normalize_osr_integer(value):
+    if value is None or value == "":
+        return None
+
+    return int(float(value))
+
+
+def _normalize_osr_date(value):
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    text = str(value).strip()
+
+    for date_format in (
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%Y/%m/%d",
+    ):
+        try:
+            return datetime.strptime(
+                text,
+                date_format
+            ).date()
+        except ValueError:
+            continue
+
+    raise ValueError(
+        f"Formato data non riconosciuto: {value}"
+    )
+
+
+def sm_upsert_osr_delta(rows, dry_run=True):
+    conn = _get_conn()
+    cursor = conn.cursor()
+
+    result = {
+        "inserted": 0,
+        "updated": 0,
+        "unchanged": 0,
+        "rejected": 0,
+        "errors": [],
+        "differences": [],
+        "dry_run": dry_run,
+    }
+
+    try:
+        cursor.execute("""
+            SELECT
+                OSRID,
+                EID,
+                OPPORTUNITYID,
+                RUOLOINPROGETTO,
+                PERCALLOCAZIONE,
+                CHARGEABILITYPCT,
+                DATAINIZIO,
+                DATAFINE
+            FROM STAFFMATCH_SM_OSR
+        """)
+
+        existing_rows = {}
+
+        for existing in cursor.fetchall():
+            existing_rows[
+                _normalize_osr_text(existing[0])
+            ] = {
+                "eid": _normalize_osr_integer(
+                    existing[1]
+                ),
+                "opportunity_id": _normalize_osr_text(
+                    existing[2]
+                ),
+                "ruolo_in_progetto": _normalize_osr_text(
+                    existing[3]
+                ),
+                "perc_allocazione": _normalize_osr_integer(
+                    existing[4]
+                ),
+                "chargeability_pct": _normalize_osr_integer(
+                    existing[5]
+                ),
+                "data_inizio": _normalize_osr_date(
+                    existing[6]
+                ),
+                "data_fine": _normalize_osr_date(
+                    existing[7]
+                ),
+            }
+
+        for row_number, row in enumerate(rows, start=2):
+            try:
+                osr_id = _normalize_osr_text(
+                    row.get("osr_id")
+                )
+
+                if not osr_id:
+                    raise ValueError("OSRID mancante")
+
+                normalized = {
+                    "eid": _normalize_osr_integer(
+                        row.get("eid")
+                    ),
+                    "opportunity_id": _normalize_osr_text(
+                        row.get("opportunity_id")
+                    ),
+                    "ruolo_in_progetto": _normalize_osr_text(
+                        row.get("ruolo_in_progetto")
+                    ),
+                    "perc_allocazione": _normalize_osr_integer(
+                        row.get("perc_allocazione")
+                    ),
+                    "chargeability_pct": _normalize_osr_integer(
+                        row.get("chargeability_pct")
+                    ),
+                    "data_inizio": _normalize_osr_date(
+                        row.get("data_inizio")
+                    ),
+                    "data_fine": _normalize_osr_date(
+                        row.get("data_fine")
+                    ),
+                }
+
+                existing = existing_rows.get(osr_id)
+
+                if existing is None:
+                    result["inserted"] += 1
+
+                    if not dry_run:
+                        cursor.execute("""
+                            INSERT INTO STAFFMATCH_SM_OSR (
+                                OSRID,
+                                EID,
+                                OPPORTUNITYID,
+                                RUOLOINPROGETTO,
+                                PERCALLOCAZIONE,
+                                CHARGEABILITYPCT,
+                                DATAINIZIO,
+                                DATAFINE
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            osr_id,
+                            normalized["eid"],
+                            normalized["opportunity_id"],
+                            normalized["ruolo_in_progetto"],
+                            normalized["perc_allocazione"],
+                            normalized["chargeability_pct"],
+                            normalized["data_inizio"],
+                            normalized["data_fine"],
+                        ))
+
+                    existing_rows[osr_id] = normalized
+                    continue
+
+                if existing == normalized:
+                    result["unchanged"] += 1
+                    continue
+
+                result["updated"] += 1
+
+                changed_fields = {}
+
+                for field_name in normalized:
+                    if (
+                        existing.get(field_name)
+                        != normalized.get(field_name)
+                    ):
+                        changed_fields[field_name] = {
+                            "database": existing.get(field_name),
+                            "file": normalized.get(field_name),
+                        }
+
+                if len(result["differences"]) < 5:
+                    result["differences"].append({
+                        "osr_id": osr_id,
+                        "changed_fields": changed_fields,
+                    })
+
+
+                if not dry_run:
+                    cursor.execute("""
+                        UPDATE STAFFMATCH_SM_OSR
+                        SET
+                            EID = ?,
+                            OPPORTUNITYID = ?,
+                            RUOLOINPROGETTO = ?,
+                            PERCALLOCAZIONE = ?,
+                            CHARGEABILITYPCT = ?,
+                            DATAINIZIO = ?,
+                            DATAFINE = ?
+                        WHERE OSRID = ?
+                    """, (
+                        normalized["eid"],
+                        normalized["opportunity_id"],
+                        normalized["ruolo_in_progetto"],
+                        normalized["perc_allocazione"],
+                        normalized["chargeability_pct"],
+                        normalized["data_inizio"],
+                        normalized["data_fine"],
+                        osr_id,
+                    ))
+
+                existing_rows[osr_id] = normalized
+
+            except Exception as row_error:
+                result["rejected"] += 1
+
+                result["errors"].append({
+                    "row": row_number,
+                    "osr_id": row.get("osr_id"),
+                    "error": str(row_error),
+                })
+
+        if dry_run:
+            conn.rollback()
+        else:
+            conn.commit()
+
+        return result
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()    
