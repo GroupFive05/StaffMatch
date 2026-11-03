@@ -3,8 +3,13 @@ Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05)
 NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -dev.
 """
 from fastapi import APIRouter, HTTPException
-from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2
-from models.schemas import ResourceV2Create
+from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai
+from services.match_service import suggest_matching_weights
+from models.schemas import (
+    ResourceV2Create, 
+    MatchingAIRequest,
+    MatchingWeightsSuggestionRequest,
+)
 router = APIRouter(prefix="/sm", tags=["sm-matching-test"])
 
 
@@ -74,3 +79,49 @@ def get_dashboard_v2():
 @router.get("/staffing-management-v2")
 def get_staffing_management_v2():
     return sm_get_staffing_management_v2()    
+
+@router.get("/matching-context")
+def get_matching_context():
+    return sm_get_matching_context()
+
+@router.post("/matching")
+def run_matching_ai(payload: MatchingAIRequest):
+    try:
+        return sm_run_matching_ai(
+            payload.model_dump()
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Matching error: {str(exc)}"
+        )
+@router.post("/matching/suggest-weights")
+def suggest_weights(
+    payload: MatchingWeightsSuggestionRequest
+):
+    try:
+        return suggest_matching_weights(
+            payload.model_dump()
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to generate AI weight suggestion: "
+                f"{str(exc)}"
+            )
+        )

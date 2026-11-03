@@ -281,6 +281,82 @@ st.markdown("""
         border-color: #A100FF !important;
         box-shadow: 0 0 0 3px rgba(161,0,255,0.1) !important;
     }
+
+        /* ── MATCHING AI · CATEGORY COLORS ───────────────────────────── */
+
+    /* ============================================================
+       SKILLS · BLUE
+       ============================================================ */
+
+    .st-key-matching_new_skills [data-baseweb="tag"] {
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+
+    .st-key-matching_new_skills [data-baseweb="tag"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* Skill sliders */
+    [class*="st-key-weight_skill"] [data-baseweb="slider"] div[role="slider"] {
+        background-color: #2563EB !important;
+        border-color: #2563EB !important;
+    }
+
+    [class*="st-key-weight_skill"] [data-baseweb="slider"] > div > div {
+        background-color: #2563EB !important;
+    }
+
+
+    /* ============================================================
+       CERTIFICATIONS · VIOLET
+       ============================================================ */
+
+    .st-key-matching_new_certifications [data-baseweb="tag"] {
+        background: #8B5CF6 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+
+    .st-key-matching_new_certifications [data-baseweb="tag"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* Certification sliders */
+    [class*="st-key-weight_certification"] [data-baseweb="slider"] div[role="slider"] {
+        background-color: #8B5CF6 !important;
+        border-color: #8B5CF6 !important;
+    }
+
+    [class*="st-key-weight_certification"] [data-baseweb="slider"] > div > div {
+        background-color: #8B5CF6 !important;
+    }
+
+
+    /* ============================================================
+       LANGUAGES · TEAL / GREEN
+       ============================================================ */
+
+    .st-key-matching_new_languages [data-baseweb="tag"] {
+        background: #10B981 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+
+    .st-key-matching_new_languages [data-baseweb="tag"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* Language sliders */
+    [class*="st-key-weight_language"] [data-baseweb="slider"] div[role="slider"] {
+        background-color: #10B981 !important;
+        border-color: #10B981 !important;
+    }
+
+    [class*="st-key-weight_language"] [data-baseweb="slider"] > div > div {
+        background-color: #10B981 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -407,7 +483,7 @@ def show_sidebar(groups):
             ("🧑‍💻", "Resources",      "risorsa_v2"),
             ("📊", "Dashboard",    "dashboard_v2"),
             ("🐈", "Staffing Management", "staffing_management_v2"),
-            ("🧪", "Matching AI v2",  "matching_v2"),
+            ("🧪", "Matching AI",  "matching_v2"),
             ("✨", "Practice Advisor", "chatbot"),
         ]
         if is_executive_or_admin(groups):
@@ -2296,7 +2372,89 @@ def show_risorsa_v2(groups):
                         st.caption(
                             "No certifications available."
                         )
+                st.markdown("---")
+                st.markdown("#### Current Assignments")
 
+                current_assignments = resource.get(
+                    "current_assignments",
+                    []
+                )
+
+                if current_assignments:
+                    for assignment in current_assignments:
+                        osr_status = assignment.get(
+                            "osr_status"
+                        )
+
+                        if osr_status == "Active":
+                            osr_icon = "🟢"
+
+                        elif osr_status == "Rolling-off":
+                            osr_icon = "🟠"
+
+                        elif osr_status == "Closed":
+                            osr_icon = "🔴"
+
+                        else:
+                            osr_icon = "⚪"
+
+                        with st.container(border=True):
+                            assign_col1, assign_col2, assign_col3 = (
+                                st.columns([1.4, 1.2, 1])
+                            )
+
+                            with assign_col1:
+                                st.markdown(
+                                    f"**{osr_icon} "
+                                    f"{assignment.get('osr_id', '')} "
+                                    f"· {osr_status or '—'}**"
+                                )
+
+                                st.markdown(
+                                    f"**Opportunity:** "
+                                    f"{assignment.get('opportunity_title') or '—'}"
+                                )
+
+                                st.caption(
+                                    f"Client: "
+                                    f"{assignment.get('client_name') or '—'}"
+                                )
+
+                            with assign_col2:
+                                st.markdown(
+                                    f"**Project Role:** "
+                                    f"{assignment.get('project_role') or '—'}"
+                                )
+
+                                st.markdown(
+                                    f"**Allocation:** "
+                                    f"{assignment.get('allocation_pct', 0)}%"
+                                )
+
+                            with assign_col3:
+                                st.markdown(
+                                    f"**Start Date:** "
+                                    f"{assignment.get('start_date') or '—'}"
+                                )
+
+                                st.markdown(
+                                    f"**End Date:** "
+                                    f"{assignment.get('end_date') or '—'}"
+                                )
+
+                                manager_name = assignment.get(
+                                    "manager_name"
+                                )
+
+                                if manager_name:
+                                    st.caption(
+                                        f"Manager: {manager_name}"
+                                    )
+
+                else:
+                    st.caption(
+                        "No active assignments."
+                    )
     # ── VISTA TABELLA ─────────────────────────────────────────────────────────
     with tab_table:
         table_rows = []
@@ -4198,7 +4356,823 @@ def show_staffing_management_v2(groups):
             use_container_width=True,
             hide_index=True
         )
-# ── MAIN ───────────────────────────────────────────────────────────────────────
+
+# ── MATCHING AI - NEW ─────────────────────────────────────────────────────────
+def show_matching_ai(groups):
+    results = st.session_state.get(
+    "matching_ai_results"
+    )
+    st.markdown(
+        '<p class="main-title">🤖 Matching AI</p>',
+        unsafe_allow_html=True
+    )
+
+    context_response = api(
+        "GET",
+        "/sm/matching-context"
+    )
+
+    if context_response is None:
+        st.error("No response from backend.")
+        return
+
+    if context_response.status_code != 200:
+        st.error(
+            f"Unable to load Matching context: "
+            f"{_api_detail(context_response)}"
+        )
+        return
+
+    context = context_response.json()
+
+    opportunities = context.get("opportunities", [])
+    osr_rows = context.get("osr", [])
+    roles = context.get("roles", [])
+    skills = context.get("skills", [])
+    certifications = context.get("certifications", [])
+    languages = context.get("languages", [])
+
+    if not opportunities:
+        st.warning("No opportunities available.")
+        return
+
+    # ── MATCHING CONTEXT ──────────────────────────────────────────────────────
+    st.markdown("### 1. Matching Context")
+
+    opportunity_options = {
+        (
+            f"{item['opportunity_title']} "
+            f"({item['opportunity_id']})"
+        ): item
+        for item in opportunities
+    }
+
+    selected_opportunity_label = st.selectbox(
+        "Opportunity *",
+        list(opportunity_options.keys()),
+        key="matching_new_opportunity"
+    )
+
+    selected_opportunity = opportunity_options[
+        selected_opportunity_label
+    ]
+
+    selected_opportunity_id = selected_opportunity[
+        "opportunity_id"
+    ]
+
+    # Solo OSR appartenenti alla Opportunity selezionata
+    opportunity_osr = [
+        row
+        for row in osr_rows
+        if row.get("opportunity_id")
+        == selected_opportunity_id
+    ]
+
+    osr_options = {
+        "No OSR": None
+    }
+
+    for osr in opportunity_osr:
+        osr_label = (
+            f"{osr.get('osr_id', '')} · "
+            f"{osr.get('project_role', '')}"
+        )
+
+        osr_options[osr_label] = osr
+
+    context_col1, context_col2 = st.columns(2)
+
+    with context_col1:
+        selected_osr_label = st.selectbox(
+            "OSR (optional)",
+            list(osr_options.keys()),
+            key="matching_new_osr"
+        )
+
+    selected_osr = osr_options[
+        selected_osr_label
+    ]
+
+    with context_col2:
+        selected_role = st.selectbox(
+            "Role *",
+            roles,
+            key="matching_new_role"
+        )
+
+    # Date suggerite:
+    # OSR selezionata -> date OSR
+    # altrimenti -> date Opportunity
+    if selected_osr:
+        suggested_start = selected_osr.get("start_date")
+        suggested_end = selected_osr.get("end_date")
+    else:
+        suggested_start = selected_opportunity.get(
+            "start_date"
+        )
+        suggested_end = selected_opportunity.get(
+            "end_date"
+        )
+
+    import datetime as _dt_matching
+
+    try:
+        default_start = _dt_matching.date.fromisoformat(
+            suggested_start
+        )
+    except Exception:
+        default_start = _dt_matching.date.today()
+
+    try:
+        default_end = _dt_matching.date.fromisoformat(
+            suggested_end
+        )
+    except Exception:
+        default_end = default_start
+
+    date_col1, date_col2 = st.columns(2)
+
+    with date_col1:
+        matching_start_date = st.date_input(
+            "Start Date *",
+            value=default_start,
+            key=(
+                f"matching_start_"
+                f"{selected_opportunity_id}_"
+                f"{selected_osr_label}"
+            )
+        )
+
+    with date_col2:
+        matching_end_date = st.date_input(
+            "End Date *",
+            value=default_end,
+            key=(
+                f"matching_end_"
+                f"{selected_opportunity_id}_"
+                f"{selected_osr_label}"
+            )
+        )
+
+    if matching_end_date < matching_start_date:
+        st.error(
+            "End Date must be equal to or later "
+            "than Start Date."
+        )
+
+    st.markdown("---")
+
+    # ── MATCHING CRITERIA ─────────────────────────────────────────────────────
+    st.markdown("### 2. Matching Criteria")
+
+    skills_options = [
+        item.get("skill_name")
+        for item in skills
+        if item.get("skill_name")
+    ]
+
+    certification_options = {
+        (
+            f"{item.get('certification_name', '')} "
+            f"({item.get('cert_id', '')})"
+        ): item.get("cert_id")
+        for item in certifications
+    }
+
+    language_options = [
+        item.get("language_code")
+        for item in languages
+        if item.get("language_code")
+    ]
+
+    criteria_col1, criteria_col2, criteria_col3 = st.columns(3)
+
+    with criteria_col1:
+        selected_skills = st.multiselect(
+            "Skills · max 3",
+            skills_options,
+            max_selections=3,
+            key="matching_new_skills"
+        )
+
+    with criteria_col2:
+        selected_certification_labels = st.multiselect(
+            "Certifications · max 2",
+            list(certification_options.keys()),
+            max_selections=2,
+            key="matching_new_certifications"
+        )
+
+    with criteria_col3:
+        selected_languages = st.multiselect(
+            "Languages · max 2",
+            language_options,
+            max_selections=2,
+            key="matching_new_languages"
+        )
+
+    selected_certification_ids = [
+        certification_options[label]
+        for label in selected_certification_labels
+    ]
+
+    st.markdown("---")
+
+    # ── WEIGHTS ───────────────────────────────────────────────────────────────
+    st.markdown("### 3. Criteria Weights")
+
+    active_criteria = []
+
+    for skill in selected_skills:
+        active_criteria.append({
+            "key": f"skill:{skill}",
+            "label": skill,
+            "type": "Skill"
+        })
+
+    for cert_label in selected_certification_labels:
+        cert_id = certification_options[cert_label]
+
+        active_criteria.append({
+            "key": f"certification:{cert_id}",
+            "label": cert_label,
+            "type": "Certification"
+        })
+
+    for language in selected_languages:
+        active_criteria.append({
+            "key": f"language:{language}",
+            "label": language,
+            "type": "Language"
+        })
+
+    suggest_weights_payload = {
+        "opportunity": {
+            "opportunity_id":
+                selected_opportunity.get("opportunity_id"),
+
+            "opportunity_title":
+                selected_opportunity.get("opportunity_title"),
+
+            "main_tech_cluster":
+                selected_opportunity.get("main_tech_cluster"),
+
+            "functional_area":
+                selected_opportunity.get("functional_area")
+        },
+
+        "role":
+            selected_role,
+
+        "start_date":
+            matching_start_date.isoformat(),
+
+        "end_date":
+            matching_end_date.isoformat(),
+
+        "skills":
+            selected_skills,
+
+        "certifications":
+            selected_certification_ids,
+
+        "languages":
+            selected_languages
+    }
+
+    if active_criteria:
+            if st.button(
+                "✨ Suggest AI Weights",
+                use_container_width=True,
+                key="matching_suggest_weights"
+            ):
+                with st.spinner(
+                    "AI is analyzing the matching context..."
+                ):
+                    suggestion_response = api(
+                        "POST",
+                        "/sm/matching/suggest-weights",
+                        json=suggest_weights_payload
+                    )
+
+                if suggestion_response is None:
+                    st.error(
+                        "No response from backend."
+                    )
+
+                elif suggestion_response.status_code != 200:
+                    st.error(
+                        f"Unable to generate AI suggestion: "
+                        f"{_api_detail(suggestion_response)}"
+                    )
+
+                else:
+                    suggestion = suggestion_response.json()
+
+                    suggested_weights = suggestion.get(
+                        "weights",
+                        {}
+                    )
+
+                    for criterion in active_criteria:
+                        criterion_key = criterion["key"]
+
+                        suggested_value = int(
+                            round(
+                                suggested_weights.get(
+                                    criterion_key,
+                                    0
+                                )
+                            )
+                        )
+
+                        st.session_state[
+                            f"weight_{criterion_key}"
+                        ] = suggested_value
+
+                    st.session_state[
+                        "matching_weight_rationale"
+                    ] = suggestion.get(
+                        "rationale",
+                        ""
+                    )
+
+                    st.rerun()
+
+    else:
+            st.caption(
+                "Select at least one Skill, Certification or Language "
+                "to enable AI weight suggestions."
+            )
+
+            
+    ai_weight_rationale = st.session_state.get(
+        "matching_weight_rationale"
+    )
+
+    if ai_weight_rationale:
+        with st.container(border=True):
+            st.markdown(
+                "##### ✨ AI Weight Recommendation"
+            )
+
+            st.caption(
+                ai_weight_rationale
+            )
+
+        
+    raw_weights = {}
+
+    if not active_criteria:
+        st.info(
+            "Select at least one matching criterion "
+            "to configure relative importance."
+        )
+
+    else:
+        for criterion in active_criteria:
+            criterion_key = criterion["key"]
+
+            default_value = int(
+                st.session_state.get(
+                    f"weight_{criterion_key}",
+                    50
+                )
+            )
+
+            raw_weights[criterion_key] = st.slider(
+                f"{criterion['type']} · {criterion['label']}",
+                min_value=0,
+                max_value=100,
+                value=default_value,
+                step=5,
+                key=f"weight_{criterion_key}"
+            )
+
+        raw_weight_total = sum(
+            raw_weights.values()
+        )
+
+        normalized_weights = {}
+
+        if raw_weight_total == 0:
+            uniform_weight = (
+                100 / len(active_criteria)
+            )
+
+            for criterion in active_criteria:
+                normalized_weights[
+                    criterion["key"]
+                ] = uniform_weight
+
+            st.caption(
+                "All relative values are 0. "
+                "Uniform weights are applied automatically."
+            )
+
+        else:
+            for criterion in active_criteria:
+                normalized_weights[
+                    criterion["key"]
+                ] = (
+                    raw_weights[criterion["key"]]
+                    / raw_weight_total
+                    * 100
+                )
+
+        st.markdown("##### Effective Weights")
+
+        for criterion in active_criteria:
+            effective_weight = normalized_weights[
+                criterion["key"]
+            ]
+
+            st.caption(
+                f"{criterion['label']} · "
+                f"**{effective_weight:.2f}%**"
+            )
+    st.markdown("---")
+
+    # ── CURRENT CONFIGURATION ─────────────────────────────────────────────────
+    with st.expander(
+        "🔎 Review Matching Configuration",
+        expanded=False
+    ):
+        st.markdown(
+            f"**Opportunity:** "
+            f"{selected_opportunity.get('opportunity_title', '')}"
+        )
+
+        st.markdown(
+            f"**OSR:** "
+            f"{selected_osr_label}"
+        )
+
+        st.markdown(
+            f"**Role:** {selected_role}"
+        )
+
+        st.markdown(
+            f"**Period:** "
+            f"{matching_start_date} → {matching_end_date}"
+        )
+
+        st.markdown(
+            "**Skills:** "
+            + (
+                ", ".join(selected_skills)
+                if selected_skills
+                else "None"
+            )
+        )
+
+        st.markdown(
+            "**Certifications:** "
+            + (
+                ", ".join(selected_certification_labels)
+                if selected_certification_labels
+                else "None"
+            )
+        )
+
+        st.markdown(
+            "**Languages:** "
+            + (
+                ", ".join(selected_languages)
+                if selected_languages
+                else "None"
+            )
+        )
+
+    can_run_matching = (
+        matching_end_date >= matching_start_date
+        and bool(active_criteria)
+    )
+
+    if st.button(
+        "✨ Run Matching",
+        type="primary",
+        use_container_width=True,
+        disabled=not can_run_matching,
+        key="run_matching_new"
+    ):
+        payload = {
+            "opportunity_id": selected_opportunity_id,
+            "osr_id": (
+                selected_osr.get("osr_id")
+                if selected_osr
+                else None
+            ),
+            "role": selected_role,
+            "start_date": matching_start_date.isoformat(),
+            "end_date": matching_end_date.isoformat(),
+            "skills": selected_skills,
+            "certifications": selected_certification_ids,
+            "languages": selected_languages,
+            "weights": normalized_weights
+        }
+
+        with st.spinner(
+            "Analyzing resources and availability..."
+        ):
+            matching_response = api(
+                "POST",
+                "/sm/matching",
+                json=payload
+            )
+
+        if matching_response is None:
+            st.error("No response from backend.")
+
+        elif matching_response.status_code != 200:
+            st.error(
+                f"Matching error: "
+                f"{_api_detail(matching_response)}"
+            )
+
+        else:
+            st.session_state[
+                "matching_ai_results"
+            ] = matching_response.json()
+
+            st.rerun()
+
+    if results:
+        st.markdown("---")
+        st.markdown("### 4. Matching Results")
+
+        summary = results.get(
+            "summary",
+            {}
+        )
+
+        summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+
+        summary_col1.metric(
+            "Candidates",
+            summary.get("total_candidates", 0)
+        )
+
+        summary_col2.metric(
+            "🟢 Available",
+            summary.get("available", 0)
+        )
+
+        summary_col3.metric(
+            "🟠 Partial Availability",
+            summary.get("partial", 0)
+        )
+
+        summary_col4.metric(
+            "🔴 Unavailable",
+            summary.get("unavailable", 0)
+        )
+
+        candidates = results.get(
+            "candidates",
+            []
+        )
+
+        st.caption(
+            "Availability is evaluated for the entire requested period. "
+            "Within each availability group, resources are ranked by match score."
+        )
+
+        # Mostriamo inizialmente i primi 20 risultati.
+        visible_candidates = candidates[:20]
+
+        for candidate in visible_candidates:
+            availability_status = candidate.get(
+                "availability_status"
+            )
+
+            if availability_status == "available":
+                availability_icon = "🟢"
+                availability_label = "Available"
+
+            elif availability_status == "partial":
+                availability_icon = "🟠"
+                availability_label = "Partial Availability"
+
+            else:
+                availability_icon = "🔴"
+                availability_label = "Unavailable"
+
+            candidate_label = (
+                f"{availability_icon} "
+                f"#{candidate.get('rank', '')} · "
+                f"{candidate.get('name', '')} · "
+                f"Score {candidate.get('score', 0):.1f}"
+            )
+
+            with st.expander(
+                candidate_label
+            ):
+
+                profile_col, matching_col, availability_col = st.columns(
+                    [1.2, 1.5, 1.3]
+                )
+
+                # ── RESOURCE PROFILE ──────────────────────────────────────────────
+                with profile_col:
+                    st.markdown("#### Resource Profile")
+
+                    st.markdown(
+                        f"**EID:** "
+                        f"`{candidate.get('eid', '')}`"
+                    )
+
+                    st.markdown(
+                        f"**Email:** "
+                        f"`{candidate.get('email') or '—'}`"
+                    )
+
+                    st.markdown(
+                        f"**Level:** "
+                        f"{candidate.get('level_name') or '—'}"
+                    )
+
+                    st.markdown(
+                        f"**Experience:** "
+                        f"{candidate.get('years_of_experience', 0)} years"
+                    )
+
+                current_assignments = candidate.get(
+                    "current_assignments",
+                    []
+                )
+
+                if current_assignments:
+                    st.markdown("---")
+                    st.markdown(
+                        "#### Current Assignments"
+                    )
+
+                    for assignment in current_assignments:
+                        osr_status = assignment.get(
+                            "osr_status"
+                        )
+
+                        if osr_status == "Active":
+                            osr_icon = "🟢"
+
+                        elif osr_status == "Rolling-off":
+                            osr_icon = "🟠"
+
+                        elif osr_status == "Closed":
+                            osr_icon = "🔴"
+
+                        else:
+                            osr_icon = "⚪"
+
+                        with st.container(border=True):
+                            assignment_col1, assignment_col2, assignment_col3 = (
+                                st.columns([1.4, 1.2, 1])
+                            )
+
+                            with assignment_col1:
+                                st.markdown(
+                                    f"**{osr_icon} "
+                                    f"{assignment.get('osr_id', '')} "
+                                    f"· {osr_status or '—'}**"
+                                )
+
+                                st.markdown(
+                                    f"**Opportunity:** "
+                                    f"{assignment.get('opportunity_title') or '—'}"
+                                )
+
+                                st.caption(
+                                    f"Client: "
+                                    f"{assignment.get('client_name') or '—'}"
+                                )
+
+                            with assignment_col2:
+                                st.markdown(
+                                    f"**Project Role:** "
+                                    f"{assignment.get('project_role') or '—'}"
+                                )
+
+                                st.markdown(
+                                    f"**Allocation:** "
+                                    f"{assignment.get('allocation_pct', 0)}%"
+                                )
+
+                            with assignment_col3:
+                                st.markdown(
+                                    f"**Start Date:** "
+                                    f"{assignment.get('start_date') or '—'}"
+                                )
+
+                                st.markdown(
+                                    f"**End Date:** "
+                                    f"{assignment.get('end_date') or '—'}"
+                                )
+
+                                manager_name = assignment.get(
+                                    "manager_name"
+                                )
+
+                                if manager_name:
+                                    st.caption(
+                                        f"Manager: {manager_name}"
+                                    )
+
+                # ── MATCH DETAILS ─────────────────────────────────────────────────
+                with matching_col:
+                    st.markdown("#### Match Details")
+
+                    st.metric(
+                        "Match Score",
+                        f"{candidate.get('score', 0):.1f}/100"
+                    )
+
+                    matched_criteria = candidate.get(
+                        "matched_criteria",
+                        []
+                    )
+
+                    missing_criteria = candidate.get(
+                        "missing_criteria",
+                        []
+                    )
+
+                                    # ── MATCHED CRITERIA ─────────────────────────────────────────
+                with st.container(border=True):
+                    st.markdown("##### 🏆 Matched Criteria")
+
+                    if matched_criteria:
+                        for criterion in matched_criteria:
+                            st.markdown(
+                                f"✨ **{criterion.get('criterion')}**  "
+                                f"· {criterion.get('weight', 0):.2f}%"
+                            )
+                    else:
+                        st.caption(
+                            "No selected criteria matched."
+                        )
+
+                # ── MISSING CRITERIA ─────────────────────────────────────────
+                with st.container(border=True):
+                    st.markdown("##### 🚫 Missing Criteria")
+
+                    if missing_criteria:
+                        for criterion in missing_criteria:
+                            st.markdown(
+                                f"○ **{criterion.get('criterion')}**  "
+                                f"· {criterion.get('weight', 0):.2f}%"
+                            )
+                    else:
+                        st.caption(
+                            "All selected criteria matched."
+                        )
+
+                # ── AVAILABILITY ──────────────────────────────────────────────────
+                with availability_col:
+                    st.markdown("#### Availability")
+
+                    st.markdown(
+                        f"**{availability_icon} "
+                        f"{availability_label}**"
+                    )
+
+                    st.markdown(
+                        f"Peak Allocation: "
+                        f"**{candidate.get('peak_allocation_pct', 0)}%**"
+                    )
+
+                    st.markdown(
+                        f"Available Capacity: "
+                        f"**{candidate.get('available_capacity_pct', 0)}%**"
+                    )
+
+                    next_available_date = candidate.get(
+                        "next_available_date"
+                    )
+
+                    if next_available_date:
+                        st.markdown(
+                            f"Next Available Date: "
+                            f"**{next_available_date}**"
+                        )
+
+                    overlapping_osr = candidate.get(
+                        "overlapping_osr",
+                        []
+                    )
+
+                    if overlapping_osr:
+                        st.markdown("**Overlapping OSRs**")
+
+                        for osr in overlapping_osr:
+                            st.caption(
+                                f"{osr.get('osr_id')} · "
+                                f"{osr.get('allocation_pct', 0)}% · "
+                                f"{osr.get('start_date')} → "
+                                f"{osr.get('end_date')}"
+                            )
+    # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI</p>', unsafe_allow_html=True)
     st.markdown("---")
@@ -4280,7 +5254,7 @@ def main():
     elif page == "matching":
         show_matching(groups)
     elif page == "matching_v2":
-        show_matching_v2(groups)
+        show_matching_ai(groups)
     elif page == "chatbot":
         show_chatbot(groups)
     elif page == "approvazioni":

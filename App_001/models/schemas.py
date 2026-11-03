@@ -255,3 +255,34 @@ class ResourceV2Create(BaseModel):
     skills: list[str] = []
     languages: list[str] = []
     certifications: list[ResourceV2Certification] = []
+
+class MatchingAIRequest(BaseModel):
+    opportunity_id: str
+    osr_id: Optional[str] = None
+    role: str
+    start_date: str
+    end_date: str
+    skills: list[str] = []
+    certifications: list[str] = []
+    languages: list[str] = []
+    weights: dict[str, float] = {}
+
+class MatchingAIRequest(BaseModel):
+    opportunity_id: str
+    osr_id: Optional[str] = None
+    role: str
+    start_date: str
+    end_date: str
+    skills: list[str] = []
+    certifications: list[str] = []
+    languages: list[str] = []
+    weights: dict[str, float] = {}
+
+class MatchingWeightsSuggestionRequest(BaseModel):
+    opportunity: dict
+    role: str
+    start_date: str
+    end_date: str
+    skills: list[str] = []
+    certifications: list[str] = []
+    languages: list[str] = []   

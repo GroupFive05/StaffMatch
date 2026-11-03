@@ -382,6 +382,7 @@ def sm_get_risorse_v2():
     """
 
     from datetime import date, datetime
+    import calendar
 
     def to_date(value):
         if value is None:
@@ -401,6 +402,28 @@ def sm_get_risorse_v2():
             return None
 
     today = date.today()
+    target_month = today.month + 3
+
+    target_year = (
+        today.year
+        + (target_month - 1) // 12
+    )
+
+    target_month = (
+        (target_month - 1) % 12
+        + 1
+    )
+
+    last_day = calendar.monthrange(
+        target_year,
+        target_month
+    )[1]
+
+    rolling_off_limit = date(
+        target_year,
+        target_month,
+        min(today.day, last_day)
+    )
 
     # ── Anagrafica risorse ────────────────────────────────────────────────────
     resources = _fetchall("""
@@ -500,13 +523,21 @@ def sm_get_risorse_v2():
             o.EID              AS eid,
             o.OSRID            AS osr_id,
             o.OPPORTUNITYID    AS opportunity_id,
+            op.OPPORTUNITYTITLE AS opportunity_title,
+
+            o.RUOLOINPROGETTO  AS project_role,
             o.PERCALLOCAZIONE  AS perc_allocazione,
             o.DATAINIZIO       AS data_inizio,
             o.DATAFINE         AS data_fine,
+
+            c.CONTRACTID       AS contract_id,
+            c.CLIENTNAME       AS client_name,
+
             c.EID              AS manager_eid,
             m.NOME             AS manager_nome,
             m.COGNOME          AS manager_cognome,
             m.EMAIL            AS manager_email
+
         FROM STAFFMATCH_SM_OSR o
 
         LEFT JOIN STAFFMATCH_SM_OPPORTUNITY op
@@ -531,6 +562,22 @@ def sm_get_risorse_v2():
         row["data_fine_date"] = to_date(
             row.get("data_fine")
         )
+
+        end_date = row.get(
+            "data_fine_date"
+        )
+
+        if end_date is None:
+            row["calculated_status"] = "Unknown"
+
+        elif end_date < today:
+            row["calculated_status"] = "Closed"
+
+        elif end_date <= rolling_off_limit:
+            row["calculated_status"] = "Rolling-off"
+
+        else:
+            row["calculated_status"] = "Active"
 
         osr_by_eid.setdefault(
             row["eid"],
@@ -571,6 +618,53 @@ def sm_get_risorse_v2():
             osr for osr in resource_osr
             if osr.get("data_fine_date")
             and osr["data_fine_date"] >= today
+        ]
+
+        resource["current_assignments"] = [
+            {
+                "osr_id": osr.get("osr_id"),
+                "opportunity_id": osr.get("opportunity_id"),
+                "opportunity_title": osr.get("opportunity_title"),
+
+                "contract_id": osr.get("contract_id"),
+                "client_name": osr.get("client_name"),
+
+                "project_role": osr.get("project_role"),
+
+                "allocation_pct": int(
+                    osr.get("perc_allocazione") or 0
+                ),
+
+                "start_date": (
+                    osr["data_inizio_date"].isoformat()
+                    if osr.get("data_inizio_date")
+                    else None
+                ),
+
+                "end_date": (
+                    osr["data_fine_date"].isoformat()
+                    if osr.get("data_fine_date")
+                    else None
+                ),
+
+                "osr_status": osr.get(
+                    "calculated_status"
+                ),
+
+                "manager_eid": osr.get(
+                    "manager_eid"
+                ),
+
+                "manager_name": (
+                    f"{osr.get('manager_nome') or ''} "
+                    f"{osr.get('manager_cognome') or ''}"
+                ).strip(),
+
+                "manager_email": osr.get(
+                    "manager_email"
+                )
+            }
+            for osr in valid_osr
         ]
 
         active_allocation = sum(
@@ -1796,3 +1890,838 @@ def sm_upsert_osr_delta(rows, dry_run=True):
 
     finally:
         cursor.close()    
+
+def sm_get_matching_context():
+    """
+    Dati live necessari per configurare il nuovo Matching AI.
+    Nessun valore hardcoded.
+    """
+
+    opportunities = _fetchall("""
+        SELECT
+            OPPORTUNITYID AS opportunity_id,
+            OPPORTUNITYTITLE AS opportunity_title,
+            MAINTECHCLUSTER AS main_tech_cluster,
+            FUNCTIONALAREA AS functional_area,
+            DATAINIZIO AS start_date,
+            DATAFINE AS end_date
+        FROM STAFFMATCH_SM_OPPORTUNITY
+        ORDER BY OPPORTUNITYTITLE
+    """)
+
+    osr = _fetchall("""
+        SELECT
+            OSRID AS osr_id,
+            OPPORTUNITYID AS opportunity_id,
+            RUOLOINPROGETTO AS project_role,
+            DATAINIZIO AS start_date,
+            DATAFINE AS end_date
+        FROM STAFFMATCH_SM_OSR
+        ORDER BY OPPORTUNITYID, OSRID
+    """)
+
+    skills = _fetchall("""
+        SELECT DISTINCT
+            SKILLNAME AS skill_name
+        FROM STAFFMATCH_SM_RISORSASKILL
+        WHERE SKILLNAME IS NOT NULL
+        ORDER BY SKILLNAME
+    """)
+
+    certifications = _fetchall("""
+        SELECT
+            CERTID AS cert_id,
+            NOMECERT AS certification_name
+        FROM STAFFMATCH_SM_CERTCATALOG
+        ORDER BY NOMECERT
+    """)
+
+    languages = _fetchall("""
+        SELECT DISTINCT
+            LANGUAGECODE AS language_code
+        FROM STAFFMATCH_SM_RISORSALANGUAGE
+        WHERE LANGUAGECODE IS NOT NULL
+        ORDER BY LANGUAGECODE
+    """)
+
+    # Serializzazione date per JSON
+    for row in opportunities:
+        if row.get("start_date"):
+            row["start_date"] = str(row["start_date"])
+
+        if row.get("end_date"):
+            row["end_date"] = str(row["end_date"])
+
+    for row in osr:
+        if row.get("start_date"):
+            row["start_date"] = str(row["start_date"])
+
+        if row.get("end_date"):
+            row["end_date"] = str(row["end_date"])
+
+    # Role dinamici derivati dalle OSR reali
+    roles = sorted({
+        row.get("project_role")
+        for row in osr
+        if row.get("project_role")
+    })
+
+    return {
+        "opportunities": opportunities,
+        "osr": osr,
+        "roles": roles,
+        "skills": skills,
+        "certifications": certifications,
+        "languages": languages
+    }
+def sm_get_interval_availability(
+    eid,
+    requested_start,
+    requested_end,
+    excluded_osr_id=None
+):
+    """
+    Calcola la disponibilità della risorsa sull'intero intervallo richiesto.
+
+    La disponibilità è determinata dal picco di allocazione contemporanea
+    delle OSR che si sovrappongono al periodo.
+    """
+
+    from datetime import datetime, timedelta
+
+    def to_date(value):
+        if value is None:
+            return None
+
+        if hasattr(value, "date"):
+            return value.date()
+
+        return datetime.strptime(
+            str(value)[:10],
+            "%Y-%m-%d"
+        ).date()
+
+    start_date = to_date(requested_start)
+    end_date = to_date(requested_end)
+
+    if start_date is None or end_date is None:
+        raise ValueError(
+            "Start Date and End Date are required."
+        )
+
+    if end_date < start_date:
+        raise ValueError(
+            "End Date must be equal to or later than Start Date."
+        )
+
+    if excluded_osr_id:
+            osr_rows = _fetchall("""
+             SELECT
+                OSRID AS osr_id,
+                PERCALLOCAZIONE AS allocation_pct,
+                DATAINIZIO AS start_date,
+                DATAFINE AS end_date
+             FROM STAFFMATCH_SM_OSR
+             WHERE EID = ?
+              AND DATAINIZIO <= ?
+              AND DATAFINE >= ?
+              AND OSRID <> ?
+        """, (
+            eid,
+            end_date.isoformat(),
+            start_date.isoformat(),
+            excluded_osr_id
+        ))
+
+    else:
+            osr_rows = _fetchall("""
+                SELECT
+                    OSRID AS osr_id,
+                    PERCALLOCAZIONE AS allocation_pct,
+                    DATAINIZIO AS start_date,
+                    DATAFINE AS end_date
+                FROM STAFFMATCH_SM_OSR
+                WHERE EID = ?
+                AND DATAINIZIO <= ?
+                AND DATAFINE >= ?
+         """, (
+                eid,
+                end_date.isoformat(),
+                start_date.isoformat()
+        ))
+
+    if not osr_rows:
+        return {
+            "availability_status": "available",
+            "peak_allocation_pct": 0,
+            "available_capacity_pct": 100,
+            "next_available_date": None,
+            "overlapping_osr": []
+        }
+
+    # Sweep line:
+    # +allocation alla data di inizio
+    # -allocation il giorno successivo alla fine.
+    events = {}
+
+    overlapping_osr = []
+
+    for row in osr_rows:
+        osr_start = max(
+            start_date,
+            to_date(row.get("start_date"))
+        )
+
+        osr_end = min(
+            end_date,
+            to_date(row.get("end_date"))
+        )
+
+        allocation = int(
+            row.get("allocation_pct") or 0
+        )
+
+        events[osr_start] = (
+            events.get(osr_start, 0)
+            + allocation
+        )
+
+        day_after_end = osr_end + timedelta(days=1)
+
+        events[day_after_end] = (
+            events.get(day_after_end, 0)
+            - allocation
+        )
+
+        overlapping_osr.append({
+            "osr_id": row.get("osr_id"),
+            "allocation_pct": allocation,
+            "start_date": osr_start.isoformat(),
+            "end_date": osr_end.isoformat()
+        })
+
+    current_allocation = 0
+    peak_allocation = 0
+
+    for event_date in sorted(events):
+        current_allocation += events[event_date]
+
+        peak_allocation = max(
+            peak_allocation,
+            current_allocation
+        )
+
+    available_capacity = max(
+        0,
+        100 - peak_allocation
+    )
+
+    if peak_allocation == 0:
+        availability_status = "available"
+
+    elif peak_allocation < 100:
+        availability_status = "partial"
+
+    else:
+        availability_status = "unavailable"
+
+    future_end_dates = [
+        to_date(row.get("end_date"))
+        for row in osr_rows
+        if to_date(row.get("end_date")) >= start_date
+    ]
+
+    next_available_date = (
+        min(future_end_dates).isoformat()
+        if future_end_dates
+        else None
+    )
+
+    return {
+        "availability_status": availability_status,
+        "peak_allocation_pct": peak_allocation,
+        "available_capacity_pct": available_capacity,
+        "next_available_date": next_available_date,
+        "overlapping_osr": overlapping_osr
+    }
+def sm_calculate_weighted_match(
+    resource,
+    selected_skills,
+    selected_certifications,
+    selected_languages,
+    weights
+):
+    """
+    Calcola esclusivamente il quality match.
+
+    Availability NON entra nello score.
+    """
+
+    resource_skills = {
+        (item.get("skill_name") or "").strip().lower()
+        for item in resource.get("skills", [])
+    }
+
+    resource_certifications = {
+        (item.get("cert_id") or "").strip().lower()
+        for item in resource.get("certifications", [])
+    }
+
+    resource_languages = {
+        (item.get("language_code") or "").strip().lower()
+        for item in resource.get("languages", [])
+    }
+
+    criteria_results = []
+
+    total_weight = 0.0
+    matched_weight = 0.0
+
+    # ── SKILLS ────────────────────────────────────────────────────────────────
+    for skill in selected_skills:
+        criterion_key = f"skill:{skill}"
+
+        weight = float(
+            weights.get(criterion_key, 0)
+        )
+
+        matched = (
+            skill.strip().lower()
+            in resource_skills
+        )
+
+        total_weight += weight
+
+        if matched:
+            matched_weight += weight
+
+        criteria_results.append({
+            "type": "skill",
+            "criterion": skill,
+            "matched": matched,
+            "weight": weight
+        })
+
+    # ── CERTIFICATIONS ───────────────────────────────────────────────────────
+    for cert_id in selected_certifications:
+        criterion_key = f"certification:{cert_id}"
+
+        weight = float(
+            weights.get(criterion_key, 0)
+        )
+
+        matched = (
+            cert_id.strip().lower()
+            in resource_certifications
+        )
+
+        total_weight += weight
+
+        if matched:
+            matched_weight += weight
+
+        criteria_results.append({
+            "type": "certification",
+            "criterion": cert_id,
+            "matched": matched,
+            "weight": weight
+        })
+
+    # ── LANGUAGES ────────────────────────────────────────────────────────────
+    for language in selected_languages:
+        criterion_key = f"language:{language}"
+
+        weight = float(
+            weights.get(criterion_key, 0)
+        )
+
+        matched = (
+            language.strip().lower()
+            in resource_languages
+        )
+
+        total_weight += weight
+
+        if matched:
+            matched_weight += weight
+
+        criteria_results.append({
+            "type": "language",
+            "criterion": language,
+            "matched": matched,
+            "weight": weight
+        })
+
+    # Se tutti gli slider sono zero:
+    # peso uniforme su tutti i criteri selezionati.
+    if total_weight == 0 and criteria_results:
+        uniform_weight = 100 / len(
+            criteria_results
+        )
+
+        total_weight = 100
+        matched_weight = 0
+
+        for criterion in criteria_results:
+            criterion["weight"] = (
+                uniform_weight
+            )
+
+            if criterion["matched"]:
+                matched_weight += (
+                    uniform_weight
+                )
+
+    score = (
+        matched_weight
+        / total_weight
+        * 100
+        if total_weight > 0
+        else 0
+    )
+
+    return {
+        "score": round(score, 1),
+        "criteria": criteria_results
+    }
+
+def sm_run_matching_ai(payload):
+    """
+    Esegue il nuovo Matching AI.
+
+    Il quality score e la disponibilità sono separati.
+
+    Ordinamento:
+    1. available
+    2. partial
+    3. unavailable
+    4. score decrescente all'interno dello stesso stato
+    """
+
+    opportunity_id = (
+        payload.get("opportunity_id")
+        or ""
+    ).strip()
+
+    osr_id = (
+        payload.get("osr_id")
+        or None
+    )
+
+    role = (
+        payload.get("role")
+        or ""
+    ).strip()
+
+    requested_start = payload.get(
+        "start_date"
+    )
+
+    requested_end = payload.get(
+        "end_date"
+    )
+
+    selected_skills = list(
+        payload.get("skills") or []
+    )
+
+    selected_certifications = list(
+        payload.get("certifications") or []
+    )
+
+    selected_languages = list(
+        payload.get("languages") or []
+    )
+
+    raw_weights = dict(
+        payload.get("weights") or {}
+    )
+
+    # ── VALIDAZIONI BASE ──────────────────────────────────────────────────────
+    if not opportunity_id:
+        raise ValueError(
+            "Opportunity is required."
+        )
+
+    if not role:
+        raise ValueError(
+            "Role is required."
+        )
+
+    if not requested_start or not requested_end:
+        raise ValueError(
+            "Start Date and End Date are required."
+        )
+
+    if len(selected_skills) > 3:
+        raise ValueError(
+            "A maximum of 3 skills can be selected."
+        )
+
+    if len(selected_certifications) > 2:
+        raise ValueError(
+            "A maximum of 2 certifications can be selected."
+        )
+
+    if len(selected_languages) > 2:
+        raise ValueError(
+            "A maximum of 2 languages can be selected."
+        )
+
+    opportunity_rows = _fetchall("""
+        SELECT
+            OPPORTUNITYID AS opportunity_id,
+            OPPORTUNITYTITLE AS opportunity_title,
+            MAINTECHCLUSTER AS main_tech_cluster,
+            FUNCTIONALAREA AS functional_area
+        FROM STAFFMATCH_SM_OPPORTUNITY
+        WHERE OPPORTUNITYID = ?
+    """, (
+        opportunity_id,
+    ))
+
+    if not opportunity_rows:
+        raise ValueError(
+            f"Opportunity {opportunity_id} does not exist."
+        )
+
+    opportunity = opportunity_rows[0]
+
+    # Se valorizzata, la OSR deve esistere
+    # e deve appartenere alla Opportunity selezionata.
+    if osr_id:
+        osr_rows = _fetchall("""
+            SELECT
+                OSRID AS osr_id,
+                OPPORTUNITYID AS opportunity_id
+            FROM STAFFMATCH_SM_OSR
+            WHERE OSRID = ?
+        """, (
+            osr_id,
+        ))
+
+        if not osr_rows:
+            raise ValueError(
+                f"OSR {osr_id} does not exist."
+            )
+
+        if (
+            osr_rows[0].get("opportunity_id")
+            != opportunity_id
+        ):
+            raise ValueError(
+                "The selected OSR does not belong "
+                "to the selected Opportunity."
+            )
+
+    # ── CRITERI SELEZIONATI ──────────────────────────────────────────────────
+    criteria_keys = []
+
+    for skill in selected_skills:
+        criteria_keys.append(
+            f"skill:{skill}"
+        )
+
+    for certification_id in selected_certifications:
+        criteria_keys.append(
+            f"certification:{certification_id}"
+        )
+
+    for language in selected_languages:
+        criteria_keys.append(
+            f"language:{language}"
+        )
+
+    # ── NORMALIZZAZIONE PESI ─────────────────────────────────────────────────
+    sanitized_weights = {}
+
+    for criterion_key in criteria_keys:
+        try:
+            criterion_weight = float(
+                raw_weights.get(
+                    criterion_key,
+                    0
+                )
+            )
+        except (TypeError, ValueError):
+            criterion_weight = 0
+
+        sanitized_weights[criterion_key] = max(
+            0,
+            min(100, criterion_weight)
+        )
+
+    raw_total = sum(
+        sanitized_weights.values()
+    )
+
+    normalized_weights = {}
+
+    if criteria_keys:
+        if raw_total == 0:
+            uniform_weight = (
+                100 / len(criteria_keys)
+            )
+
+            for criterion_key in criteria_keys:
+                normalized_weights[
+                    criterion_key
+                ] = uniform_weight
+
+        else:
+            for criterion_key in criteria_keys:
+                normalized_weights[
+                    criterion_key
+                ] = (
+                    sanitized_weights[
+                        criterion_key
+                    ]
+                    / raw_total
+                    * 100
+                )
+
+    # ── RISORSE REALI ─────────────────────────────────────────────────────────
+    resources = sm_get_risorse_v2()
+
+    candidates = []
+
+    status_rank = {
+        "available": 0,
+        "partial": 1,
+        "unavailable": 2
+    }
+
+    for resource in resources:
+        eid = resource.get("eid")
+
+        availability = sm_get_interval_availability(
+            eid=eid,
+            requested_start=requested_start,
+            requested_end=requested_end,
+            excluded_osr_id=osr_id
+        )
+
+        quality_match = sm_calculate_weighted_match(
+            resource=resource,
+            selected_skills=selected_skills,
+            selected_certifications=selected_certifications,
+            selected_languages=selected_languages,
+            weights=normalized_weights
+        )
+
+        availability_status = availability.get(
+            "availability_status",
+            "unavailable"
+        )
+
+        criteria = quality_match.get(
+            "criteria",
+            []
+        )
+
+        matched_criteria = [
+            item
+            for item in criteria
+            if item.get("matched") is True
+        ]
+
+        missing_criteria = [
+            item
+            for item in criteria
+            if item.get("matched") is not True
+        ]
+
+        managers = resource.get(
+            "managers",
+            []
+        )
+
+        candidate = {
+            "eid": eid,
+
+            "name": (
+                f"{resource.get('nome') or ''} "
+                f"{resource.get('cognome') or ''}"
+            ).strip(),
+
+            "email": resource.get(
+                "email"
+            ),
+
+            "level": resource.get(
+                "level"
+            ),
+
+            "level_name": resource.get(
+                "level_name"
+            ),
+
+            "years_of_experience": resource.get(
+                "anni_esperienza"
+            ) or 0,
+
+            "is_intern": bool(
+                resource.get("is_stagista")
+            ),
+
+            "score": quality_match.get(
+                "score",
+                0
+            ),
+
+            "availability_status":
+                availability_status,
+
+            "peak_allocation_pct":
+                availability.get(
+                    "peak_allocation_pct",
+                    0
+                ),
+
+            "available_capacity_pct":
+                availability.get(
+                    "available_capacity_pct",
+                    0
+                ),
+
+            "next_available_date":
+                availability.get(
+                    "next_available_date"
+                ),
+
+            "overlapping_osr":
+                availability.get(
+                    "overlapping_osr",
+                    []
+                ),
+
+            "criteria":
+                criteria,
+
+            "matched_criteria":
+                matched_criteria,
+
+            "missing_criteria":
+                missing_criteria,
+
+            "skills":
+                resource.get("skills", []),
+
+            "certifications":
+                resource.get(
+                    "certifications",
+                    []
+                ),
+
+            "languages":
+                resource.get(
+                    "languages",
+                    []
+                ),
+
+            "managers":
+                managers,
+            
+            "current_assignments":
+                resource.get(
+                    "current_assignments",
+                    []
+                )
+        }
+
+        candidates.append(candidate)
+
+    # Availability prima dello score.
+    candidates = sorted(
+        candidates,
+        key=lambda candidate: (
+            status_rank.get(
+                candidate.get(
+                    "availability_status"
+                ),
+                99
+            ),
+            -float(
+                candidate.get("score") or 0
+            ),
+            candidate.get("name") or ""
+        )
+    )
+
+    # Rank complessivo dopo l'ordinamento.
+    for index, candidate in enumerate(
+        candidates,
+        start=1
+    ):
+        candidate["rank"] = index
+
+    return {
+        "opportunity": opportunity,
+
+        "matching_context": {
+            "opportunity_id":
+                opportunity_id,
+
+            "osr_id":
+                osr_id,
+
+            "role":
+                role,
+
+            "start_date":
+                str(requested_start),
+
+            "end_date":
+                str(requested_end),
+
+            "skills":
+                selected_skills,
+
+            "certifications":
+                selected_certifications,
+
+            "languages":
+                selected_languages,
+
+            "weights":
+                {
+                    key: round(value, 2)
+                    for key, value
+                    in normalized_weights.items()
+                }
+        },
+
+        "summary": {
+            "total_candidates":
+                len(candidates),
+
+            "available":
+                sum(
+                    1
+                    for candidate in candidates
+                    if candidate.get(
+                        "availability_status"
+                    ) == "available"
+                ),
+
+            "partial":
+                sum(
+                    1
+                    for candidate in candidates
+                    if candidate.get(
+                        "availability_status"
+                    ) == "partial"
+                ),
+
+            "unavailable":
+                sum(
+                    1
+                    for candidate in candidates
+                    if candidate.get(
+                        "availability_status"
+                    ) == "unavailable"
+                )
+        },
+
+        "candidates": candidates
+    }
