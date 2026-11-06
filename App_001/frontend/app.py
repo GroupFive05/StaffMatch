@@ -4933,7 +4933,255 @@ def show_matching_ai(groups):
             "candidates",
             []
         )
+        def open_resource_request(candidate):
+            requesting_user = st.session_state.user or {}
 
+            requesting_manager = (
+                f"{requesting_user.get('nome') or ''} "
+                f"{requesting_user.get('cognome') or ''}"
+            ).strip()
+
+            selected_osr_id = (
+                selected_osr.get("osr_id")
+                if selected_osr
+                else None
+            )
+
+            matched_criteria = candidate.get(
+                "matched_criteria",
+                []
+            )
+
+            matched_labels = [
+                item.get("criterion")
+                for item in matched_criteria
+                if item.get("criterion")
+            ]
+
+            if matched_labels:
+                rationale = (
+                    f"{candidate.get('name', '')} is recommended because "
+                    f"the resource matches the following relevant criteria: "
+                    f"{', '.join(matched_labels)}. "
+                    f"The profile achieved a match score of "
+                    f"{candidate.get('score', 0):.1f}/100 and has "
+                    f"{candidate.get('available_capacity_pct', 0)}% "
+                    f"available capacity during the requested period."
+                )
+            else:
+                rationale = (
+                    f"{candidate.get('name', '')} is proposed as an "
+                    f"alternative staffing option based on the resource's "
+                    f"profile and availability during the requested period."
+                )
+
+            st.session_state["matching_resource_request"] = {
+                "candidate": candidate,
+                "opportunity": selected_opportunity,
+                "role": selected_role,
+                "start_date": matching_start_date.isoformat(),
+                "end_date": matching_end_date.isoformat(),
+                "osr_id": selected_osr_id,
+                "requesting_manager": requesting_manager,
+                "requesting_manager_email": requesting_user.get(
+                    "email",
+                    ""
+                ),
+                "rationale": rationale
+            }
+
+            st.session_state[
+                "matching_request_view"
+            ] = True
+            st.rerun()
+        if st.session_state.get(
+            "matching_request_view",
+            False
+        ):
+            request_data = st.session_state.get(
+                "matching_resource_request",
+                {}
+            )
+
+            candidate = request_data.get(
+                "candidate",
+                {}
+            )
+            opportunity = request_data.get(
+                "opportunity",
+                {}
+            )
+
+            st.markdown("### 📩 Resource Request")
+
+            if st.button(
+                "← Back to Matching Results",
+                key="back_from_resource_request"
+            ):
+                st.session_state[
+                    "matching_request_view"
+                ] = False
+
+                st.rerun()
+
+            st.markdown("---")
+
+            profile_col, context_col = st.columns(2)
+
+            with profile_col:
+                st.markdown("#### Selected Resource")
+
+                st.markdown(
+                    f"**{candidate.get('name', '')}**"
+                )
+
+                st.markdown(
+                    f"EID: `{candidate.get('eid', '')}`"
+                )
+
+                st.markdown(
+                    f"Level: "
+                    f"**{candidate.get('level_name') or '—'}**"
+                )
+
+                st.markdown(
+                    f"Match Score: "
+                    f"**{candidate.get('score', 0):.1f}/100**"
+                )
+
+                st.markdown(
+                    f"Available Capacity: "
+                    f"**{candidate.get('available_capacity_pct', 0)}%**"
+                )
+
+            with context_col:
+                st.markdown("#### Staffing Context")
+
+                st.markdown(
+                    f"**Opportunity:** "
+                    f"{opportunity.get('opportunity_title') or '—'}"
+                )
+
+                st.markdown(
+                    f"**Role:** "
+                    f"{request_data.get('role') or '—'}"
+                )
+
+                st.markdown(
+                    f"**Period:** "
+                    f"{request_data.get('start_date')} → "
+                    f"{request_data.get('end_date')}"
+                )
+
+                st.markdown(
+                    f"**OSR:** "
+                    f"{request_data.get('osr_id') or 'New OSR required'}"
+                )
+
+                st.markdown(
+                    f"**Requesting Manager:** "
+                    f"{request_data.get('requesting_manager') or '—'}"
+                )
+
+            st.markdown("---")
+            st.markdown("#### ✨ Selection Rationale")
+
+            rationale = st.text_area(
+                "Rationale",
+                value=request_data.get(
+                    "rationale",
+                    ""
+                ),
+                height=140,
+                key="resource_request_rationale"
+            )
+
+            opportunity_title = (
+                opportunity.get("opportunity_title")
+                or opportunity.get("opportunity_id")
+                or "Staffing Opportunity"
+            )
+
+            subject_default = (
+                f"StaffMatch | Resource Request | "
+                f"{candidate.get('name', '')} | "
+                f"{opportunity_title}"
+            )
+
+            osr_text = (
+                request_data.get("osr_id")
+                or "New OSR required"
+            )
+
+            manager_name = (
+                request_data.get("requesting_manager")
+                or "StaffMatch Manager"
+            )
+
+            body_default = (
+                f"Hello,\n\n"
+                f"I would like to request the following resource "
+                f"for a staffing need.\n\n"
+                f"Resource: {candidate.get('name', '')}\n"
+                f"EID: {candidate.get('eid', '')}\n"
+                f"Level: {candidate.get('level_name') or '—'}\n\n"
+                f"Opportunity: {opportunity_title}\n"
+                f"Role: {request_data.get('role') or '—'}\n"
+                f"Requested period: "
+                f"{request_data.get('start_date')} to "
+                f"{request_data.get('end_date')}\n"
+                f"OSR: {osr_text}\n\n"
+                f"Selection rationale:\n"
+                f"{rationale}\n\n"
+                f"Please review this staffing request and confirm "
+                f"the required next steps.\n\n"
+                f"Best regards,\n"
+                f"{manager_name}"
+            )
+
+            st.markdown("---")
+            st.markdown("#### ✉️ Email Preview")
+
+            recipient_email = st.text_input(
+                "To *",
+                placeholder="recipient@example.com",
+                key="resource_request_to"
+            )
+
+            cc_email = st.text_input(
+                "CC",
+                placeholder="optional@example.com",
+                key="resource_request_cc"
+            )
+
+            email_subject = st.text_input(
+                "Subject",
+                value=subject_default,
+                key="resource_request_subject"
+            )
+
+            email_body = st.text_area(
+                "Email Body",
+                value=body_default,
+                height=420,
+                key="resource_request_body"
+            )
+
+            st.info(
+                "Email delivery will be connected in the next step. "
+                "The recipient, subject, rationale and body are already "
+                "fully editable."
+            )
+
+            st.button(
+                "📨 Send Resource Request",
+                type="primary",
+                use_container_width=True,
+                disabled=True,
+                key="send_resource_request"
+            )
+
+            return
         st.caption(
             "Availability is evaluated for the entire requested period. "
             "Within each availability group, resources are ranked by match score."
@@ -4941,7 +5189,284 @@ def show_matching_ai(groups):
 
         # Mostriamo inizialmente i primi 20 risultati.
         visible_candidates = candidates[:20]
+        if st.session_state.get(
+            "matching_compare_view",
+            False
+        ):
+            compare_eids = st.session_state.get(
+                "matching_compare_eids",
+                []
+            )
 
+            compared_candidates = [
+                candidate
+                for candidate in candidates
+                if candidate.get("eid") in compare_eids
+            ]
+
+            st.markdown("### ⚖️ Resource Comparison")
+
+            if st.button(
+                "← Back to Matching Results",
+                key="back_to_matching_results"
+            ):
+                st.session_state[
+                    "matching_compare_view"
+                ] = False
+
+                st.rerun()
+
+            comparison_columns = st.columns(
+                len(compared_candidates)
+            )
+
+            for column, candidate in zip(
+                comparison_columns,
+                compared_candidates
+            ):
+                with column:
+                    availability_status = candidate.get(
+                        "availability_status"
+                    )
+
+                    if availability_status == "available":
+                        availability_icon = "🟢"
+                        availability_label = "Available"
+
+                    elif availability_status == "partial":
+                        availability_icon = "🟠"
+                        availability_label = "Partial Availability"
+
+                    else:
+                        availability_icon = "🔴"
+                        availability_label = "Unavailable"
+
+                    with st.container(border=True):
+                        st.markdown(
+                            f"### {candidate.get('name', '')}"
+                        )
+
+                        st.caption(
+                            f"EID {candidate.get('eid', '')}"
+                        )
+
+                        st.metric(
+                            "Match Score",
+                            f"{candidate.get('score', 0):.1f}/100"
+                        )
+
+                        st.markdown(
+                            f"**{availability_icon} "
+                            f"{availability_label}**"
+                        )
+
+                        st.markdown(
+                            f"Available Capacity: "
+                            f"**{candidate.get('available_capacity_pct', 0)}%**"
+                        )
+
+                        st.markdown(
+                            f"Level: "
+                            f"**{candidate.get('level_name') or '—'}**"
+                        )
+
+                        st.markdown(
+                            f"Experience: "
+                            f"**{candidate.get('years_of_experience', 0)} years**"
+                        )
+                        st.markdown("---")
+
+                        st.markdown("##### 🏆 Matched Criteria")
+
+                        matched = candidate.get(
+                            "matched_criteria",
+                            []
+                        )
+
+                        if matched:
+                            for criterion in matched:
+                                st.markdown(
+                                    f"✨ {criterion.get('criterion')} "
+                                    f"· {criterion.get('weight', 0):.2f}%"
+                                )
+                        else:
+                            st.caption(
+                                "No selected criteria matched."
+                            )
+
+                        st.markdown("##### 🚫 Missing Criteria")
+
+                        missing = candidate.get(
+                            "missing_criteria",
+                            []
+                        )
+
+                        if missing:
+                            for criterion in missing:
+                                st.markdown(
+                                    f"○ {criterion.get('criterion')} "
+                                    f"· {criterion.get('weight', 0):.2f}%"
+                                )
+                        else:
+                            st.caption(
+                                "All selected criteria matched."
+                            )
+
+                        st.markdown("---")
+                        st.markdown("##### Skills")
+
+                        skills = [
+                            item.get("skill_name")
+                            for item in candidate.get("skills", [])
+                            if item.get("skill_name")
+                        ]
+
+                        if skills:
+                            st.caption(" · ".join(skills))
+                        else:
+                            st.caption("No skills available.")
+
+                        st.markdown("##### Certifications")
+
+                        certifications = [
+                            item.get("nome_cert")
+                            for item in candidate.get(
+                                "certifications",
+                                []
+                            )
+                            if item.get("nome_cert")
+                        ]
+
+                        if certifications:
+                            for certification in certifications:
+                                st.caption(
+                                    f"🎓 {certification}"
+                                )
+                        else:
+                            st.caption(
+                                "No certifications available."
+                            )
+
+                        st.markdown("##### Languages")
+
+                        languages = [
+                            item.get("language_code")
+                            for item in candidate.get(
+                                "languages",
+                                []
+                            )
+                            if item.get("language_code")
+                        ]
+
+                        if languages:
+                            st.caption(" · ".join(languages))
+                        else:
+                            st.caption(
+                                "No languages available."
+                            )
+
+                        st.markdown("---")
+                        st.markdown(
+                            "##### Current Assignments"
+                        )
+
+                        assignments = candidate.get(
+                            "current_assignments",
+                            []
+                        )
+
+                        if assignments:
+                            for assignment in assignments:
+                                osr_status = assignment.get(
+                                    "osr_status"
+                                )
+
+                                if osr_status == "Active":
+                                    osr_icon = "🟢"
+                                elif osr_status == "Rolling-off":
+                                    osr_icon = "🟠"
+                                elif osr_status == "Closed":
+                                    osr_icon = "🔴"
+                                else:
+                                    osr_icon = "⚪"
+
+                                st.markdown(
+                                    f"**{osr_icon} "
+                                    f"{assignment.get('osr_id', '')} "
+                                    f"· {osr_status or '—'}**"
+                                )
+
+                                st.caption(
+                                    assignment.get(
+                                        "opportunity_title"
+                                    ) or "—"
+                                )
+
+                                st.caption(
+                                    f"Allocation "
+                                    f"{assignment.get('allocation_pct', 0)}% "
+                                    f"· End "
+                                    f"{assignment.get('end_date') or '—'}"
+                                )
+                        else:
+                            st.caption(
+                                "No current assignments."
+                            )
+                        
+
+                        st.markdown("---")
+
+                        if st.button(
+                            "📩 Request Resource",
+                            type="primary",
+                            use_container_width=True,
+                            key=f"compare_request_resource_{candidate.get('eid')}"
+                        ):
+                            open_resource_request(candidate)
+
+            return
+        st.markdown("#### ⚖️ Compare Resources")
+
+        compare_options = {
+            (
+                f"#{candidate.get('rank', '')} · "
+                f"{candidate.get('name', '')} · "
+                f"Score {candidate.get('score', 0):.1f}"
+            ): candidate.get("eid")
+            for candidate in visible_candidates
+        }
+
+        selected_compare_labels = st.multiselect(
+            "Select up to 3 resources to compare",
+            list(compare_options.keys()),
+            max_selections=3,
+            key="matching_compare_resources"
+        )
+
+        selected_compare_eids = [
+            compare_options[label]
+            for label in selected_compare_labels
+        ]
+
+        if selected_compare_eids:
+            if st.button(
+                "⚖️ Compare Selected Resources",
+                type="primary",
+                use_container_width=True,
+                key="open_resource_comparison"
+            ):
+                st.session_state[
+                    "matching_compare_view"
+                ] = True
+
+                st.session_state[
+                    "matching_compare_eids"
+                ] = selected_compare_eids
+
+                st.rerun()
+
+
+        
         for candidate in visible_candidates:
             availability_status = candidate.get(
                 "availability_status"
@@ -5172,6 +5697,16 @@ def show_matching_ai(groups):
                                 f"{osr.get('start_date')} → "
                                 f"{osr.get('end_date')}"
                             )
+                st.markdown("---")
+
+                if st.button(
+                    "📩 Request Resource",
+                    type="primary",
+                    use_container_width=True,
+                    key=f"request_resource_{candidate.get('eid')}"
+                ):
+                    open_resource_request(candidate)
+
     # ── MAIN ───────────────────────────────────────────────────────────────────────
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI</p>', unsafe_allow_html=True)
