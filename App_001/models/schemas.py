@@ -286,3 +286,11 @@ class MatchingWeightsSuggestionRequest(BaseModel):
     skills: list[str] = []
     certifications: list[str] = []
     languages: list[str] = []   
+
+class ResourceSelectionRationaleRequest(BaseModel):
+    candidate: dict
+    opportunity: dict
+    role: str
+    start_date: str
+    end_date: str
+    osr_id: Optional[str] = None

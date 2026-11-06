@@ -4,11 +4,15 @@ NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -de
 """
 from fastapi import APIRouter, HTTPException
 from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai
-from services.match_service import suggest_matching_weights
+from services.match_service import (
+    suggest_matching_weights,
+    generate_resource_selection_rationale,
+)
 from models.schemas import (
     ResourceV2Create, 
     MatchingAIRequest,
     MatchingWeightsSuggestionRequest,
+    ResourceSelectionRationaleRequest,
 )
 router = APIRouter(prefix="/sm", tags=["sm-matching-test"])
 
@@ -122,6 +126,30 @@ def suggest_weights(
             status_code=500,
             detail=(
                 "Unable to generate AI weight suggestion: "
+                f"{str(exc)}"
+            )
+        )
+
+@router.post("/matching/selection-rationale")
+def selection_rationale(
+    payload: ResourceSelectionRationaleRequest
+):
+    try:
+        return generate_resource_selection_rationale(
+            payload.model_dump()
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to generate selection rationale: "
                 f"{str(exc)}"
             )
         )

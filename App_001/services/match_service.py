@@ -54,6 +54,36 @@ Rules:
 - The rationale must be concise and written in English.
 """
 
+RATIONALE_SYSTEM_PROMPT = """
+You are an expert workforce staffing advisor for SAP and Data & AI projects.
+
+Generate a concise, professional rationale explaining why a selected resource
+is suitable for a specific staffing request.
+
+Use only the information provided in the request.
+
+Consider:
+- Opportunity and requested role
+- Requested staffing period
+- Match score
+- Matched criteria
+- Missing criteria
+- Resource level and experience
+- Availability during the requested period
+- Current assignments and rolling-off dates
+
+The rationale must:
+- Be written in English
+- Be suitable for inclusion in a professional staffing request email
+- Be concise, with a maximum of 3 sentences
+- Explain both strengths and any relevant availability consideration
+- Never invent skills, certifications, experience or availability
+- Avoid mentioning internal scoring mechanics unless useful
+- Return only the rationale text
+- Do not return JSON
+- Do not use markdown
+"""
+
 def run_matching(opportunity_id: str) -> list:
     opportunities = db.get_opportunities()
     opp = next((o for o in opportunities if o["id"] == opportunity_id), None)
@@ -300,4 +330,150 @@ Selected criterion keys:
             suggestion.get("rationale")
             or "Weights suggested from the selected staffing context."
         )
-    }    
+    }   
+
+def generate_resource_selection_rationale(
+    payload: dict
+) -> dict:
+    """
+    Generates a professional staffing rationale using Claude
+    through the existing SAP AI Core integration.
+    """
+
+    candidate = payload.get("candidate") or {}
+    opportunity = payload.get("opportunity") or {}
+
+    role = (
+        payload.get("role")
+        or ""
+    ).strip()
+
+    start_date = payload.get("start_date")
+    end_date = payload.get("end_date")
+    osr_id = payload.get("osr_id")
+
+    if not candidate:
+        raise ValueError(
+            "Selected resource is required."
+        )
+
+    if not opportunity:
+        raise ValueError(
+            "Opportunity context is required."
+        )
+
+    if not role:
+        raise ValueError(
+            "Requested role is required."
+        )
+
+    matched_criteria = candidate.get(
+        "matched_criteria",
+        []
+    )
+
+    missing_criteria = candidate.get(
+        "missing_criteria",
+        []
+    )
+
+    current_assignments = candidate.get(
+        "current_assignments",
+        []
+    )
+
+    rationale_context = {
+        "opportunity": {
+            "id": opportunity.get(
+                "opportunity_id"
+            ),
+            "title": opportunity.get(
+                "opportunity_title"
+            ),
+            "technology": opportunity.get(
+                "main_tech_cluster"
+            ),
+            "functional_area": opportunity.get(
+                "functional_area"
+            )
+        },
+
+        "staffing_request": {
+            "role": role,
+            "start_date": start_date,
+            "end_date": end_date,
+            "osr_id": osr_id
+        },
+
+        "resource": {
+            "eid": candidate.get("eid"),
+            "name": candidate.get("name"),
+            "level": candidate.get(
+                "level_name"
+            ),
+            "years_of_experience":
+                candidate.get(
+                    "years_of_experience",
+                    0
+                ),
+            "match_score": candidate.get(
+                "score",
+                0
+            ),
+            "availability_status":
+                candidate.get(
+                    "availability_status"
+                ),
+            "available_capacity_pct":
+                candidate.get(
+                    "available_capacity_pct",
+                    0
+                )
+        },
+
+        "matched_criteria":
+            matched_criteria,
+
+        "missing_criteria":
+            missing_criteria,
+
+        "current_assignments":
+            current_assignments
+    }
+
+    user_message = (
+        "Generate the selection rationale for this staffing request:\n\n"
+        + json.dumps(
+            rationale_context,
+            ensure_ascii=False,
+            indent=2
+        )
+    )
+
+    raw_rationale = ai_service.call_claude(
+        RATIONALE_SYSTEM_PROMPT,
+        user_message
+    )
+
+    rationale = (
+        raw_rationale
+        or ""
+    ).strip()
+
+    # Defensive cleanup in case the model returns markdown fences.
+    rationale = rationale.replace(
+        "```text",
+        ""
+    ).replace(
+        "```",
+        ""
+    ).strip()
+
+    if not rationale:
+        raise ValueError(
+            "The AI did not generate a selection rationale."
+        )
+
+    return {
+        "rationale": rationale
+    } 

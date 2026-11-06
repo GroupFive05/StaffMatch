@@ -4356,7 +4356,190 @@ def show_staffing_management_v2(groups):
             use_container_width=True,
             hide_index=True
         )
+def show_resource_request(groups):
+    request_data = st.session_state.get(
+        "matching_resource_request",
+        {}
+    )
 
+    if not request_data:
+        st.warning("No resource request is currently available.")
+
+        if st.button("← Back to Matching AI"):
+            st.session_state.page = "matching_v2"
+            st.rerun()
+
+        return
+
+    candidate = request_data.get(
+        "candidate",
+        {}
+    )
+
+    opportunity = request_data.get(
+        "opportunity",
+        {}
+    )
+
+    st.markdown(
+        '<p class="main-title">📩 Resource Request</p>',
+        unsafe_allow_html=True
+    )
+
+    if st.button(
+        "← Back to Matching Results",
+        key="back_from_resource_request_page"
+    ):
+        st.session_state.page = "matching_v2"
+        st.rerun()
+
+    st.markdown("---")
+
+    profile_col, context_col = st.columns(2)
+
+    with profile_col:
+        st.markdown("#### Selected Resource")
+
+        st.markdown(
+            f"**{candidate.get('name', '')}**"
+        )
+
+        st.markdown(
+            f"EID: `{candidate.get('eid', '')}`"
+        )
+
+        st.markdown(
+            f"Level: "
+            f"**{candidate.get('level_name') or '—'}**"
+        )
+
+        st.markdown(
+            f"Match Score: "
+            f"**{candidate.get('score', 0):.1f}/100**"
+        )
+
+        st.markdown(
+            f"Available Capacity: "
+            f"**{candidate.get('available_capacity_pct', 0)}%**"
+        )
+
+    with context_col:
+        st.markdown("#### Staffing Context")
+
+        st.markdown(
+            f"**Opportunity:** "
+            f"{opportunity.get('opportunity_title') or '—'}"
+        )
+
+        st.markdown(
+            f"**Role:** "
+            f"{request_data.get('role') or '—'}"
+        )
+
+        st.markdown(
+            f"**Period:** "
+            f"{request_data.get('start_date')} → "
+            f"{request_data.get('end_date')}"
+        )
+
+        st.markdown(
+            f"**OSR:** "
+            f"{request_data.get('osr_id') or 'New OSR required'}"
+        )
+
+        st.markdown(
+            f"**Requesting Manager:** "
+            f"{request_data.get('requesting_manager') or '—'}"
+        )
+
+    rationale = request_data.get(
+        "rationale",
+        ""
+    )
+
+    opportunity_title = (
+        opportunity.get("opportunity_title")
+        or opportunity.get("opportunity_id")
+        or "Staffing Opportunity"
+    )
+
+    subject_default = (
+        f"StaffMatch | Resource Request | "
+        f"{candidate.get('name', '')} | "
+        f"{opportunity_title}"
+    )
+
+    osr_text = (
+        request_data.get("osr_id")
+        or "New OSR required"
+    )
+
+    manager_name = (
+        request_data.get("requesting_manager")
+        or "StaffMatch Manager"
+    )
+
+    body_default = (
+        f"Hello,\n\n"
+        f"I would like to request the following resource "
+        f"for a staffing need.\n\n"
+        f"Resource: {candidate.get('name', '')}\n"
+        f"EID: {candidate.get('eid', '')}\n"
+        f"Level: {candidate.get('level_name') or '—'}\n\n"
+        f"Opportunity: {opportunity_title}\n"
+        f"Role: {request_data.get('role') or '—'}\n"
+        f"Requested period: "
+        f"{request_data.get('start_date')} to "
+        f"{request_data.get('end_date')}\n"
+        f"OSR: {osr_text}\n\n"
+        f"Selection rationale:\n"
+        f"{rationale}\n\n"
+        f"Please review this staffing request and confirm "
+        f"the required next steps.\n\n"
+        f"Best regards,\n"
+        f"{manager_name}"
+    )
+
+    st.markdown("---")
+    st.markdown("#### ✉️ Email Preview")
+
+    recipient_email = st.text_input(
+        "To *",
+        placeholder="recipient@example.com",
+        key="resource_request_page_to"
+    )
+
+    cc_email = st.text_input(
+        "CC",
+        placeholder="optional@example.com",
+        key="resource_request_page_cc"
+    )
+
+    email_subject = st.text_input(
+        "Subject",
+        value=subject_default,
+        key="resource_request_page_subject"
+    )
+
+    email_body = st.text_area(
+        "Email Body",
+        value=body_default,
+        height=420,
+        key="resource_request_page_body"
+    )
+
+    st.info(
+        "Email delivery will be connected in the next step. "
+        "The recipient, subject and body are fully editable."
+    )
+
+    st.button(
+        "📨 Send Resource Request",
+        type="primary",
+        use_container_width=True,
+        disabled=True,
+        key="send_resource_request_page"
+    )
 # ── MATCHING AI - NEW ─────────────────────────────────────────────────────────
 def show_matching_ai(groups):
     results = st.session_state.get(
@@ -4947,32 +5130,33 @@ def show_matching_ai(groups):
                 else None
             )
 
-            matched_criteria = candidate.get(
-                "matched_criteria",
-                []
+            rationale_response = api(
+                "POST",
+                "/sm/matching/selection-rationale",
+                json={
+                    "candidate": candidate,
+                    "opportunity": selected_opportunity,
+                    "role": selected_role,
+                    "start_date": matching_start_date.isoformat(),
+                    "end_date": matching_end_date.isoformat(),
+                    "osr_id": selected_osr_id
+                }
             )
 
-            matched_labels = [
-                item.get("criterion")
-                for item in matched_criteria
-                if item.get("criterion")
-            ]
-
-            if matched_labels:
-                rationale = (
-                    f"{candidate.get('name', '')} is recommended because "
-                    f"the resource matches the following relevant criteria: "
-                    f"{', '.join(matched_labels)}. "
-                    f"The profile achieved a match score of "
-                    f"{candidate.get('score', 0):.1f}/100 and has "
-                    f"{candidate.get('available_capacity_pct', 0)}% "
-                    f"available capacity during the requested period."
+            if (
+                rationale_response is not None
+                and rationale_response.status_code == 200
+            ):
+                rationale = rationale_response.json().get(
+                    "rationale",
+                    ""
                 )
+
             else:
                 rationale = (
-                    f"{candidate.get('name', '')} is proposed as an "
-                    f"alternative staffing option based on the resource's "
-                    f"profile and availability during the requested period."
+                    f"{candidate.get('name', '')} has been selected "
+                    f"for this staffing request based on the current "
+                    f"matching results and availability."
                 )
 
             st.session_state["matching_resource_request"] = {
@@ -4990,198 +5174,8 @@ def show_matching_ai(groups):
                 "rationale": rationale
             }
 
-            st.session_state[
-                "matching_request_view"
-            ] = True
+            st.session_state.page = "resource_request"
             st.rerun()
-        if st.session_state.get(
-            "matching_request_view",
-            False
-        ):
-            request_data = st.session_state.get(
-                "matching_resource_request",
-                {}
-            )
-
-            candidate = request_data.get(
-                "candidate",
-                {}
-            )
-            opportunity = request_data.get(
-                "opportunity",
-                {}
-            )
-
-            st.markdown("### 📩 Resource Request")
-
-            if st.button(
-                "← Back to Matching Results",
-                key="back_from_resource_request"
-            ):
-                st.session_state[
-                    "matching_request_view"
-                ] = False
-
-                st.rerun()
-
-            st.markdown("---")
-
-            profile_col, context_col = st.columns(2)
-
-            with profile_col:
-                st.markdown("#### Selected Resource")
-
-                st.markdown(
-                    f"**{candidate.get('name', '')}**"
-                )
-
-                st.markdown(
-                    f"EID: `{candidate.get('eid', '')}`"
-                )
-
-                st.markdown(
-                    f"Level: "
-                    f"**{candidate.get('level_name') or '—'}**"
-                )
-
-                st.markdown(
-                    f"Match Score: "
-                    f"**{candidate.get('score', 0):.1f}/100**"
-                )
-
-                st.markdown(
-                    f"Available Capacity: "
-                    f"**{candidate.get('available_capacity_pct', 0)}%**"
-                )
-
-            with context_col:
-                st.markdown("#### Staffing Context")
-
-                st.markdown(
-                    f"**Opportunity:** "
-                    f"{opportunity.get('opportunity_title') or '—'}"
-                )
-
-                st.markdown(
-                    f"**Role:** "
-                    f"{request_data.get('role') or '—'}"
-                )
-
-                st.markdown(
-                    f"**Period:** "
-                    f"{request_data.get('start_date')} → "
-                    f"{request_data.get('end_date')}"
-                )
-
-                st.markdown(
-                    f"**OSR:** "
-                    f"{request_data.get('osr_id') or 'New OSR required'}"
-                )
-
-                st.markdown(
-                    f"**Requesting Manager:** "
-                    f"{request_data.get('requesting_manager') or '—'}"
-                )
-
-            st.markdown("---")
-            st.markdown("#### ✨ Selection Rationale")
-
-            rationale = st.text_area(
-                "Rationale",
-                value=request_data.get(
-                    "rationale",
-                    ""
-                ),
-                height=140,
-                key="resource_request_rationale"
-            )
-
-            opportunity_title = (
-                opportunity.get("opportunity_title")
-                or opportunity.get("opportunity_id")
-                or "Staffing Opportunity"
-            )
-
-            subject_default = (
-                f"StaffMatch | Resource Request | "
-                f"{candidate.get('name', '')} | "
-                f"{opportunity_title}"
-            )
-
-            osr_text = (
-                request_data.get("osr_id")
-                or "New OSR required"
-            )
-
-            manager_name = (
-                request_data.get("requesting_manager")
-                or "StaffMatch Manager"
-            )
-
-            body_default = (
-                f"Hello,\n\n"
-                f"I would like to request the following resource "
-                f"for a staffing need.\n\n"
-                f"Resource: {candidate.get('name', '')}\n"
-                f"EID: {candidate.get('eid', '')}\n"
-                f"Level: {candidate.get('level_name') or '—'}\n\n"
-                f"Opportunity: {opportunity_title}\n"
-                f"Role: {request_data.get('role') or '—'}\n"
-                f"Requested period: "
-                f"{request_data.get('start_date')} to "
-                f"{request_data.get('end_date')}\n"
-                f"OSR: {osr_text}\n\n"
-                f"Selection rationale:\n"
-                f"{rationale}\n\n"
-                f"Please review this staffing request and confirm "
-                f"the required next steps.\n\n"
-                f"Best regards,\n"
-                f"{manager_name}"
-            )
-
-            st.markdown("---")
-            st.markdown("#### ✉️ Email Preview")
-
-            recipient_email = st.text_input(
-                "To *",
-                placeholder="recipient@example.com",
-                key="resource_request_to"
-            )
-
-            cc_email = st.text_input(
-                "CC",
-                placeholder="optional@example.com",
-                key="resource_request_cc"
-            )
-
-            email_subject = st.text_input(
-                "Subject",
-                value=subject_default,
-                key="resource_request_subject"
-            )
-
-            email_body = st.text_area(
-                "Email Body",
-                value=body_default,
-                height=420,
-                key="resource_request_body"
-            )
-
-            st.info(
-                "Email delivery will be connected in the next step. "
-                "The recipient, subject, rationale and body are already "
-                "fully editable."
-            )
-
-            st.button(
-                "📨 Send Resource Request",
-                type="primary",
-                use_container_width=True,
-                disabled=True,
-                key="send_resource_request"
-            )
-
-            return
         st.caption(
             "Availability is evaluated for the entire requested period. "
             "Within each availability group, resources are ranked by match score."
@@ -5790,6 +5784,8 @@ def main():
         show_matching(groups)
     elif page == "matching_v2":
         show_matching_ai(groups)
+    elif page == "resource_request":
+        show_resource_request(groups)
     elif page == "chatbot":
         show_chatbot(groups)
     elif page == "approvazioni":
