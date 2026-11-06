@@ -1,11 +1,39 @@
 import re
 from . import db, ai_service
 
-SYSTEM_PROMPT = """Sei un assistente esperto di staffing per progetti SAP/IT di Accenture Italy.
-Hai accesso ai dati reali del sistema StaffMatch: risorse (dipendenti), progetti, opportunity e skill.
-Rispondi sempre in italiano, in modo preciso e conciso, basandoti esclusivamente sui dati forniti nel contesto.
-Se la domanda non riguarda i dati del sistema, rispondi che puoi aiutare solo con informazioni relative alle risorse, progetti e opportunity presenti nel sistema.
-Non inventare dati che non sono nel contesto."""
+SYSTEM_PROMPT = """
+Sei il Practice Advisor di StaffMatch, esperto di staffing per progetti
+SAP, Data e AI.
+
+Hai accesso ai dati correnti del modello StaffMatch V2:
+risorse, level, esperienza, skill, certificazioni, lingue,
+disponibilità, current assignments, OSR, opportunity,
+contratti, clienti e manager.
+
+Lo stato operativo delle OSR non deriva mai dal campo STATO del database.
+
+Usa esclusivamente lo stato calcolato da DATAFINE:
+- Closed: DATAFINE precedente a oggi
+- Rolling-off: DATAFINE compresa fra oggi e i prossimi 3 mesi
+- Active: DATAFINE successiva alla soglia dei prossimi 3 mesi
+
+La disponibilità delle risorse deriva dalle OSR e dalle relative
+percentuali di allocazione, non da campi legacy.
+
+Rispondi nella stessa lingua utilizzata dall'utente:
+- se la domanda è in italiano, rispondi in italiano;
+- se la domanda è in inglese, rispondi in inglese;
+- se la domanda contiene prevalentemente una delle due lingue, usa quella prevalente.
+
+Mantieni un tono professionale, preciso e conciso.
+Basa ogni risposta esclusivamente sui dati presenti nel contesto.
+
+Non inventare risorse, skill, certificazioni, date, percentuali,
+clienti, contratti, manager o stati OSR.
+
+Se una risposta non è determinabile dai dati forniti,
+dichiara chiaramente che l'informazione non è disponibile.
+"""
 
 # ── Classificazione domanda ────────────────────────────────────────────────────
 
@@ -48,84 +76,312 @@ def _classify(question: str) -> set:
 
 def _build_context(categories: set) -> str:
     from datetime import datetime
-    now = datetime.now().strftime("%A %d %B %Y, ore %H:%M")
-    lines = [f"=== DATA E ORA CORRENTE ===\n{now}"]
 
-    resources  = db.get_resources()
-    roles_map  = {r["id"]: r for r in db.get_roles()}
-    res_name_map = {r["id"]: f"{r.get('nome','')} {r.get('cognome','')}" for r in resources}
+    now = datetime.now().strftime(
+        "%A %d %B %Y, ore %H:%M"
+    )
 
-    # Sezione RISORSE — sempre inclusa, ma il dettaglio delle skill dipende dalla categoria
+    lines = [
+        f"=== DATA E ORA CORRENTE ===\n{now}"
+    ]
+
+    # Dati V2 reali
+    resources = db.sm_get_risorse_v2()
+    staffing = db.sm_get_staffing_management_v2()
+
+    osr_rows = staffing.get(
+        "osr",
+        []
+    )
+
+    opportunity_rows = staffing.get(
+        "opportunities",
+        []
+    )
+
+    contract_rows = staffing.get(
+        "contracts",
+        []
+    )
+
     include_skills = "skills" in categories
-    skills_map = {s["id"]: s["nome"] for s in db.get_skills()} if include_skills else {}
-    groups_map = {g["id"]: g["nome"] for g in db.get_role_groups()}
 
-    lines.append("\n=== RISORSE (DIPENDENTI) ===")
-    for r in resources:
-        ruolo = roles_map.get(r.get("ruolo_id", ""), {})
+    # ── RESOURCES V2 ──────────────────────────────────────────────
+    lines.append(
+        "\n=== RISORSE STAFFMATCH V2 ==="
+    )
+
+    for resource in resources:
+        resource_name = (
+            f"{resource.get('nome') or ''} "
+            f"{resource.get('cognome') or ''}"
+        ).strip()
+
         parts = [
-            f"- {r.get('nome','')} {r.get('cognome','')}",
-            f"Mansione: {ruolo.get('nome','')} ({ruolo.get('seniority','')})",
+            f"- {resource_name}",
+            f"EID: {resource.get('eid')}",
+            (
+                f"Level: "
+                f"{resource.get('level_name') or 'non disponibile'}"
+            ),
+            (
+                f"Esperienza: "
+                f"{resource.get('anni_esperienza') or 0} anni"
+            ),
+            (
+                f"Disponibilità attuale: "
+                f"{resource.get('disponibilita') or 0}%"
+            ),
+            (
+                f"Allocazione attuale: "
+                f"{resource.get('active_allocation') or 0}%"
+            ),
+            (
+                f"Disponibile dal: "
+                f"{resource.get('available_from') or 'immediatamente'}"
+            ),
+            (
+                f"Email: "
+                f"{resource.get('email') or 'non disponibile'}"
+            )
         ]
+
+        # Skill / Certification / Languages
         if include_skills:
-            skill_names = [
-                f"{skills_map.get(sk.get('skill_id',''), sk.get('skill_id',''))} lv.{sk.get('livello','?')}"
-                for sk in r.get("skill_ids", []) if isinstance(sk, dict)
+            skills = [
+                item.get("skill_name")
+                for item in resource.get(
+                    "skills",
+                    []
+                )
+                if item.get("skill_name")
             ]
-            parts.append(f"Skills: {', '.join(skill_names) if skill_names else 'nessuna'}")
-            parts.append(f"Lingue: {', '.join(r.get('lingue', []))}")
-        if "availability" in categories or "projects" in categories:
-            parts.append(f"Disponibilità: {r.get('disponibilita', 0)}%")
-        gruppi = [groups_map.get(gid, gid) for gid in r.get("gruppo_ruolo_ids", [])]
-        parts.append(f"Ruolo: {', '.join(gruppi)}")
-        parts.append(f"Email: {r.get('email','')}")
-        lines.append(" | ".join(parts))
 
-    # Sezione PROGETTI + ALLOCAZIONI
-    if "projects" in categories:
-        allocations = db.get_allocations()
-        alloc_by_proj = {}
-        alloc_by_res = {}
-        for a in allocations:
-            alloc_by_proj.setdefault(a["progetto_id"], []).append(a)
-            alloc_by_res.setdefault(a["risorsa_id"], []).append(a)
+            certifications = [
+                item.get("nome_cert")
+                for item in resource.get(
+                    "certifications",
+                    []
+                )
+                if item.get("nome_cert")
+            ]
 
-        projects = db.get_projects()
-        lines.append("\n=== PROGETTI ===")
-        for p in projects:
-            allocs = alloc_by_proj.get(p["id"], [])
-            alloc_desc = ", ".join(
-                f"{res_name_map.get(a['risorsa_id'], a['risorsa_id'])} {a.get('percentuale','')}% (fino al {a.get('data_fine','')})"
-                for a in allocs
+            languages = [
+                item.get("language_code")
+                for item in resource.get(
+                    "languages",
+                    []
+                )
+                if item.get("language_code")
+            ]
+
+            parts.append(
+                "Skills: "
+                + (
+                    ", ".join(skills)
+                    if skills
+                    else "nessuna"
+                )
             )
+
+            parts.append(
+                "Certificazioni: "
+                + (
+                    ", ".join(certifications)
+                    if certifications
+                    else "nessuna"
+                )
+            )
+
+            parts.append(
+                "Lingue: "
+                + (
+                    ", ".join(languages)
+                    if languages
+                    else "nessuna"
+                )
+            )
+
+        # Reference Manager
+        managers = []
+
+        for manager in resource.get(
+            "managers",
+            []
+        ):
+            manager_name = (
+                f"{manager.get('nome') or ''} "
+                f"{manager.get('cognome') or ''}"
+            ).strip()
+
+            if manager_name:
+                managers.append(
+                    manager_name
+                )
+
+        parts.append(
+            "Manager di riferimento: "
+            + (
+                ", ".join(managers)
+                if managers
+                else "nessuno"
+            )
+        )
+
+        # Current Assignments
+        assignments = []
+
+        for assignment in resource.get(
+            "current_assignments",
+            []
+        ):
+            assignments.append(
+                (
+                    f"{assignment.get('osr_id') or 'OSR non disponibile'}"
+                    f" | Opportunity: "
+                    f"{assignment.get('opportunity_title') or 'non disponibile'}"
+                    f" | Cliente: "
+                    f"{assignment.get('client_name') or 'non disponibile'}"
+                    f" | Ruolo: "
+                    f"{assignment.get('project_role') or 'non disponibile'}"
+                    f" | Allocazione: "
+                    f"{assignment.get('allocation_pct') or 0}%"
+                    f" | Fine: "
+                    f"{assignment.get('end_date') or 'non disponibile'}"
+                    f" | Stato calcolato: "
+                    f"{assignment.get('osr_status') or 'Unknown'}"
+                )
+            )
+
+        parts.append(
+            "Current assignments: "
+            + (
+                " ; ".join(assignments)
+                if assignments
+                else "nessuna OSR corrente"
+            )
+        )
+
+        lines.append(
+            " | ".join(parts)
+        )
+
+    # ── OSR V2 ────────────────────────────────────────────────────
+    if (
+        "projects" in categories
+        or "availability" in categories
+    ):
+        lines.append(
+            "\n=== OSR E ASSEGNAZIONI "
+            "(STATO CALCOLATO DA DATAFINE) ==="
+        )
+
+        for osr in osr_rows:
+            resource_name = (
+                f"{osr.get('resource_nome') or ''} "
+                f"{osr.get('resource_cognome') or ''}"
+            ).strip()
+
+            manager_name = (
+                f"{osr.get('manager_nome') or ''} "
+                f"{osr.get('manager_cognome') or ''}"
+            ).strip()
+
             lines.append(
-                f"- {p.get('nome','')} | Cliente: {p.get('cliente','')} | "
-                f"Stato: {p.get('stato','')} | "
-                f"Inizio: {p.get('data_inizio','')} | Fine prev.: {p.get('data_fine_prevista','')} | "
-                f"Risorse allocate: {len(allocs)}"
-                + (f" ({alloc_desc})" if alloc_desc else "")
+                (
+                    f"- OSR: "
+                    f"{osr.get('osr_id')}"
+                    f" | Risorsa: "
+                    f"{resource_name or osr.get('resource_eid')}"
+                    f" | Opportunity: "
+                    f"{osr.get('opportunity_title') or osr.get('opportunity_id')}"
+                    f" | Cliente: "
+                    f"{osr.get('client_name') or 'non disponibile'}"
+                    f" | Ruolo: "
+                    f"{osr.get('project_role') or 'non disponibile'}"
+                    f" | Allocazione: "
+                    f"{osr.get('allocation_pct') or 0}%"
+                    f" | Inizio: "
+                    f"{osr.get('start_date') or 'non disponibile'}"
+                    f" | Fine: "
+                    f"{osr.get('end_date') or 'non disponibile'}"
+                    f" | Stato calcolato: "
+                    f"{osr.get('calculated_status') or 'Unknown'}"
+                    f" | Manager: "
+                    f"{manager_name or 'non disponibile'}"
+                )
             )
 
-    # Sezione OPPORTUNITY
+    # ── OPPORTUNITIES V2 ──────────────────────────────────────────
     if "opportunities" in categories:
-        opportunities = db.get_opportunities()
-        opp_skills_map = {s["id"]: s["nome"] for s in db.get_skills()} if not include_skills else skills_map
-        lines.append("\n=== OPPORTUNITY ===")
-        for o in opportunities:
-            slot_desc = [
-                f"{roles_map.get(sl.get('mansione_id',''), {}).get('nome', sl.get('mansione_id','?'))} {sl.get('percentuale_allocazione','')}%"
-                for sl in o.get("slot_risorse", [])
-            ]
-            skill_req = [
-                f"{opp_skills_map.get(sk.get('skill_id',''), sk.get('skill_id',''))} lv.>={sk.get('livello_minimo','?')}"
-                for sk in o.get("skill_richieste", [])
-            ]
+        lines.append(
+            "\n=== OPPORTUNITY STAFFMATCH V2 ==="
+        )
+
+        for opportunity in opportunity_rows:
             lines.append(
-                f"- {o.get('titolo','')} | Cliente: {o.get('cliente','')} | "
-                f"Stato: {o.get('stato','')} | "
-                f"Inizio: {o.get('data_inizio','')} | Fine prev.: {o.get('data_fine_prevista','')} | "
-                f"Slot: {'; '.join(slot_desc) if slot_desc else 'nessuno'} | "
-                f"Skills richieste: {', '.join(skill_req) if skill_req else 'nessuna'}"
+                (
+                    f"- ID: "
+                    f"{opportunity.get('opportunity_id')}"
+                    f" | Titolo: "
+                    f"{opportunity.get('opportunity_title') or 'non disponibile'}"
+                    f" | Cliente: "
+                    f"{opportunity.get('client_name') or 'non disponibile'}"
+                    f" | Technology: "
+                    f"{opportunity.get('main_tech_cluster') or 'non disponibile'}"
+                    f" | Functional Area: "
+                    f"{opportunity.get('functional_area') or 'non disponibile'}"
+                    f" | Stato: "
+                    f"{opportunity.get('opportunity_status') or 'non disponibile'}"
+                    f" | Inizio: "
+                    f"{opportunity.get('start_date') or 'non disponibile'}"
+                    f" | Fine: "
+                    f"{opportunity.get('end_date') or 'non disponibile'}"
+                    f" | Contratto: "
+                    f"{opportunity.get('contract_id') or 'non disponibile'}"
+                )
+            )
+
+    # ── CONTRACTS V2 ──────────────────────────────────────────────
+    if (
+        "projects" in categories
+        or "opportunities" in categories
+    ):
+        lines.append(
+            "\n=== CONTRATTI STAFFMATCH V2 ==="
+        )
+
+        for contract in contract_rows:
+            manager_name = (
+                f"{contract.get('manager_nome') or ''} "
+                f"{contract.get('manager_cognome') or ''}"
+            ).strip()
+
+            lines.append(
+                (
+                    f"- ID: "
+                    f"{contract.get('contract_id')}"
+                    f" | Titolo: "
+                    f"{contract.get('contract_title') or 'non disponibile'}"
+                    f" | Cliente: "
+                    f"{contract.get('client_name') or 'non disponibile'}"
+                    f" | Settore: "
+                    f"{contract.get('industry_sector') or 'non disponibile'}"
+                    f" | Service Group: "
+                    f"{contract.get('service_group') or 'non disponibile'}"
+                    f" | Stato contratto: "
+                    f"{contract.get('contract_status') or 'non disponibile'}"
+                    f" | Inizio: "
+                    f"{contract.get('start_date') or 'non disponibile'}"
+                    f" | Fine: "
+                    f"{contract.get('end_date') or 'non disponibile'}"
+                    f" | Manager: "
+                    f"{manager_name or 'non disponibile'}"
+                    f" | Opportunity collegate: "
+                    f"{contract.get('opportunity_count') or 0}"
+                    f" | OSR collegate: "
+                    f"{contract.get('osr_count') or 0}"
+                )
             )
 
     return "\n".join(lines)
