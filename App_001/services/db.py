@@ -316,12 +316,48 @@ def sm_get_risorse():
 
 
 def sm_get_disponibilita_calcolata(eid):
+    from datetime import date
+
+    today = date.today()
+
     rows = _fetchall(
-        "SELECT PERCALLOCAZIONE as perc FROM STAFFMATCH_SM_OSR WHERE EID = ? AND STATO = 'Active'",
+        """
+        SELECT
+            PERCALLOCAZIONE AS perc,
+            DATAINIZIO AS start_date,
+            DATAFINE AS end_date
+        FROM STAFFMATCH_SM_OSR
+        WHERE EID = ?
+        """,
         (eid,)
     )
-    allocato = sum(r["perc"] for r in rows)
-    return max(0, 100 - allocato)
+
+    allocato = 0
+
+    for row in rows:
+        start_date = row.get("start_date")
+        end_date = row.get("end_date")
+
+        if start_date and hasattr(start_date, "date"):
+            start_date = start_date.date()
+
+        if end_date and hasattr(end_date, "date"):
+            end_date = end_date.date()
+
+        if (
+            start_date is not None
+            and end_date is not None
+            and start_date <= today <= end_date
+        ):
+            allocato += int(
+                row.get("perc") or 0
+            )
+
+    return max(
+        0,
+        100 - allocato
+    )
+
 
 
 def sm_get_opportunities():
@@ -370,6 +406,58 @@ def sm_match_score(risorsa, opportunity):
             f"{opportunity['main_tech_cluster']}, disponibilità {disp}%"
         )
     }
+def sm_calculate_osr_status(end_date, today=None):
+    from datetime import date, datetime
+    import calendar
+
+    if today is None:
+        today = date.today()
+
+    if end_date is None:
+        return "Unknown"
+
+    if isinstance(end_date, datetime):
+        end_date = end_date.date()
+
+    elif not isinstance(end_date, date):
+        try:
+            end_date = datetime.strptime(
+                str(end_date)[:10],
+                "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return "Unknown"
+
+    target_month = today.month + 3
+
+    target_year = (
+        today.year
+        + (target_month - 1) // 12
+    )
+
+    target_month = (
+        (target_month - 1) % 12
+        + 1
+    )
+
+    last_day = calendar.monthrange(
+        target_year,
+        target_month
+    )[1]
+
+    rolling_off_limit = date(
+        target_year,
+        target_month,
+        min(today.day, last_day)
+    )
+
+    if end_date < today:
+        return "Closed"
+
+    if end_date <= rolling_off_limit:
+        return "Rolling-off"
+
+    return "Active"
 def sm_get_risorse_v2():
     """
     Risorse V2 con:
@@ -563,22 +651,11 @@ def sm_get_risorse_v2():
             row.get("data_fine")
         )
 
-        end_date = row.get(
-            "data_fine_date"
+        
+        row["calculated_status"] = sm_calculate_osr_status(
+            row.get("data_fine_date"),
+            today=today
         )
-
-        if end_date is None:
-            row["calculated_status"] = "Unknown"
-
-        elif end_date < today:
-            row["calculated_status"] = "Closed"
-
-        elif end_date <= rolling_off_limit:
-            row["calculated_status"] = "Rolling-off"
-
-        else:
-            row["calculated_status"] = "Active"
-
         osr_by_eid.setdefault(
             row["eid"],
             []
@@ -1156,11 +1233,11 @@ def sm_get_dashboard_v2():
             o.PERCALLOCAZIONE   AS allocation_pct,
             o.CHARGEABILITYPCT  AS chargeability_pct,
             o.DATAINIZIO        AS start_date,
-            o.DATAFINE          AS end_date,
-            o.STATO             AS osr_status
+            o.DATAFINE          AS end_date
+            
         FROM STAFFMATCH_SM_OSR o
         ORDER BY
-            o.STATO,
+            
             o.DATAFINE,
             o.OSRID
     """)
@@ -1225,6 +1302,9 @@ def sm_get_dashboard_v2():
         )
 
     for row in osr_rows:
+        row["osr_status"] = sm_calculate_osr_status(
+            row.get("end_date")
+        )
         if row.get("start_date") is not None:
             row["start_date"] = str(
                 row["start_date"]
@@ -1367,19 +1447,7 @@ def sm_get_staffing_management_v2():
         except ValueError:
             return None
 
-    def calculate_osr_status(end_date):
-        end_date = to_date(end_date)
-
-        if end_date is None:
-            return "Unknown"
-
-        if end_date < today:
-            return "Closed"
-
-        if end_date <= rolling_off_limit:
-            return "Rolling-off"
-
-        return "Active"
+    
 
     # ── OSR ───────────────────────────────────────────────────────────────────
     osr_rows = _fetchall("""
@@ -1439,8 +1507,9 @@ def sm_get_staffing_management_v2():
             else None
         )
 
-        row["calculated_status"] = calculate_osr_status(
-            end_date
+        row["calculated_status"] = sm_calculate_osr_status(
+            row.get("end_date"),
+            today=today
         )
 
         row["resource_missing"] = (
