@@ -2864,54 +2864,55 @@ def show_dashboard_v2(groups):
         if int(resource.get("disponibilita") or 0) == 0
     )
 
+    # ── KPI (comuni a Commercial e Staffing) ──────────────────────────────────
+    st.markdown("---")
+    st.markdown('<p class="section-title">Practice Indicators</p>', unsafe_allow_html=True)
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+    kpi1.metric(
+        "Opportunity Value",
+        f"€ {opportunity_value / 1_000_000:.2f} M"
+    )
+
+    kpi2.metric(
+        "Pipeline Value",
+        f"€ {pipeline_value / 1_000_000:.2f} M"
+    )
+
+    kpi3.metric(
+        "Contract Revenue",
+        f"€ {contract_revenue / 1_000_000:.2f} M"
+    )
+
+    kpi4.metric(
+        "Margin",
+        f"€ {contract_margin / 1_000_000:.2f} M"
+    )
+
+    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+
+    kpi5.metric(
+        "Opportunities",
+        opportunity_count
+    )
+
+    kpi6.metric(
+        "Active Contracts",
+        active_contract_count
+    )
+
+    kpi7.metric(
+        "Available Resources",
+        available_resources
+    )
+
+    kpi8.metric(
+        "Fully Allocated",
+        fully_allocated_resources
+    )
+
     if dashboard_view == "Commercial":
-        # ── KPI COMMERCIALI ───────────────────────────────────────────────────────
-        st.markdown("---")
-        st.markdown('<p class="section-title">Commercial Overview</p>', unsafe_allow_html=True)
-
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-        kpi1.metric(
-            "Opportunity Value",
-            f"€ {opportunity_value / 1_000_000:.2f} M"
-        )
-
-        kpi2.metric(
-            "Pipeline Value",
-            f"€ {pipeline_value / 1_000_000:.2f} M"
-        )
-
-        kpi3.metric(
-            "Contract Revenue",
-            f"€ {contract_revenue / 1_000_000:.2f} M"
-        )
-
-        kpi4.metric(
-            "Margin",
-            f"€ {contract_margin / 1_000_000:.2f} M"
-        )
-
-        kpi5, kpi6, kpi7, kpi8 = st.columns(4)
-
-        kpi5.metric(
-            "Opportunities",
-            opportunity_count
-        )
-
-        kpi6.metric(
-            "Active Contracts",
-            active_contract_count
-        )
-
-        kpi7.metric(
-            "Available Resources",
-            available_resources
-        )
-
-        kpi8.metric(
-            "Fully Allocated",
-            fully_allocated_resources
-        )
             # ── GRAFICI COMMERCIALI ───────────────────────────────────────────────────
         st.markdown("---")
         st.markdown('<p class="section-title">Commercial Performance</p>', unsafe_allow_html=True)
