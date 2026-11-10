@@ -73,13 +73,18 @@ st.markdown("""
     .sm-logo-title {
         color: #A100FF;
         font-weight: 900;
-        font-size: 1.3rem;
-        letter-spacing: -0.5px;
+        font-size: 2.2rem;
+        letter-spacing: -1px;
         line-height: 1.1;
         margin: 0 0 0.35rem 0;
         white-space: nowrap;
     }
-    .sm-logo-bleed img { width: 100%; max-width: 220px; }
+    .sm-logo-bleed img { width: 100%; max-width: 260px; }
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        min-width: 23rem !important;
+        max-width: 23rem !important;
+        width: 23rem !important;
+    }
     [data-testid="stMainBlockContainer"] { padding-top: 3.5rem !important; }
     section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stMarkdown p,
