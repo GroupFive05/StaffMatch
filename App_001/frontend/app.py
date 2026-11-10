@@ -688,6 +688,9 @@ def show_login():
         margin-left: auto !important;
         margin-right: auto !important;
     }
+    [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {
+        display: none !important;
+    }
     .login-app-title, .login-sub1, .login-sub2 { text-align: center; }
     [data-testid="stMarkdownContainer"] p.login-app-title {
         font-size: 3rem !important; color: #1E1B4B !important; font-weight: 800 !important;
@@ -711,10 +714,6 @@ def show_login():
             unsafe_allow_html=True
         )
         st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
-        st.markdown(
-            '<p class="login-sub2">D&amp;A Practice · Accenture Italy · Powered by SAP AI Core &amp; Claude</p>',
-            unsafe_allow_html=True
-        )
         st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login"):
