@@ -114,7 +114,14 @@ st.markdown("""
         font-weight: 600 !important;
         box-shadow: 0 4px 14px rgba(123,47,247,0.38) !important;
     }
-    [data-testid="stSidebar"] .stButton > button p { text-align: left !important; }
+    [data-testid="stSidebar"] .stButton > button,
+    [data-testid="stSidebar"] .stButton > button > div {
+        display: flex !important;
+        justify-content: flex-start !important;
+        width: 100% !important;
+    }
+    [data-testid="stSidebar"] .stButton > button p,
+    [data-testid="stSidebar"] .stButton > button [data-testid="stMarkdownContainer"] { text-align: left !important; }
 
     /* ── MAIN AREA ── */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: #F5F2FB !important; }
@@ -315,8 +322,13 @@ st.markdown("""
         color: white !important;
         font-weight: 600 !important;
     }
-    .stTabs [data-baseweb="tab-highlight"] { background: transparent !important; }
-    .stTabs [data-baseweb="tab-border"] { background: transparent !important; }
+    [data-baseweb="tab-highlight"], [data-baseweb="tab-border"] {
+        background-color: transparent !important; height: 0 !important;
+    }
+    button[role="tab"] { border-bottom: none !important; box-shadow: none !important; }
+    [data-baseweb="tag"], [data-baseweb="tag"] span {
+        background-color: #EDE9FE !important; color: #4C1D95 !important;
+    }
     [data-testid="stBottom"], [data-testid="stBottom"] > div { background: transparent !important; }
 
     /* ── INPUTS ── */
@@ -702,8 +714,6 @@ def show_sidebar(groups):
             (":material/auto_fix_high:", "Match AI", "matching_v2"),
             (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
-        if is_executive_or_admin(groups):
-            pages.append((":material/task_alt:", "Approval", "approvazioni"))
         if is_admin(groups):
             pages.append((":material/settings:", "Administration & Security", "admin"))
 
