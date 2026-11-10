@@ -152,10 +152,10 @@ st.markdown("""
         line-height: 1.1;
     }
     .login-logo-wrap {
-        width: 480px; max-width: 94vw; position: relative; left: 50%; transform: translateX(-50%);
+        width: 408px; max-width: 94vw; position: relative; left: 50%; transform: translateX(-50%);
     }
     .login-tagline {
-        color: #7C3AED; font-size: 1rem; font-weight: 500; letter-spacing: 0.24em;
+        color: #7C3AED; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.24em;
         margin-top: 0.5rem; text-align: center; white-space: nowrap;
     }
     .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
