@@ -151,6 +151,13 @@ st.markdown("""
         margin: 0 0 0.2rem 0;
         line-height: 1.1;
     }
+    .login-logo-wrap {
+        width: 480px; max-width: 94vw; position: relative; left: 50%; transform: translateX(-50%);
+    }
+    .login-tagline {
+        color: #7C3AED; font-size: 1rem; font-weight: 500; letter-spacing: 0.24em;
+        margin-top: 0.5rem; text-align: center; white-space: nowrap;
+    }
     .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
     .login-sub2 { color: #999; font-size: 0.78rem; margin: 0.15rem 0 0 0; }
 
@@ -161,12 +168,12 @@ st.markdown("""
         position: fixed !important; bottom: 1.6rem; right: 2.2rem; z-index: 99999; width: auto !important;
     }
     .st-key-fab_ask_mira button {
-        background: linear-gradient(135deg, #7C3AED, #6D28D9) !important; color: #ffffff !important;
+        background: linear-gradient(90deg, #EC4899 0%, #8B5CF6 52%, #3B82F6 100%) !important; color: #ffffff !important;
         border: none !important; border-radius: 999px !important; padding: 0.7rem 1.5rem !important;
         font-weight: 700 !important; font-size: 1rem !important;
-        box-shadow: 0 8px 24px rgba(124,58,237,0.45) !important; transition: all 0.2s ease !important;
+        box-shadow: 0 8px 24px rgba(139,92,246,0.45) !important; transition: all 0.2s ease !important;
     }
-    .st-key-fab_ask_mira button:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(124,58,237,0.55) !important; }
+    .st-key-fab_ask_mira button:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 12px 28px rgba(139,92,246,0.55) !important; }
     [data-testid="stPopoverBody"] { width: 440px !important; max-width: 92vw !important; border-radius: 16px !important; }
     [data-testid="stInputInstructions"], [data-testid="InputInstructions"] { display: none !important; }
     [data-testid="stChatMessageAvatarUser"] { background: #7C3AED !important; }
@@ -689,7 +696,9 @@ def show_login():
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(
             f'<div style="text-align:center;margin-bottom:0.5rem">'
-            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}" style="width:240px;max-width:100%"></div>',
+            f'<div class="login-logo-wrap">'
+            f'<img src="data:image/png;base64,{_asset_b64("mira_logo_login.png")}" style="width:100%">'
+            f'<div class="login-tagline">BRINGING TALENT TOGETHER</div></div></div>',
             unsafe_allow_html=True
         )
         st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
