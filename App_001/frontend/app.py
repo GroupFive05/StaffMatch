@@ -41,89 +41,83 @@ st.markdown("""
 
     /* ── SIDEBAR ── */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%) !important;
+        background: linear-gradient(180deg, #1A0840 0%, #2C0F63 52%, #5B1DB5 100%) !important;
     }
-    /* nasconde la linea nativa Streamlit tra sidebar e main */
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        min-width: 17rem !important;
+        max-width: 17rem !important;
+        width: 17rem !important;
+    }
     [data-testid="stSidebarContent"] {
         border-right: none !important;
         padding: 0 !important;
         scrollbar-gutter: auto !important;
     }
     [data-testid="stSidebarHeader"] {
-        background: #ffffff !important;
+        background: transparent !important;
         padding: 0 1rem !important;
         margin: 0 !important;
-        width: 100% !important;
-        max-width: none !important;
-        height: 2.5rem !important;
+        height: 1.5rem !important;
         min-height: 0 !important;
     }
     [data-testid="stSidebarUserContent"] {
-        padding: 0 1.9rem 6rem 1.9rem !important;
+        padding: 0 1rem 6rem 1rem !important;
         margin: 0 !important;
-        width: 100% !important;
-        max-width: none !important;
     }
-    .sm-logo-bleed {
-        background: #ffffff;
-        margin: 0 -1.9rem 0.25rem -1.9rem;
-        padding: 0 0.5rem 0.6rem 0.5rem;
-        text-align: center;
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+    .sm-logo { text-align: center; padding: 0.25rem 0 0 0; }
+    .sm-logo img { width: 100%; max-width: 190px; }
+    .sm-logo-bar {
+        width: 84px; height: 4px; border-radius: 4px; margin: 0.4rem auto 1rem auto;
+        background: linear-gradient(90deg, #EC4899, #8B5CF6, #3B82F6);
     }
-    .sm-logo-title {
-        color: #A100FF;
-        font-weight: 900;
-        font-size: 2.2rem;
-        letter-spacing: -1px;
-        line-height: 1.1;
-        margin: 0 0 0.35rem 0;
-        white-space: nowrap;
-    }
-    .sm-logo-bleed img { width: 100%; max-width: 260px; }
-    [data-testid="stSidebar"][aria-expanded="true"] {
-        min-width: 23rem !important;
-        max-width: 23rem !important;
-        width: 23rem !important;
-    }
-    [data-testid="stMainBlockContainer"] { padding-top: 3.5rem !important; }
     section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stMarkdown p,
     [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stCaption { color: #aaaaaa !important; }
-    [data-testid="stSidebar"] .stButton > button {
-        background-color: transparent !important;
-        color: #cccccc !important;
+    [data-testid="stSidebar"] .stCaption { color: #D9C9FF !important; }
+    [data-testid="stSidebar"] .stButton > button:not([kind="primary"]) {
+        background: transparent !important;
+        color: #EADFFF !important;
         border: none !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
+        justify-content: flex-start !important;
         text-align: left !important;
-        font-weight: 400 !important;
-        padding: 8px 12px !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        padding: 10px 14px !important;
+        box-shadow: none !important;
         transition: all 0.2s ease !important;
     }
-    [data-testid="stSidebar"] .stButton > button:hover {
-        background: linear-gradient(90deg, #A100FF22, #A100FF44) !important;
+    [data-testid="stSidebar"] .stButton > button:not([kind="primary"]):hover {
+        background: rgba(255,255,255,0.10) !important;
         color: #ffffff !important;
-        border-left: 3px solid #A100FF !important;
-        padding-left: 15px !important;
+        border: none !important;
+        padding: 10px 14px !important;
     }
     [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"],
     [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"]:hover {
-        background: linear-gradient(90deg, #A100FF33, #A100FF66) !important;
+        background: linear-gradient(90deg, #7B2FF7, #8E3BF0) !important;
         color: #ffffff !important;
-        border: 2px solid #A100FF !important;
-        padding: 8px 12px !important;
-        font-weight: 500 !important;
+        border: none !important;
+        padding: 10px 14px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 14px rgba(123,47,247,0.38) !important;
     }
+    [data-testid="stSidebar"] .stButton > button p { text-align: left !important; }
 
     /* ── MAIN AREA ── */
-    .main .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1200px; }
-    .stApp { background: var(--background-color); }
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: #F5F2FB !important; }
+    [data-testid="stHeader"] { background: transparent !important; }
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+        max-width: 1600px !important;
+    }
 
     /* ── TITOLI PAGINA ── */
     .main-title {
-        color: var(--text-color);
-        font-size: 1.8rem;
+        color: #1E1B4B;
+        font-size: 1.6rem;
         font-weight: 800;
         margin-bottom: 0;
         letter-spacing: -0.5px;
@@ -142,15 +136,61 @@ st.markdown("""
     .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
     .login-sub2 { color: #999; font-size: 0.78rem; margin: 0.15rem 0 0 0; }
 
-    .section-title,
-    [data-testid="stMarkdownContainer"] p.section-title {
-        color: #A100FF !important;
-        font-size: 2.4rem !important;
-        font-weight: 900 !important;
-        letter-spacing: -1px !important;
-        line-height: 1.1 !important;
-        margin: 0.5rem 0 0.75rem 0 !important;
+    /* ── MIRA THEME ── */
+    .mira-title { font-size: 2rem; font-weight: 800; color: #1E1B4B; letter-spacing: -0.5px; line-height: 1.15; margin: 0; }
+    .mira-sub { color: #6B7280; font-size: 0.95rem; margin-top: 2px; }
+    .st-key-hdr_advisor button {
+        border: 1.5px solid #A78BFA !important; background: #ffffff !important; color: #5B21B6 !important;
+        border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
     }
+    .st-key-hdr_advisor button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
+    [data-testid="stButtonGroup"] button[data-testid^="stBaseButton-segmented_control"] {
+        border-radius: 999px !important; border: 1px solid #E4DDF5 !important; background: #ffffff !important;
+        color: #4C1D95 !important; padding: 6px 24px !important; font-weight: 600 !important;
+    }
+    [data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] {
+        background: #7C3AED !important; color: #ffffff !important; border-color: #7C3AED !important;
+    }
+    button[data-testid="stBaseButton-primary"] { background: #7C3AED !important; border-color: #7C3AED !important; color: #ffffff !important; border-radius: 10px !important; }
+    button[data-testid="stBaseButton-primary"]:hover { background: #6D28D9 !important; border-color: #6D28D9 !important; }
+    [data-baseweb="select"] > div, [data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="textarea"] {
+        background: #ffffff !important; border-color: #E4DDF5 !important; border-radius: 10px !important;
+    }
+    [data-baseweb="tag"] { background: #EDE9FE !important; color: #4C1D95 !important; }
+    [data-testid="stMetric"] {
+        background: #ffffff; border: 1px solid #ECE6FA; border-radius: 16px; padding: 14px 18px;
+        box-shadow: 0 2px 12px rgba(76,29,149,0.07);
+    }
+    [data-testid="stMetricValue"] { color: #1E1B4B; font-weight: 800; }
+    [data-testid="stExpander"] { background: #ffffff; border: 1px solid #ECE6FA !important; border-radius: 14px; }
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 16px !important; border-color: #ECE6FA !important;
+        background: #ffffff; box-shadow: 0 2px 12px rgba(76,29,149,0.07);
+    }
+    [class*="st-key-card"] {
+        background: #ffffff !important; border: 1px solid #ECE6FA !important; border-radius: 16px !important;
+        box-shadow: 0 2px 12px rgba(76,29,149,0.07) !important; padding: 0.9rem 1.1rem !important;
+    }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: #1E1B4B; margin: 0 0 0.4rem 0; }
+    .sec-title { display: flex; align-items: center; gap: 0.6rem; font-size: 1.45rem; font-weight: 800; color: #1E1B4B; margin: 0.6rem 0 0.7rem 0; letter-spacing: -0.3px; }
+    .sec-ico { display: inline-flex; color: #7C3AED; }
+    .flt-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem; }
+    .flt-head .flt-ico { display: inline-flex; color: #7C3AED; }
+    .flt-head .flt-title { font-size: 1.3rem; font-weight: 700; color: #1E1B4B; }
+    .flt-head .chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; }
+    .st-key-dash_reset button { background: transparent !important; border: none !important; color: #6D28D9 !important; font-weight: 600 !important; box-shadow: none !important; }
+    .kpi-card {
+        display: flex; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #ECE6FA;
+        border-radius: 16px; padding: 1rem 1.2rem; box-shadow: 0 2px 12px rgba(76,29,149,0.07); height: 100%;
+    }
+    .kpi-ico { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex: 0 0 52px; border-radius: 14px; background: #F3EEFF; color: #7C3AED; }
+    .kpi-label { font-size: 0.9rem; color: #374151; }
+    .kpi-value { font-size: 1.95rem; font-weight: 800; color: #1E1B4B; line-height: 1.15; }
+    .tech-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #1E1B4B; border: none !important; }
+    .tech-table th { text-align: right; font-weight: 600; padding: 7px 6px; border: none !important; border-bottom: 1px solid #ECE6FA !important; white-space: nowrap; background: transparent !important; }
+    .tech-table th:first-child, .tech-table td:first-child { text-align: left; }
+    .tech-table td { text-align: right; padding: 7px 6px; border: none !important; border-bottom: 1px solid #F4F0FC !important; white-space: nowrap; }
+    .tech-table .dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
 
     .page-header {
         background: white;
@@ -219,14 +259,14 @@ st.markdown("""
 
     /* ── BUTTONS ── */
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #A100FF, #7B00CC) !important;
+        background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
         color: white !important;
         border: none !important;
         border-radius: 10px !important;
         font-weight: 600 !important;
         padding: 10px 20px !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(161,0,255,0.3) !important;
+        box-shadow: 0 4px 12px rgba(124,58,237,0.3) !important;
     }
     .stButton > button[kind="primary"]:hover {
         transform: translateY(-1px) !important;
@@ -260,10 +300,13 @@ st.markdown("""
         padding: 8px 16px !important;
     }
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #A100FF, #7B00CC) !important;
+        background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
         color: white !important;
         font-weight: 600 !important;
     }
+    .stTabs [data-baseweb="tab-highlight"] { background: transparent !important; }
+    .stTabs [data-baseweb="tab-border"] { background: transparent !important; }
+    [data-testid="stBottom"], [data-testid="stBottom"] > div { background: transparent !important; }
 
     /* ── INPUTS ── */
     .stTextInput > div > div > input,
@@ -468,6 +511,80 @@ def is_executive_or_admin(groups):
 def is_admin(groups):
     return "Administrator" in groups
 
+
+_ICONS = {
+    "briefcase": '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    "bars": '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+    "target": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "euro": '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>',
+    "file": '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    "user-check": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>',
+    "filter": '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+    "trend": '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    "percent": '<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+}
+
+
+def _svg(name, size=24):
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" '
+        f'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        f'stroke-linejoin="round">{_ICONS[name]}</svg>'
+    )
+
+
+def kpi_card(icon, label, value):
+    return (
+        f'<div class="kpi-card"><div class="kpi-ico">{_svg(icon, 26)}</div>'
+        f'<div><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div></div></div>'
+    )
+
+
+def section_title(text, icon):
+    st.markdown(
+        f'<div class="sec-title"><span class="sec-ico">{_svg(icon, 24)}</span>{text}</div>',
+        unsafe_allow_html=True
+    )
+
+
+def card_title(text):
+    st.markdown(f'<div class="card-title">{text}</div>', unsafe_allow_html=True)
+
+
+def chart_layout(fig, height=360, **kwargs):
+    kwargs.setdefault("margin", dict(l=10, r=10, t=10, b=10))
+    fig.update_layout(
+        height=height,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#1E1B4B", size=12),
+        **kwargs
+    )
+    return fig
+
+
+def show_app_header():
+    left, right = st.columns([6, 1.5])
+
+    with left:
+        st.markdown(
+            '<div class="mira-title">D&amp;A Advisory Cockpit</div>'
+            '<div class="mira-sub">Practice performance, resources and commercial insights</div>',
+            unsafe_allow_html=True
+        )
+
+    with right:
+        if st.button(
+            "MIRA Advisor",
+            icon=":material/auto_awesome:",
+            key="hdr_advisor",
+            use_container_width=True
+        ):
+            st.session_state.page = "chatbot"
+            st.rerun()
+
 def nav(page: str):
     st.session_state.page = page
     st.rerun()
@@ -528,8 +645,8 @@ def show_login():
 def show_sidebar(groups):
     with st.sidebar:
         st.markdown(
-            f'<div class="sm-logo-bleed"><div class="sm-logo-title">D&amp;A Advisory Cockpit</div>'
-            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}"></div>',
+            f'<div class="sm-logo"><img src="data:image/png;base64,{_asset_b64("mira_logo_dark.png")}"></div>'
+            f'<div class="sm-logo-bar"></div>',
             unsafe_allow_html=True
         )
         u = st.session_state.user or {}
@@ -540,24 +657,24 @@ def show_sidebar(groups):
         st.markdown(f"""
 <style>
 #sm-userbar {{
-    background: rgba(161,0,255,0.08);
-    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
     padding: 8px 12px;
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 0.5rem 0;
     display: flex; align-items: center; justify-content: space-between;
 }}
 #sm-userbar .sm-name {{
-    font-size: 0.78rem; font-weight: 600;
-    color: #aaaaaa; white-space: nowrap;
+    font-size: 0.82rem; font-weight: 600;
+    color: #EADFFF; white-space: nowrap;
 }}
 #sm-userbar .sm-exit {{
-    font-size: 0.70rem; color: #A100FF;
-    border: 1px solid #A100FF; border-radius: 6px;
+    font-size: 0.70rem; color: #EADFFF;
+    border: 1px solid #B794F6; border-radius: 6px;
     padding: 2px 8px; background: transparent; cursor: pointer;
     transition: all 0.2s ease; line-height: 1;
     text-decoration: none; display: inline-flex; align-items: center;
 }}
-#sm-userbar .sm-exit:hover {{ background: #A100FF; color: white; }}
+#sm-userbar .sm-exit:hover {{ background: #7C3AED; color: white; }}
 </style>
 <div id="sm-userbar">
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
@@ -566,21 +683,22 @@ def show_sidebar(groups):
 """, unsafe_allow_html=True)
 
         pages = [
-            ("📊", "Practice Cockpit", "dashboard_v2"),
-            ("🧑‍💻", "Resources",      "risorsa_v2"),
-            ("🐈", "Staffing Management", "staffing_management_v2"),
-            ("🧪", "Match AI",     "matching_v2"),
-            ("✨", "Practice Advisor", "chatbot"),
+            (":material/bar_chart:", "Practice Cockpit", "dashboard_v2"),
+            (":material/group:", "Resources", "risorsa_v2"),
+            (":material/calendar_month:", "Staffing Management", "staffing_management_v2"),
+            (":material/auto_fix_high:", "Match AI", "matching_v2"),
+            (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
         if is_executive_or_admin(groups):
-            pages.append(("📋", "Approval", "approvazioni"))
+            pages.append((":material/task_alt:", "Approval", "approvazioni"))
         if is_admin(groups):
-            pages.append(("⚙️", "Administration & Security", "admin"))
+            pages.append((":material/settings:", "Administration & Security", "admin"))
 
         for icon, label, key in pages:
             is_active = st.session_state.page == key
             if st.button(
-                f"{icon} {label}",
+                label,
+                icon=icon,
                 use_container_width=True,
                 key=f"nav_{key}",
                 type="primary" if is_active else "secondary",
@@ -2653,6 +2771,14 @@ def show_risorsa_v2(groups):
         )
 
 # ── DASHBOARD V2 ──────────────────────────────────────────────────────────────
+def _reset_dashboard_filters():
+    for key in (
+        "dash_f_industry", "dash_f_client", "dash_f_tech",
+        "dash_f_status", "dash_f_service", "dash_f_manager"
+    ):
+        st.session_state[key] = []
+
+
 def show_dashboard_v2(groups):
     st.markdown(
         '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
@@ -2666,11 +2792,6 @@ def show_dashboard_v2(groups):
         key="dashboard_v2_view",
         label_visibility="collapsed",
     ) or "Commercial"
-
-    st.markdown(
-        '<p class="main-title">📊 Practice Cockpit</p>',
-        unsafe_allow_html=True
-    )
 
     response = api(
         "GET",
@@ -2713,58 +2834,93 @@ def show_dashboard_v2(groups):
 ]
 
     # ── FILTRI ────────────────────────────────────────────────────────────────
-    st.markdown("#### Filters")
-
-    filter_1, filter_2, filter_3 = st.columns(3)
-
-    with filter_1:
-        selected_industries = st.multiselect(
-            "Industry",
-            filters.get("industries", [])
-        )
-
-    with filter_2:
-        selected_clients = st.multiselect(
-            "Client",
-            filters.get("clients", [])
-        )
-
-    with filter_3:
-        selected_technologies = st.multiselect(
-            "Technology",
-            filters.get("technologies", [])
-        )
-
-    filter_4, filter_5, filter_6 = st.columns(3)
-
-    with filter_4:
-        selected_statuses = st.multiselect(
-            "Opportunity Status",
-            filters.get("opportunity_statuses", [])
-        )
-
-    with filter_5:
-        selected_service_groups = st.multiselect(
-            "Service Group",
-            filters.get("service_groups", [])
-        )
-
     manager_options = {
         manager.get("name"): manager.get("eid")
         for manager in filters.get("managers", [])
         if manager.get("name")
     }
 
-    with filter_6:
-        selected_manager_names = st.multiselect(
-            "Manager",
-            list(manager_options.keys())
+    with st.container(key="card_filters"):
+        filters_head = st.empty()
+
+        filter_row_1 = st.columns([1, 1, 1, 0.55])
+
+        with filter_row_1[0]:
+            selected_industries = st.multiselect(
+                "Industry",
+                filters.get("industries", []),
+                key="dash_f_industry"
+            )
+
+        with filter_row_1[1]:
+            selected_clients = st.multiselect(
+                "Client",
+                filters.get("clients", []),
+                key="dash_f_client"
+            )
+
+        with filter_row_1[2]:
+            selected_technologies = st.multiselect(
+                "Technology",
+                filters.get("technologies", []),
+                key="dash_f_tech"
+            )
+
+        with filter_row_1[3]:
+            st.markdown("<div style='height:1.7rem'></div>", unsafe_allow_html=True)
+            st.button(
+                "Reset Filters",
+                icon=":material/refresh:",
+                key="dash_reset",
+                on_click=_reset_dashboard_filters,
+                use_container_width=True
+            )
+
+        filter_row_2 = st.columns([1, 1, 1, 0.55])
+
+        with filter_row_2[0]:
+            selected_statuses = st.multiselect(
+                "Opportunity Status",
+                filters.get("opportunity_statuses", []),
+                key="dash_f_status"
+            )
+
+        with filter_row_2[1]:
+            selected_service_groups = st.multiselect(
+                "Service Group",
+                filters.get("service_groups", []),
+                key="dash_f_service"
+            )
+
+        with filter_row_2[2]:
+            selected_manager_names = st.multiselect(
+                "Manager",
+                list(manager_options.keys()),
+                key="dash_f_manager"
+            )
+
+        selected_manager_eids = {
+            manager_options[name]
+            for name in selected_manager_names
+        }
+
+        active_filters = sum(
+            1 for selection in (
+                selected_industries,
+                selected_clients,
+                selected_technologies,
+                selected_statuses,
+                selected_service_groups,
+                selected_manager_names
+            ) if selection
         )
 
-    selected_manager_eids = {
-        manager_options[name]
-        for name in selected_manager_names
-    }
+        filters_head.markdown(
+            f'<div class="flt-head"><span class="flt-ico">{_svg("filter", 22)}</span>'
+            f'<span class="flt-title">Filters</span>'
+            f'<span class="chip">{active_filters} active</span></div>',
+            unsafe_allow_html=True
+        )
 
     # ── FILTRO OPPORTUNITY ────────────────────────────────────────────────────
     filtered_commercial = commercial_rows
@@ -2907,64 +3063,33 @@ def show_dashboard_v2(groups):
     )
 
     # ── KPI (comuni a Commercial e Staffing) ──────────────────────────────────
-    st.markdown("---")
-    st.markdown('<p class="section-title">Practice Indicators</p>', unsafe_allow_html=True)
+    section_title("Practice Indicators", "bars")
 
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi_row_1 = [
+        ("briefcase", "Opportunity Value", f"€ {opportunity_value / 1_000_000:.2f} M"),
+        ("bars", "Pipeline Value", f"€ {pipeline_value / 1_000_000:.2f} M"),
+        ("layers", "Contract Revenue", f"€ {contract_revenue / 1_000_000:.2f} M"),
+        ("target", "Margin", f"€ {contract_margin / 1_000_000:.2f} M"),
+    ]
+    kpi_row_2 = [
+        ("euro", "Opportunities", opportunity_count),
+        ("file", "Active Contracts", active_contract_count),
+        ("users", "Available Resources", available_resources),
+        ("user-check", "Fully Allocated", fully_allocated_resources),
+    ]
 
-    kpi1.metric(
-        "Opportunity Value",
-        f"€ {opportunity_value / 1_000_000:.2f} M"
-    )
-
-    kpi2.metric(
-        "Pipeline Value",
-        f"€ {pipeline_value / 1_000_000:.2f} M"
-    )
-
-    kpi3.metric(
-        "Contract Revenue",
-        f"€ {contract_revenue / 1_000_000:.2f} M"
-    )
-
-    kpi4.metric(
-        "Margin",
-        f"€ {contract_margin / 1_000_000:.2f} M"
-    )
-
-    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
-
-    kpi5.metric(
-        "Opportunities",
-        opportunity_count
-    )
-
-    kpi6.metric(
-        "Active Contracts",
-        active_contract_count
-    )
-
-    kpi7.metric(
-        "Available Resources",
-        available_resources
-    )
-
-    kpi8.metric(
-        "Fully Allocated",
-        fully_allocated_resources
-    )
+    for kpi_row in (kpi_row_1, kpi_row_2):
+        for column, (icon, label, value) in zip(st.columns(4), kpi_row):
+            column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
+        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
     if dashboard_view == "Commercial":
-            # ── GRAFICI COMMERCIALI ───────────────────────────────────────────────────
-        st.markdown("---")
-        st.markdown('<p class="section-title">Commercial Performance</p>', unsafe_allow_html=True)
+        section_title("Commercial Performance", "trend")
 
-        # Aggregazione Opportunity per Technology
         technology_value = {}
 
         for row in filtered_commercial:
             technology = row.get("main_tech_cluster") or "Unclassified"
-
             technology_value[technology] = (
                 technology_value.get(technology, 0)
                 + float(row.get("opportunity_value") or 0)
@@ -2976,12 +3101,10 @@ def show_dashboard_v2(groups):
             reverse=True
         )
 
-        # Aggregazione Opportunity per numero
         technology_count = {}
 
         for row in filtered_commercial:
             technology = row.get("main_tech_cluster") or "Unclassified"
-
             technology_count[technology] = (
                 technology_count.get(technology, 0) + 1
             )
@@ -2992,249 +3115,304 @@ def show_dashboard_v2(groups):
             reverse=True
         )
 
-        # Aggregazione Opportunity Value per Industry
-        industry_revenue = {}
+        industry_value = {}
 
         for row in filtered_commercial:
             industry = row.get("industry_sector") or "Unclassified"
-
-            industry_revenue[industry] = (
-                industry_revenue.get(industry, 0)
+            industry_value[industry] = (
+                industry_value.get(industry, 0)
                 + float(row.get("opportunity_value") or 0)
             )
 
         industry_sorted = sorted(
-            industry_revenue.items(),
+            industry_value.items(),
             key=lambda item: item[1],
             reverse=True
         )
 
+        bar_purples = [
+            "#5B21B6", "#7C3AED", "#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE"
+        ]
+        tech_palette = [
+            "#4C1D95", "#7C3AED", "#A855F7", "#C084FC",
+            "#F97316", "#FBBF24", "#D1D5DB"
+        ]
+
         chart_col1, chart_col2 = st.columns(2)
 
-        # ── Opportunity Value by Technology ───────────────────────────────────────
+        # ── Opportunity Value & Technology Fragmentation ──────────────────────
         with chart_col1:
-            st.markdown("#### Opportunity Value & Technology Fragmentation")
+            with st.container(key="card_tech_value"):
+                card_title("Opportunity Value &amp; Technology Fragmentation")
 
-            fig_technology_value = go.Figure()
+                if technology_sorted:
+                    tech_names = [item[0] for item in technology_sorted]
+                    tech_values = [item[1] / 1_000_000 for item in technology_sorted]
+                    tech_total = sum(tech_values) or 1
+                    tech_pcts = [value / tech_total * 100 for value in tech_values]
 
-            fig_technology_value.add_trace(
-                go.Bar(
-                    x=[
-                        item[0]
-                        for item in technology_sorted
-                    ],
-                    y=[
-                        item[1]
-                        for item in technology_sorted
-                    ],
-                    marker_color=[
-                        dashboard_palette[i % len(dashboard_palette)]
-                        for i in range(len(technology_sorted))
-                    ],
-                    text=[
-                        f"€ {item[1] / 1_000_000:.2f} M"
-                        for item in technology_sorted
-                    ],
-                    textposition="outside",
-                    cliponaxis=False,
-                    hovertemplate=(
-                        "<b>%{x}</b><br>"
-                        "Value: €%{y:,.0f}"
-                        "<extra></extra>"
-                    )
-                )
-            )
+                    fig_technology_value = go.Figure()
 
-            fig_technology_value.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=20,
-                    t=40,
-                    b=80
-                ),
-                showlegend=False,
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                yaxis_title="Opportunity Value (€)",
-                xaxis_title=""
-            )
-
-            st.plotly_chart(
-                fig_technology_value,
-                use_container_width=True
-            )
-
-        # ── Technology Distribution ───────────────────────────────────────────────
-        with chart_col2:
-            st.markdown("#### Technology Distribution")
-
-            fig_technology_distribution = go.Figure(
-                data=[
-                    go.Pie(
-                        labels=[
-                            item[0]
-                            for item in technology_sorted
-                        ],
-                        values=[
-                            item[1]
-                            for item in technology_sorted
-                        ],
-                        hole=0.58,
-                        marker=dict(
-                            colors=dashboard_palette
-                        ),
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "Value: €%{value:,.0f}<br>"
-                            "%{percent}"
-                            "<extra></extra>"
+                    fig_technology_value.add_trace(
+                        go.Bar(
+                            x=tech_names,
+                            y=tech_values,
+                            name="Opportunity Value (€ M)",
+                            marker_color=[
+                                bar_purples[min(i, len(bar_purples) - 1)]
+                                for i in range(len(tech_names))
+                            ],
+                            text=[f"€ {value:.2f} M" for value in tech_values],
+                            textposition="outside",
+                            cliponaxis=False,
+                            hovertemplate=(
+                                "<b>%{x}</b><br>"
+                                "Value: € %{y:.2f} M"
+                                "<extra></extra>"
+                            )
                         )
                     )
-                ]
-            )
 
-            fig_technology_distribution.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=20,
-                    t=20,
-                    b=20
-                ),
-                showlegend=True,
-                legend=dict(
-                    orientation="v"
-                ),
-                paper_bgcolor="white"
-            )
+                    fig_technology_value.add_trace(
+                        go.Scatter(
+                            x=tech_names,
+                            y=tech_pcts,
+                            yaxis="y2",
+                            name="% of Total",
+                            mode="lines+markers",
+                            line=dict(color="#F5B301", width=2.5),
+                            marker=dict(
+                                size=9,
+                                color="#F5B301",
+                                line=dict(color="white", width=1.5)
+                            ),
+                            hovertemplate="%{y:.1f}% of total<extra></extra>"
+                        )
+                    )
 
-            st.plotly_chart(
-                fig_technology_distribution,
-                use_container_width=True
-            )
+                    chart_layout(
+                        fig_technology_value,
+                        height=380,
+                        margin=dict(l=20, r=20, t=30, b=10),
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h", y=-0.22, x=0.5, xanchor="center"
+                        ),
+                        yaxis=dict(
+                            title="Opportunity Value (€ M)",
+                            gridcolor="#EEE8FB",
+                            rangemode="tozero",
+                            automargin=True
+                        ),
+                        yaxis2=dict(
+                            overlaying="y",
+                            side="right",
+                            ticksuffix="%",
+                            showgrid=False,
+                            rangemode="tozero",
+                            automargin=True
+                        ),
+                        xaxis=dict(
+                            automargin=True,
+                            tickvals=tech_names,
+                            ticktext=[name.replace(" ", "<br>", 1) for name in tech_names]
+                        )
+                    )
+
+                    st.plotly_chart(
+                        fig_technology_value,
+                        use_container_width=True,
+                        theme=None
+                    )
+                else:
+                    st.info("No data for the selected filters.")
+
+        # ── Technology Distribution (donut + tabella) ─────────────────────────
+        with chart_col2:
+            with st.container(key="card_tech_dist"):
+                card_title("Technology Distribution")
+
+                distribution = list(technology_sorted[:6])
+                others_value = sum(item[1] for item in technology_sorted[6:])
+
+                if others_value > 0:
+                    distribution.append(("Others", others_value))
+
+                distribution_total = sum(item[1] for item in distribution)
+
+                if distribution_total > 0:
+                    donut_col, table_col = st.columns([1, 1.35])
+
+                    with donut_col:
+                        fig_technology_distribution = go.Figure(
+                            go.Pie(
+                                labels=[item[0] for item in distribution],
+                                values=[item[1] for item in distribution],
+                                hole=0.64,
+                                sort=False,
+                                textinfo="none",
+                                marker=dict(
+                                    colors=tech_palette[:len(distribution)],
+                                    line=dict(color="white", width=2)
+                                ),
+                                hovertemplate=(
+                                    "<b>%{label}</b><br>"
+                                    "Value: €%{value:,.0f}<br>"
+                                    "%{percent}"
+                                    "<extra></extra>"
+                                )
+                            )
+                        )
+
+                        chart_layout(
+                            fig_technology_distribution,
+                            height=360,
+                            showlegend=False,
+                            annotations=[
+                                dict(
+                                    text=(
+                                        f"<b>€ {distribution_total / 1_000_000:.2f} M</b><br>"
+                                        "Opportunity<br>Value"
+                                    ),
+                                    x=0.5,
+                                    y=0.5,
+                                    font=dict(size=15, color="#1E1B4B"),
+                                    showarrow=False
+                                )
+                            ]
+                        )
+
+                        st.plotly_chart(
+                            fig_technology_distribution,
+                            use_container_width=True,
+                            theme=None
+                        )
+
+                    with table_col:
+                        table_rows = "".join(
+                            f'<tr><td><span class="dot" style="background:{tech_palette[i]}"></span>{name}</td>'
+                            f'<td>{value / 1_000_000:.2f}</td>'
+                            f'<td>{value / distribution_total:.1%}</td></tr>'
+                            for i, (name, value) in enumerate(distribution)
+                        )
+
+                        st.markdown(
+                            '<div style="height:1.2rem"></div>'
+                            '<table class="tech-table"><thead><tr>'
+                            '<th>Technology</th><th>Value (€ M)</th><th>% of Total</th>'
+                            f'</tr></thead><tbody>{table_rows}</tbody></table>',
+                            unsafe_allow_html=True
+                        )
+                else:
+                    st.info("No data for the selected filters.")
 
         chart_col3, chart_col4 = st.columns(2)
 
-        # ── Revenue by Industry ───────────────────────────────────────────────────
+        # ── Opportunity Value by Industry ─────────────────────────────────────
         with chart_col3:
-            st.markdown("#### Opportunity Value by Industry")
+            with st.container(key="card_industry"):
+                card_title("Opportunity Value by Industry")
 
-            industry_nonzero = [
-                item for item in industry_sorted if item[1] > 0
-            ]
+                industry_nonzero = [
+                    item for item in industry_sorted if item[1] > 0
+                ]
 
-            if not industry_nonzero:
-                st.info("No opportunity value available for the selected filters.")
-            else:
-                industry_total = sum(item[1] for item in industry_nonzero)
+                if not industry_nonzero:
+                    st.info("No opportunity value available for the selected filters.")
+                else:
+                    industry_total = sum(item[1] for item in industry_nonzero)
 
-                fig_industry = go.Figure(
-                    go.Treemap(
-                        labels=[item[0] for item in industry_nonzero],
-                        parents=[""] * len(industry_nonzero),
-                        values=[item[1] for item in industry_nonzero],
-                        text=[
-                            f"€ {item[1] / 1_000_000:.2f} M"
-                            f" ({item[1] / industry_total:.0%})"
-                            for item in industry_nonzero
-                        ],
-                        textinfo="label+text",
-                        textfont=dict(size=14),
-                        pathbar=dict(visible=False),
-                        root_color="white",
-                        tiling=dict(pad=0),
-                        marker=dict(
-                            pad=dict(t=0, l=0, r=0, b=0),
-                            colors=[item[1] for item in industry_nonzero],
-                            colorscale=[
-                                [0.0, "#DDD6FE"],
-                                [0.5, "#8B5CF6"],
-                                [1.0, "#3B0764"]
+                    fig_industry = go.Figure(
+                        go.Treemap(
+                            labels=[item[0] for item in industry_nonzero],
+                            parents=[""] * len(industry_nonzero),
+                            values=[item[1] for item in industry_nonzero],
+                            text=[
+                                f"€ {item[1] / 1_000_000:.2f} M"
+                                f" ({item[1] / industry_total:.0%})"
+                                for item in industry_nonzero
                             ],
-                            line=dict(width=2, color="white")
-                        ),
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "Opportunity Value: €%{value:,.0f}"
-                            "<extra></extra>"
+                            textinfo="label+text",
+                            textfont=dict(size=14),
+                            pathbar=dict(visible=False),
+                            root_color="white",
+                            tiling=dict(pad=0),
+                            marker=dict(
+                                pad=dict(t=0, l=0, r=0, b=0),
+                                colors=[item[1] for item in industry_nonzero],
+                                colorscale=[
+                                    [0.0, "#DDD6FE"],
+                                    [0.5, "#8B5CF6"],
+                                    [1.0, "#3B0764"]
+                                ],
+                                line=dict(width=2, color="white")
+                            ),
+                            hovertemplate=(
+                                "<b>%{label}</b><br>"
+                                "Opportunity Value: €%{value:,.0f}"
+                                "<extra></extra>"
+                            )
                         )
                     )
-                )
 
-                fig_industry.update_layout(
-                    height=380,
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    paper_bgcolor="white"
-                )
-
-                st.plotly_chart(
-                    fig_industry,
-                    use_container_width=True
-                )
-
-        # ── Technology Ranking ────────────────────────────────────────────────────
-        with chart_col4:
-            st.markdown("#### Top 5 Technologies")
-
-            ranking_desc = technology_count_sorted[:5]
-            ranking_display = list(
-                reversed(ranking_desc)
-            )
-
-            fig_ranking = go.Figure()
-
-            fig_ranking.add_trace(
-                go.Bar(
-                    x=[
-                        item[1]
-                        for item in ranking_display
-                    ],
-                    y=[
-                        item[0]
-                        for item in ranking_display
-                    ],
-                    orientation="h",
-                    marker_color=[
-                        dashboard_palette[i % len(dashboard_palette)]
-                        for i in range(len(ranking_display))
-                    ],
-                    text=[
-                        item[1]
-                        for item in ranking_display
-                    ],
-                    textposition="outside",
-                    hovertemplate=(
-                        "<b>%{y}</b><br>"
-                        "Opportunity: %{x}"
-                        "<extra></extra>"
+                    chart_layout(
+                        fig_industry,
+                        height=360,
+                        margin=dict(l=0, r=0, t=10, b=0)
                     )
-                )
-            )
 
-            fig_ranking.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=40,
-                    t=20,
-                    b=20
-                ),
-                showlegend=False,
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                xaxis_title="Number of Opportunities",
-                yaxis_title=""
-            )
+                    st.plotly_chart(
+                        fig_industry,
+                        use_container_width=True,
+                        theme=None
+                    )
 
-            st.plotly_chart(
-                fig_ranking,
-                use_container_width=True
-            )
+        # ── Top 5 Technologies ────────────────────────────────────────────────
+        with chart_col4:
+            with st.container(key="card_top_tech"):
+                card_title("Top 5 Technologies")
+
+                ranking_display = list(reversed(technology_count_sorted[:5]))
+
+                if ranking_display:
+                    fig_ranking = go.Figure()
+
+                    fig_ranking.add_trace(
+                        go.Bar(
+                            x=[item[1] for item in ranking_display],
+                            y=[item[0] for item in ranking_display],
+                            orientation="h",
+                            marker_color="#7C3AED",
+                            text=[item[1] for item in ranking_display],
+                            textposition="outside",
+                            cliponaxis=False,
+                            hovertemplate=(
+                                "<b>%{y}</b><br>"
+                                "Opportunity: %{x}"
+                                "<extra></extra>"
+                            )
+                        )
+                    )
+
+                    chart_layout(
+                        fig_ranking,
+                        height=360,
+                        margin=dict(l=10, r=30, t=10, b=10),
+                        showlegend=False,
+                        xaxis=dict(title="Number of Opportunities", gridcolor="#EEE8FB", automargin=True),
+                        yaxis=dict(title="", automargin=True, ticksuffix="   ")
+                    )
+
+                    st.plotly_chart(
+                        fig_ranking,
+                        use_container_width=True,
+                        theme=None
+                    )
+                else:
+                    st.info("No data for the selected filters.")
     else:
         # ── STAFFING OVERVIEW ─────────────────────────────────────────────────────
-        st.markdown("---")
-        st.markdown('<p class="section-title">Staffing Overview</p>', unsafe_allow_html=True)
+        section_title("Staffing Overview", "users")
 
         # Se sono attivi filtri commerciali, mostriamo le risorse
         # associate alle opportunity rimaste dopo i filtri.
@@ -3295,27 +3473,17 @@ def show_dashboard_v2(groups):
             else 0
         )
 
-        staffing_kpi1, staffing_kpi2, staffing_kpi3, staffing_kpi4 = st.columns(4)
+        staffing_kpis = [
+            ("users", "Resources", staffing_total),
+            ("user-check", "Available", staffing_available),
+            ("layers", "Fully Allocated", staffing_fully_allocated),
+            ("percent", "Average Allocation", f"{staffing_average_allocation:.1f}%"),
+        ]
 
-        staffing_kpi1.metric(
-            "Resources",
-            staffing_total
-        )
+        for column, (icon, label, value) in zip(st.columns(4), staffing_kpis):
+            column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
 
-        staffing_kpi2.metric(
-            "Available",
-            staffing_available
-        )
-
-        staffing_kpi3.metric(
-            "Fully Allocated",
-            staffing_fully_allocated
-        )
-
-        staffing_kpi4.metric(
-            "Average Allocation",
-            f"{staffing_average_allocation:.1f}%"
-        )
+        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
         # ── AGGREGAZIONI STAFFING ─────────────────────────────────────────────────
         availability_distribution = {
@@ -3406,247 +3574,240 @@ def show_dashboard_v2(groups):
 
         staffing_col1, staffing_col2 = st.columns(2)
 
-        # ── RESOURCE AVAILABILITY ─────────────────────────────────────────────────
+        # ── RESOURCE AVAILABILITY ─────────────────────────────────────────────
         with staffing_col1:
-            st.markdown("#### Resource Availability")
+            with st.container(key="card_availability"):
+                card_title("Resource Availability")
 
-            fig_availability = go.Figure(
-                data=[
-                    go.Pie(
-                        labels=list(
-                            availability_distribution.keys()
-                        ),
-                        values=list(
-                            availability_distribution.values()
-                        ),
-                        hole=0.60,
-                        marker=dict(
-                            colors=[
-                                "#DC2626",  # Disponibili,
-                                "#F59E0B",  # Parzialmente allocate
-                                "#16A34A"   # Fully allocated
+                availability_order = [
+                    ("Fully Allocated", "#16A34A"),
+                    ("Partially Allocated", "#F59E0B"),
+                    ("Available", "#DC2626"),
+                ]
+
+                if staffing_total > 0:
+                    availability_donut_col, availability_table_col = st.columns([1, 1.2])
+
+                    with availability_donut_col:
+                        fig_availability = go.Figure(
+                            go.Pie(
+                                labels=[name for name, _ in availability_order],
+                                values=[availability_distribution[name] for name, _ in availability_order],
+                                hole=0.64,
+                                sort=False,
+                                textinfo="none",
+                                marker=dict(
+                                    colors=[color for _, color in availability_order],
+                                    line=dict(color="white", width=2)
+                                ),
+                                hovertemplate=(
+                                    "<b>%{label}</b><br>"
+                                    "Resources: %{value}<br>"
+                                    "%{percent}"
+                                    "<extra></extra>"
+                                )
+                            )
+                        )
+
+                        chart_layout(
+                            fig_availability,
+                            height=360,
+                            showlegend=False,
+                            annotations=[
+                                dict(
+                                    text=f"<b>{staffing_total}</b><br>Resources",
+                                    x=0.5,
+                                    y=0.5,
+                                    font=dict(size=16, color="#1E1B4B"),
+                                    showarrow=False
+                                )
                             ]
-                        ),
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "Resources: %{value}<br>"
-                            "%{percent}"
-                            "<extra></extra>"
                         )
-                    )
-                ]
-            )
 
-            fig_availability.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=20,
-                    t=20,
-                    b=20
-                ),
-                showlegend=True,
-                paper_bgcolor="white",
-                annotations=[
-                    dict(
-                        text=str(staffing_total),
-                        x=0.5,
-                        y=0.5,
-                        font_size=28,
-                        showarrow=False
-                    )
-                ]
-            )
+                        st.plotly_chart(
+                            fig_availability,
+                            use_container_width=True,
+                            theme=None
+                        )
 
-            st.plotly_chart(
-                fig_availability,
-                use_container_width=True
-            )
+                    with availability_table_col:
+                        availability_rows = "".join(
+                            f'<tr><td><span class="dot" style="background:{color}"></span>{name}</td>'
+                            f'<td>{availability_distribution[name]}</td>'
+                            f'<td>{availability_distribution[name] / staffing_total:.1%}</td></tr>'
+                            for name, color in availability_order
+                        )
 
-        # ── RESOURCES BY LEVEL (PIRAMIDE) ─────────────────────────────────────────
+                        st.markdown(
+                            '<div style="height:3rem"></div>'
+                            '<table class="tech-table"><thead><tr>'
+                            '<th>Status</th><th>Resources</th><th>% of Total</th>'
+                            f'</tr></thead><tbody>{availability_rows}</tbody></table>',
+                            unsafe_allow_html=True
+                        )
+                else:
+                    st.info("No resources available for the selected filters.")
+
+        # ── RESOURCES BY LEVEL (PIRAMIDE) ─────────────────────────────────────
         with staffing_col2:
-            st.markdown("#### Resources by Level")
+            with st.container(key="card_levels"):
+                card_title("Resources by Level")
 
-            if level_sorted:
-                level_count = len(level_sorted)
-                pyramid_start = (30, 64, 175)
-                pyramid_end = (147, 197, 253)
-                pyramid_colors = [
-                    "#%02x%02x%02x" % tuple(
-                        int(
-                            pyramid_start[j]
-                            + (pyramid_end[j] - pyramid_start[j])
-                            * i / max(level_count - 1, 1)
+                if level_sorted:
+                    level_count = len(level_sorted)
+                    pyramid_start = (91, 33, 182)
+                    pyramid_end = (221, 214, 254)
+                    pyramid_colors = [
+                        "#%02x%02x%02x" % tuple(
+                            int(
+                                pyramid_start[j]
+                                + (pyramid_end[j] - pyramid_start[j])
+                                * i / max(level_count - 1, 1)
+                            )
+                            for j in range(3)
                         )
-                        for j in range(3)
-                    )
-                    for i in range(level_count)
-                ]
+                        for i in range(level_count)
+                    ]
 
-                fig_levels = go.Figure(
-                    go.Funnel(
-                        y=[
-                            f"{key[1]} (L{key[0]})"
-                            if key[0] is not None
-                            else key[1]
-                            for key, _ in level_sorted
-                        ],
-                        x=[count for _, count in level_sorted],
-                        textinfo="value+percent total",
-                        textposition="inside",
-                        marker=dict(
-                            color=pyramid_colors,
-                            line=dict(width=2, color="white")
-                        ),
-                        connector=dict(visible=False),
-                        hovertemplate=(
-                            "<b>%{y}</b><br>"
-                            "Resources: %{x}"
-                            "<extra></extra>"
+                    fig_levels = go.Figure(
+                        go.Funnel(
+                            y=[
+                                f"{key[1]} (L{key[0]})"
+                                if key[0] is not None
+                                else key[1]
+                                for key, _ in level_sorted
+                            ],
+                            x=[count for _, count in level_sorted],
+                            textinfo="value+percent total",
+                            textposition="inside",
+                            marker=dict(
+                                color=pyramid_colors,
+                                line=dict(width=2, color="white")
+                            ),
+                            connector=dict(visible=False),
+                            hovertemplate=(
+                                "<b>%{y}</b><br>"
+                                "Resources: %{x}"
+                                "<extra></extra>"
+                            )
                         )
                     )
-                )
 
-                fig_levels.update_layout(
-                    height=380,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    showlegend=False,
-                    paper_bgcolor="white"
-                )
+                    chart_layout(
+                        fig_levels,
+                        height=360,
+                        showlegend=False,
+                        yaxis=dict(automargin=True)
+                    )
 
-                st.plotly_chart(
-                    fig_levels,
-                    use_container_width=True
-                )
-
-            else:
-                st.info("No resources available for the selected filters.")
+                    st.plotly_chart(
+                        fig_levels,
+                        use_container_width=True,
+                        theme=None
+                    )
+                else:
+                    st.info("No resources available for the selected filters.")
 
         staffing_col3, staffing_col4 = st.columns(2)
 
-        # ── TOP 5 CERTIFICATIONS ──────────────────────────────────────────────────
+        # ── TOP 5 CERTIFICATIONS ──────────────────────────────────────────────
         with staffing_col3:
-            st.markdown("#### Top 5 Certifications")
+            with st.container(key="card_certifications"):
+                card_title("Top 5 Certifications")
 
-            certification_display = list(
-                reversed(certification_sorted)
-            )
+                certification_display = list(reversed(certification_sorted))
 
-            if certification_display:
-                fig_certifications = go.Figure()
+                if certification_display:
+                    fig_certifications = go.Figure()
 
-                fig_certifications.add_trace(
-                    go.Bar(
-                        x=[
-                            item[1]
-                            for item in certification_display
-                        ],
-                        y=[
-                            item[0]
-                            for item in certification_display
-                        ],
-                        orientation="h",
-                        marker_color=[
-                            dashboard_palette[i % len(dashboard_palette)]
-                            for i in range(len(certification_display))
-                        ],
-                        text=[
-                            item[1]
-                            for item in certification_display
-                        ],
-                        textposition="outside",
-                        hovertemplate=(
-                            "<b>%{y}</b><br>"
-                            "Certified resources: %{x}"
-                            "<extra></extra>"
+                    fig_certifications.add_trace(
+                        go.Bar(
+                            x=[item[1] for item in certification_display],
+                            y=[item[0] for item in certification_display],
+                            orientation="h",
+                            marker_color="#7C3AED",
+                            text=[item[1] for item in certification_display],
+                            textposition="outside",
+                            cliponaxis=False,
+                            hovertemplate=(
+                                "<b>%{y}</b><br>"
+                                "Certified resources: %{x}"
+                                "<extra></extra>"
+                            )
                         )
                     )
-                )
 
-                fig_certifications.update_layout(
-                    height=380,
-                    margin=dict(
-                        l=20,
-                        r=40,
-                        t=20,
-                        b=20
-                    ),
-                    showlegend=False,
-                    plot_bgcolor="white",
-                    paper_bgcolor="white",
-                    xaxis_title="Number of Certified Resources",
-                    yaxis_title=""
-                )
+                    chart_layout(
+                        fig_certifications,
+                        height=360,
+                        margin=dict(l=10, r=30, t=10, b=10),
+                        showlegend=False,
+                        xaxis=dict(
+                            title="Number of Certified Resources",
+                            gridcolor="#EEE8FB",
+                            automargin=True
+                        ),
+                        yaxis=dict(title="", automargin=True, ticksuffix="   ")
+                    )
 
-                st.plotly_chart(
-                    fig_certifications,
-                    use_container_width=True
-                )
+                    st.plotly_chart(
+                        fig_certifications,
+                        use_container_width=True,
+                        theme=None
+                    )
+                else:
+                    st.info("No certifications available for the selected filters.")
 
-            else:
-                st.info("No certifications available for the selected filters.")
-
-        # ── STAFFING BY MANAGER ───────────────────────────────────────────────────
+        # ── TOP 5 MANAGERS BY ACTIVE OSR ──────────────────────────────────────
         with staffing_col4:
-            st.markdown("#### Top 5 Managers by Active OSR")
+            with st.container(key="card_managers"):
+                card_title("Top 5 Managers by Active OSR")
 
-            manager_display = list(
-                reversed(manager_sorted)
-            )
+                manager_display = list(reversed(manager_sorted))
 
-            if manager_display:
-                fig_managers = go.Figure()
+                if manager_display:
+                    fig_managers = go.Figure()
 
-                fig_managers.add_trace(
-                    go.Bar(
-                        x=[
-                            item[1]
-                            for item in manager_display
-                        ],
-                        y=[
-                            item[0]
-                            for item in manager_display
-                        ],
-                        orientation="h",
-                        marker_color=dashboard_palette[0],
-                        text=[
-                            item[1]
-                            for item in manager_display
-                        ],
-                        textposition="outside",
-                        hovertemplate=(
-                            "<b>%{y}</b><br>"
-                            "Resources: %{x}"
-                            "<extra></extra>"
+                    fig_managers.add_trace(
+                        go.Bar(
+                            x=[item[1] for item in manager_display],
+                            y=[item[0] for item in manager_display],
+                            orientation="h",
+                            marker_color="#7C3AED",
+                            text=[item[1] for item in manager_display],
+                            textposition="outside",
+                            cliponaxis=False,
+                            hovertemplate=(
+                                "<b>%{y}</b><br>"
+                                "Resources: %{x}"
+                                "<extra></extra>"
+                            )
                         )
                     )
-                )
 
-                fig_managers.update_layout(
-                    height=380,
-                    margin=dict(
-                        l=20,
-                        r=40,
-                        t=20,
-                        b=20
-                    ),
-                    showlegend=False,
-                    plot_bgcolor="white",
-                    paper_bgcolor="white",
-                    xaxis_title="Resources on Active OSRs",
-                    yaxis_title=""
-                )
+                    chart_layout(
+                        fig_managers,
+                        height=360,
+                        margin=dict(l=10, r=30, t=10, b=10),
+                        showlegend=False,
+                        xaxis=dict(
+                            title="Resources on Active OSRs",
+                            gridcolor="#EEE8FB",
+                            automargin=True
+                        ),
+                        yaxis=dict(title="", automargin=True, ticksuffix="   ")
+                    )
 
-                st.plotly_chart(
-                    fig_managers,
-                    use_container_width=True
-                )
-
-            else:
-                st.info(
-                    "No managers associated with active OSRs "
-                    "for the selected filters."
-                )
+                    st.plotly_chart(
+                        fig_managers,
+                        use_container_width=True,
+                        theme=None
+                    )
+                else:
+                    st.info(
+                        "No managers associated with active OSRs "
+                        "for the selected filters."
+                    )
     # ── GESTIONE STAFFING V2 ─────────────────────────────────────────────────────
 def show_staffing_management_v2(groups):
 
@@ -5893,6 +6054,7 @@ def main():
 
     groups = get_groups()
     show_sidebar(groups)
+    show_app_header()
 
     page = st.session_state.page or "dashboard"
 
