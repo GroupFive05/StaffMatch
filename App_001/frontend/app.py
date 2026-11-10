@@ -2602,6 +2602,11 @@ def show_risorsa_v2(groups):
 
 # ── DASHBOARD V2 ──────────────────────────────────────────────────────────────
 def show_dashboard_v2(groups):
+    st.markdown(
+        '<p style="margin:-1.6rem 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
+        'Select the analysis view you are interested in</p>',
+        unsafe_allow_html=True
+    )
     dashboard_view = st.segmented_control(
         "Dashboard view",
         ["Commercial", "Staffing"],
@@ -2955,7 +2960,7 @@ def show_dashboard_v2(groups):
 
         # ── Opportunity Value by Technology ───────────────────────────────────────
         with chart_col1:
-            st.markdown("#### Opportunity Value by Technology")
+            st.markdown("#### Opportunity Value & Technology Fragmentation")
 
             fig_technology_value = go.Figure()
 
@@ -2973,6 +2978,12 @@ def show_dashboard_v2(groups):
                         dashboard_palette[i % len(dashboard_palette)]
                         for i in range(len(technology_sorted))
                     ],
+                    text=[
+                        f"€ {item[1] / 1_000_000:.2f} M"
+                        for item in technology_sorted
+                    ],
+                    textposition="outside",
+                    cliponaxis=False,
                     hovertemplate=(
                         "<b>%{x}</b><br>"
                         "Value: €%{y:,.0f}"
@@ -2986,7 +2997,7 @@ def show_dashboard_v2(groups):
                 margin=dict(
                     l=20,
                     r=20,
-                    t=20,
+                    t=40,
                     b=80
                 ),
                 showlegend=False,
@@ -3056,55 +3067,60 @@ def show_dashboard_v2(groups):
         with chart_col3:
             st.markdown("#### Contract Revenue by Industry")
 
-            fig_industry = go.Figure()
+            industry_nonzero = [
+                item for item in industry_sorted if item[1] > 0
+            ]
 
-            fig_industry.add_trace(
-                go.Bar(
-                    x=[
-                        item[0]
-                        for item in industry_sorted
-                    ],
-                    y=[
-                        item[1]
-                        for item in industry_sorted
-                    ],
-                    marker_color=[
-                        dashboard_palette[i % len(dashboard_palette)]
-                        for i in range(len(industry_sorted))
-                    ],
-                    hovertemplate=(
-                        "<b>%{x}</b><br>"
-                        "Revenue: €%{y:,.0f}"
-                        "<extra></extra>"
+            if not industry_nonzero:
+                st.info("No contract revenue available for the selected filters.")
+            else:
+                industry_total = sum(item[1] for item in industry_nonzero)
+
+                fig_industry = go.Figure(
+                    go.Treemap(
+                        labels=[item[0] for item in industry_nonzero],
+                        parents=[""] * len(industry_nonzero),
+                        values=[item[1] for item in industry_nonzero],
+                        text=[
+                            f"€ {item[1] / 1_000_000:.2f} M"
+                            f" ({item[1] / industry_total:.0%})"
+                            for item in industry_nonzero
+                        ],
+                        textinfo="label+text",
+                        textfont=dict(size=14),
+                        marker=dict(
+                            colors=[item[1] for item in industry_nonzero],
+                            colorscale=[
+                                [0.0, "#DDD6FE"],
+                                [0.5, "#8B5CF6"],
+                                [1.0, "#3B0764"]
+                            ],
+                            line=dict(width=2, color="white")
+                        ),
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "Revenue: €%{value:,.0f}"
+                            "<extra></extra>"
+                        )
                     )
                 )
-            )
 
-            fig_industry.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=20,
-                    t=20,
-                    b=80
-                ),
-                showlegend=False,
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                yaxis_title="Revenue (€)",
-                xaxis_title=""
-            )
+                fig_industry.update_layout(
+                    height=380,
+                    margin=dict(l=0, r=0, t=20, b=0),
+                    paper_bgcolor="white"
+                )
 
-            st.plotly_chart(
-                fig_industry,
-                use_container_width=True
-            )
+                st.plotly_chart(
+                    fig_industry,
+                    use_container_width=True
+                )
 
         # ── Technology Ranking ────────────────────────────────────────────────────
         with chart_col4:
-            st.markdown("#### Technology Ranking")
+            st.markdown("#### Top 5 Technologies")
 
-            ranking_desc = technology_count_sorted[:10]
+            ranking_desc = technology_count_sorted[:5]
             ranking_display = list(
                 reversed(ranking_desc)
             )
