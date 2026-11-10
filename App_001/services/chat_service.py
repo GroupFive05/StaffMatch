@@ -28,12 +28,22 @@ Rispondi nella stessa lingua utilizzata dall'utente:
 Mantieni un tono professionale, preciso e conciso.
 Basa ogni risposta esclusivamente sui dati presenti nel contesto.
 
+Gli importi (valore opportunity, revenue, costi, margine) sono in euro e
+puoi usarli per ordinare, sommare e confrontare le opportunity e i contratti.
+
 Non inventare risorse, skill, certificazioni, date, percentuali,
 clienti, contratti, manager o stati OSR.
 
 Se una risposta non è determinabile dai dati forniti,
 dichiara chiaramente che l'informazione non è disponibile.
 """
+
+def _eur(value):
+    try:
+        return f"€ {float(value):,.0f}".replace(",", ".")
+    except (TypeError, ValueError):
+        return "non disponibile"
+
 
 # ── Classificazione domanda ────────────────────────────────────────────────────
 
@@ -46,7 +56,8 @@ _PROJECTS_KEYWORDS = re.compile(
     re.IGNORECASE
 )
 _OPPORTUNITY_KEYWORDS = re.compile(
-    r"opportunit|opportunity|aperta|nuov.{0,5}ricerca|cerca risorsa|posizione aperta",
+    r"opportunit|opportunity|aperta|nuov.{0,5}ricerca|cerca risorsa|posizione aperta"
+    r"|valore|value|importo|pipeline|revenue|ricav|fatturat|margin|costi|budget|euro",
     re.IGNORECASE
 )
 _AVAILABILITY_KEYWORDS = re.compile(
@@ -333,12 +344,18 @@ def _build_context(categories: set) -> str:
                     f"{opportunity.get('functional_area') or 'non disponibile'}"
                     f" | Stato: "
                     f"{opportunity.get('opportunity_status') or 'non disponibile'}"
+                    f" | Stage: "
+                    f"{opportunity.get('opportunity_stage') or 'non disponibile'}"
+                    f" | Valore opportunity: "
+                    f"{_eur(opportunity.get('opportunity_value'))}"
                     f" | Inizio: "
                     f"{opportunity.get('start_date') or 'non disponibile'}"
                     f" | Fine: "
                     f"{opportunity.get('end_date') or 'non disponibile'}"
                     f" | Contratto: "
                     f"{opportunity.get('contract_id') or 'non disponibile'}"
+                    f" | OSR collegate: "
+                    f"{opportunity.get('osr_count') or 0}"
                 )
             )
 
@@ -371,6 +388,12 @@ def _build_context(categories: set) -> str:
                     f"{contract.get('service_group') or 'non disponibile'}"
                     f" | Stato contratto: "
                     f"{contract.get('contract_status') or 'non disponibile'}"
+                    f" | Revenue: "
+                    f"{_eur(contract.get('contract_revenue'))}"
+                    f" | Costi: "
+                    f"{_eur(contract.get('contract_costs'))}"
+                    f" | Margine: "
+                    f"{_eur(float(contract.get('contract_revenue') or 0) - float(contract.get('contract_costs') or 0))}"
                     f" | Inizio: "
                     f"{contract.get('start_date') or 'non disponibile'}"
                     f" | Fine: "
