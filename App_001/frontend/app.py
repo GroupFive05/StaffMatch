@@ -93,6 +93,15 @@ st.markdown("""
     .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
     .login-sub2 { color: #999; font-size: 0.78rem; margin: 0.15rem 0 0 0; }
 
+    .section-title {
+        color: #A100FF;
+        font-size: 2.2rem;
+        font-weight: 900;
+        letter-spacing: -1px;
+        line-height: 1.1;
+        margin: 0.5rem 0 0.75rem 0;
+    }
+
     /* ── COCKPIT FIXED HEADER (top-left main area) ── */
     #sm-cockpit-header {
         position: fixed; top: 0; left: 22rem; z-index: 9998;
@@ -2857,7 +2866,7 @@ def show_dashboard_v2(groups):
     if dashboard_view == "Commercial":
         # ── KPI COMMERCIALI ───────────────────────────────────────────────────────
         st.markdown("---")
-        st.markdown("### Commercial Overview")
+        st.markdown('<p class="section-title">Commercial Overview</p>', unsafe_allow_html=True)
 
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -2904,7 +2913,7 @@ def show_dashboard_v2(groups):
         )
             # ── GRAFICI COMMERCIALI ───────────────────────────────────────────────────
         st.markdown("---")
-        st.markdown("### Commercial Performance")
+        st.markdown('<p class="section-title">Commercial Performance</p>', unsafe_allow_html=True)
 
         # Aggregazione Opportunity per Technology
         technology_value = {}
@@ -2939,15 +2948,15 @@ def show_dashboard_v2(groups):
             reverse=True
         )
 
-        # Aggregazione Revenue per Industry
+        # Aggregazione Opportunity Value per Industry
         industry_revenue = {}
 
-        for row in filtered_contracts:
+        for row in filtered_commercial:
             industry = row.get("industry_sector") or "Unclassified"
 
             industry_revenue[industry] = (
                 industry_revenue.get(industry, 0)
-                + float(row.get("contract_revenue") or 0)
+                + float(row.get("opportunity_value") or 0)
             )
 
         industry_sorted = sorted(
@@ -3065,14 +3074,14 @@ def show_dashboard_v2(groups):
 
         # ── Revenue by Industry ───────────────────────────────────────────────────
         with chart_col3:
-            st.markdown("#### Contract Revenue by Industry")
+            st.markdown("#### Opportunity Value by Industry")
 
             industry_nonzero = [
                 item for item in industry_sorted if item[1] > 0
             ]
 
             if not industry_nonzero:
-                st.info("No contract revenue available for the selected filters.")
+                st.info("No opportunity value available for the selected filters.")
             else:
                 industry_total = sum(item[1] for item in industry_nonzero)
 
@@ -3088,6 +3097,9 @@ def show_dashboard_v2(groups):
                         ],
                         textinfo="label+text",
                         textfont=dict(size=14),
+                        pathbar=dict(visible=False),
+                        root_color="white",
+                        tiling=dict(pad=0),
                         marker=dict(
                             colors=[item[1] for item in industry_nonzero],
                             colorscale=[
@@ -3099,7 +3111,7 @@ def show_dashboard_v2(groups):
                         ),
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            "Revenue: €%{value:,.0f}"
+                            "Opportunity Value: €%{value:,.0f}"
                             "<extra></extra>"
                         )
                     )
@@ -3177,7 +3189,7 @@ def show_dashboard_v2(groups):
     else:
         # ── STAFFING OVERVIEW ─────────────────────────────────────────────────────
         st.markdown("---")
-        st.markdown("### Staffing Overview")
+        st.markdown('<p class="section-title">Staffing Overview</p>', unsafe_allow_html=True)
 
         # Se sono attivi filtri commerciali, mostriamo le risorse
         # associate alle opportunity rimaste dopo i filtri.
