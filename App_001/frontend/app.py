@@ -469,6 +469,7 @@ def show_login():
         margin-right: auto !important;
     }
     .login-app-title, .login-sub1, .login-sub2 { text-align: center; }
+    [data-testid="InputInstructions"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
     with st.container():
