@@ -93,13 +93,14 @@ st.markdown("""
     .login-sub1 { color: #444; font-size: 0.88rem; font-weight: 500; margin: 0; }
     .login-sub2 { color: #999; font-size: 0.78rem; margin: 0.15rem 0 0 0; }
 
-    .section-title {
-        color: #A100FF;
-        font-size: 2.2rem;
-        font-weight: 900;
-        letter-spacing: -1px;
-        line-height: 1.1;
-        margin: 0.5rem 0 0.75rem 0;
+    .section-title,
+    [data-testid="stMarkdownContainer"] p.section-title {
+        color: #A100FF !important;
+        font-size: 2.4rem !important;
+        font-weight: 900 !important;
+        letter-spacing: -1px !important;
+        line-height: 1.1 !important;
+        margin: 0.5rem 0 0.75rem 0 !important;
     }
 
     /* ── COCKPIT FIXED HEADER (top-left main area) ── */
@@ -3101,6 +3102,7 @@ def show_dashboard_v2(groups):
                         root_color="white",
                         tiling=dict(pad=0),
                         marker=dict(
+                            pad=dict(t=0, l=0, r=0, b=0),
                             colors=[item[1] for item in industry_nonzero],
                             colorscale=[
                                 [0.0, "#DDD6FE"],
