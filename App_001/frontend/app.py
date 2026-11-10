@@ -107,6 +107,14 @@ st.markdown("""
         border-left: 3px solid #A100FF !important;
         padding-left: 15px !important;
     }
+    [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"],
+    [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-primary"]:hover {
+        background: linear-gradient(90deg, #A100FF33, #A100FF66) !important;
+        color: #ffffff !important;
+        border: 2px solid #A100FF !important;
+        padding: 8px 12px !important;
+        font-weight: 500 !important;
+    }
 
     /* ── MAIN AREA ── */
     .main .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1200px; }
@@ -570,8 +578,13 @@ def show_sidebar(groups):
             pages.append(("⚙️", "Administration & Security", "admin"))
 
         for icon, label, key in pages:
-            active = "→ " if st.session_state.page == key else "   "
-            if st.button(f"{active}{icon} {label}", use_container_width=True, key=f"nav_{key}"):
+            is_active = st.session_state.page == key
+            if st.button(
+                f"{icon} {label}",
+                use_container_width=True,
+                key=f"nav_{key}",
+                type="primary" if is_active else "secondary",
+            ):
                 st.session_state.page = key
                 st.rerun()
 
