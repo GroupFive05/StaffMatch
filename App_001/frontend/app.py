@@ -44,7 +44,31 @@ st.markdown("""
         background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%) !important;
     }
     /* nasconde la linea nativa Streamlit tra sidebar e main */
-    [data-testid="stSidebarContent"] { border-right: none !important; }
+    [data-testid="stSidebarContent"] {
+        border-right: none !important;
+        padding: 0 !important;
+        scrollbar-gutter: auto !important;
+    }
+    [data-testid="stSidebarHeader"] {
+        background: #ffffff !important;
+        padding: 0 1rem !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+    [data-testid="stSidebarUserContent"] {
+        padding: 0 1.9rem 6rem 1.9rem !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+    .sm-logo-bleed {
+        background: #ffffff;
+        margin: 0 -1.9rem 0.75rem -1.9rem;
+        padding: 0 0.5rem 0.9rem 0.5rem;
+        text-align: center;
+    }
+    .sm-logo-bleed img { width: 100%; max-width: 250px; }
     section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stMarkdown p,
     [data-testid="stSidebar"] label,
@@ -488,8 +512,8 @@ def show_login():
 def show_sidebar(groups):
     with st.sidebar:
         st.markdown(
-            f'<div style="background:#ffffff;border-radius:12px;padding:10px 8px;margin-bottom:0.75rem;text-align:center">'
-            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}" style="width:100%;max-width:190px"></div>',
+            f'<div class="sm-logo-bleed">'
+            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}"></div>',
             unsafe_allow_html=True
         )
         u = st.session_state.user or {}
