@@ -71,15 +71,8 @@ st.markdown("""
         text-align: center; color: #F1E9FF; font-size: 0.78rem; font-weight: 500;
         letter-spacing: 0.2em; margin-top: 0.7rem; white-space: nowrap;
     }
-    .sm-tagline-sub {
-        display: flex; align-items: center; gap: 0.6rem; justify-content: center;
-        color: #D4C4F7; font-size: 0.72rem; letter-spacing: 0.32em; margin-top: 0.3rem;
-    }
-    .sm-tagline-sub::before, .sm-tagline-sub::after {
-        content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.35);
-    }
     .sm-logo-bar {
-        width: 84px; height: 4px; border-radius: 4px; margin: 0.4rem auto 1rem auto;
+        width: 170px; height: 8px; border-radius: 8px; margin: 1rem auto 1.1rem auto;
         background: linear-gradient(90deg, #EC4899, #8B5CF6, #3B82F6);
     }
     section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
@@ -670,7 +663,6 @@ def show_sidebar(groups):
         st.markdown(
             f'<div class="sm-logo"><img src="data:image/png;base64,{_asset_b64("mira_logo_dark.png")}"></div>'
             f'<div class="sm-tagline">BRINGING TALENT TOGETHER</div>'
-            f'<div class="sm-tagline-sub">SINCE TODAY</div>'
             f'<div class="sm-logo-bar"></div>',
             unsafe_allow_html=True
         )
