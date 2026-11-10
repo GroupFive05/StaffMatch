@@ -3565,10 +3565,7 @@ def show_dashboard_v2(groups):
                             for item in manager_display
                         ],
                         orientation="h",
-                        marker_color=[
-                            dashboard_palette[i % len(dashboard_palette)]
-                            for i in range(len(manager_display))
-                        ],
+                        marker_color=dashboard_palette[0],
                         text=[
                             item[1]
                             for item in manager_display
