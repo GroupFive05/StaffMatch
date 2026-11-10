@@ -9,6 +9,17 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 
+ROLE_LABELS = {
+    "Employee": "Data Explorer",
+    "Manager": "Executive",
+    "Executive": "Executive & Approver",
+}
+
+
+def role_label(name):
+    return ROLE_LABELS.get(name, name)
+
+
 @st.cache_resource
 def _asset_b64(filename):
     with open(os.path.join(ASSETS_DIR, filename), "rb") as f:
@@ -655,7 +666,7 @@ def _form_crea_risorsa():
 
     mansione_map = {m["nome"]: m["id"] for m in mansioni}
     skill_map    = {s["nome"]: s["id"] for s in skills}
-    group_map    = {g["nome"]: g["id"] for g in rgroups}
+    group_map    = {role_label(g["nome"]): g["id"] for g in rgroups}
 
     c1, c2 = st.columns(2)
     with c1:
@@ -788,7 +799,7 @@ def show_progetti(groups):
                                                        "payload":{"allocation_id": a["id"]},
                                                        "note_manager":""})
                                         if pr and pr.status_code == 201:
-                                            st.success("Richiesta di rilascio inviata all'Executive.")
+                                            st.success("Richiesta di rilascio inviata all'Executive & Approver.")
                                         else:
                                             detail = _api_detail(pr)
                                             st.error(f"Errore: {detail}")
@@ -822,7 +833,7 @@ def show_progetti(groups):
                                                                   "ruolo_nel_progetto": ruolo_prj},
                                                        "note_manager": note_add})
                                         if pr and pr.status_code == 201:
-                                            st.success("Richiesta inviata all'Executive!")
+                                            st.success("Richiesta inviata all'Executive & Approver!")
                                         else:
                                             detail = _api_detail(pr)
                                             st.error(f"Errore: {detail}")
@@ -834,7 +845,7 @@ def show_progetti(groups):
                                 new_cli   = st.text_input("Cliente", value=p.get("cliente",""))
                                 new_fine  = st.text_input("Data fine (YYYY-MM-DD)", value=p.get("data_fine_prevista",""))
                                 new_desc  = st.text_area("Descrizione", value=p.get("descrizione",""))
-                                note_edit = st.text_input("Note per l'Executive (opzionale)")
+                                note_edit = st.text_input("Note per l'Executive & Approver (opzionale)")
                                 if st.form_submit_button("💾 Salva modifica", type="primary"):
                                     pr = api("POST", f"/project-changes/propose/{p['id']}",
                                              json={"change_type":"update_info",
@@ -843,7 +854,7 @@ def show_progetti(groups):
                                                               "descrizione":new_desc},
                                                    "note_manager": note_edit})
                                     if pr and pr.status_code == 201:
-                                        st.success("Richiesta di modifica inviata all'Executive!")
+                                        st.success("Richiesta di modifica inviata all'Executive & Approver!")
                                     else:
                                         detail = _api_detail(pr)
                                         st.error(f"Errore: {detail}")
@@ -1487,8 +1498,8 @@ def _form_modifica_dipendente():
     mansione_id_map = {m["id"]: m["nome"] for m in mansioni}
     skill_map    = {s["nome"]: s["id"] for s in skills}
     skill_id_map = {s["id"]: s["nome"] for s in skills}
-    group_map    = {g["nome"]: g["id"] for g in rgroups}
-    group_id_map = {g["id"]: g["nome"] for g in rgroups}
+    group_map    = {role_label(g["nome"]): g["id"] for g in rgroups}
+    group_id_map = {g["id"]: role_label(g["nome"]) for g in rgroups}
 
     import datetime as _dt
 
@@ -1587,8 +1598,8 @@ def show_admin(groups):
         r_grp = api("GET", "/roles/")
         resources   = r_res.json() if r_res and r_res.status_code == 200 else []
         role_groups = r_grp.json() if r_grp and r_grp.status_code == 200 else []
-        grp_map     = {g["nome"]: g["id"] for g in role_groups}
-        grp_id_map  = {g["id"]: g["nome"] for g in role_groups}
+        grp_map     = {role_label(g["nome"]): g["id"] for g in role_groups}
+        grp_id_map  = {g["id"]: role_label(g["nome"]) for g in role_groups}
 
         # barre di ricerca
         sc1, sc2 = st.columns(2)
@@ -1652,20 +1663,20 @@ def show_admin(groups):
                 "👁 Visualizza risultati matching AI",
             ],
             "Manager": [
-                "✅ Tutto ciò che può fare Employee",
+                "✅ Tutto ciò che può fare Data Explorer",
                 "➕ Crea e modifica le proprie opportunity",
                 "🤖 Lancia il Matching AI",
                 "✔️ Conferma/rifiuta risorse dalla shortlist",
-                "📤 Richiede promozione Opportunity → Progetto (approvazione Executive)",
-                "🔧 Modifica il proprio progetto (approvazione Executive)",
+                "📤 Richiede promozione Opportunity → Progetto (approvazione Executive & Approver)",
+                "🔧 Modifica il proprio progetto (approvazione Executive & Approver)",
             ],
             "Executive": [
-                "✅ Tutto ciò che può fare Manager",
+                "✅ Tutto ciò che può fare Executive",
                 "📋 Approva o rifiuta promozioni Opportunity → Progetto",
                 "📋 Approva o rifiuta modifiche ai progetti",
             ],
             "Administrator": [
-                "✅ Tutto ciò che può fare Executive",
+                "✅ Tutto ciò che può fare Executive & Approver",
                 "👤 Aggiunge e modifica dipendenti",
                 "🛠 Aggiunge nuove skill",
                 "🔑 Assegna ruoli autorizzativi alle risorse",
@@ -1685,7 +1696,7 @@ def show_admin(groups):
             utenti = [r for r in all_res if g["id"] in r.get("gruppo_ruolo_ids", [])]
             icon   = {"Employee":"🟢","Manager":"🔵","Executive":"🟣","Administrator":"🔴"}.get(gname,"⚪")
 
-            with st.expander(f"{icon} **{gname}** — {len(utenti)} utenti assegnati"):
+            with st.expander(f"{icon} **{role_label(gname)}** — {len(utenti)} utenti assegnati"):
                 col_perm, col_utenti = st.columns([3, 2])
                 with col_perm:
                     st.markdown("**Permessi:**")
