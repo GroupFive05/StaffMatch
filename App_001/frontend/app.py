@@ -425,8 +425,17 @@ def nav(page: str):
 
 # ── LOGIN ──────────────────────────────────────────────────────────────────────
 def show_login():
-    _, col, _ = st.columns([1, 2, 1])
-    with col:
+    st.markdown("""
+<style>
+    [data-testid="stMainBlockContainer"], .main .block-container {
+        max-width: 480px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    .login-app-title, .login-sub1, .login-sub2 { text-align: center; }
+</style>
+""", unsafe_allow_html=True)
+    with st.container():
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(
             f'<div style="text-align:center;margin-bottom:0.5rem">'
