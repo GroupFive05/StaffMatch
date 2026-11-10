@@ -3266,7 +3266,7 @@ def show_dashboard_v2(groups):
 
                         chart_layout(
                             fig_technology_distribution,
-                            height=360,
+                            height=380,
                             showlegend=False,
                             annotations=[
                                 dict(
