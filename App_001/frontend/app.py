@@ -778,7 +778,7 @@ def show_progetti(groups):
 
                     # aggiungi risorsa
                     if is_owner and can_write(groups):
-                        with st.expander("➕ Proponi aggiunta risorsa"):
+                        with st.expander("➕ Aggiungi risorsa"):
                             res_resp2 = api("GET", "/resources/")
                             all_res = res_resp2.json() if res_resp2 and res_resp2.status_code == 200 else []
                             allocated_ids = {a.get("risorsa_id") for a in allocs}
@@ -790,7 +790,7 @@ def show_progetti(groups):
                                     perc      = st.slider("Percentuale allocazione", 10, 100, 50, 10)
                                     ruolo_prj = st.text_input("Ruolo nel progetto", value="Consultant")
                                     note_add  = st.text_input("Note (opzionale)")
-                                    if st.form_submit_button("📤 Proponi", type="primary"):
+                                    if st.form_submit_button("💾 Salva modifica", type="primary"):
                                         proj_det = api("GET", f"/projects/{p['id']}")
                                         d_ini = proj_det.json().get("data_inizio","") if proj_det else ""
                                         d_fin = proj_det.json().get("data_fine_prevista","") if proj_det else ""
@@ -809,14 +809,14 @@ def show_progetti(groups):
                                             st.error(f"Errore: {detail}")
 
                         # modifica info progetto
-                        with st.expander("✏️ Proponi modifica info progetto"):
+                        with st.expander("✏️ Modifica info progetto"):
                             with st.form(f"edit_prj_{p['id']}"):
                                 new_nome  = st.text_input("Nome", value=p.get("nome",""))
                                 new_cli   = st.text_input("Cliente", value=p.get("cliente",""))
                                 new_fine  = st.text_input("Data fine (YYYY-MM-DD)", value=p.get("data_fine_prevista",""))
                                 new_desc  = st.text_area("Descrizione", value=p.get("descrizione",""))
                                 note_edit = st.text_input("Note per l'Executive (opzionale)")
-                                if st.form_submit_button("📤 Proponi modifica", type="primary"):
+                                if st.form_submit_button("💾 Salva modifica", type="primary"):
                                     pr = api("POST", f"/project-changes/propose/{p['id']}",
                                              json={"change_type":"update_info",
                                                    "payload":{"nome":new_nome,"cliente":new_cli,
@@ -1638,7 +1638,7 @@ def show_admin(groups):
                 "🤖 Lancia il Matching AI",
                 "✔️ Conferma/rifiuta risorse dalla shortlist",
                 "📤 Richiede promozione Opportunity → Progetto (approvazione Executive)",
-                "🔧 Propone modifiche al proprio progetto (approvazione Executive)",
+                "🔧 Modifica il proprio progetto (approvazione Executive)",
             ],
             "Executive": [
                 "✅ Tutto ciò che può fare Manager",
