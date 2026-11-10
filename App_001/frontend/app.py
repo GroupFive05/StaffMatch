@@ -1,13 +1,19 @@
 import os
+import sys
 from urllib.parse import quote
 import base64
+from datetime import datetime
 import streamlit as st
 import requests
 import plotly.graph_objects as go
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+ASSETS_DIR = os.path.join(APP_DIR, "assets")
+
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
 
 
 ROLE_LABELS = {
@@ -200,6 +206,12 @@ st.markdown("""
     .flt-head .flt-ico { display: inline-flex; color: #7C3AED; }
     .flt-head .flt-title { font-size: 1.3rem; font-weight: 700; color: #1E1B4B; }
     .flt-head .chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; }
+    .st-key-dash_export { margin-top: 1.6rem; }
+    .st-key-dash_export button {
+        border: 1.5px solid #A78BFA !important; background: #ffffff !important; color: #5B21B6 !important;
+        border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
+    }
+    .st-key-dash_export button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
     .st-key-dash_reset button { background: transparent !important; border: none !important; color: #6D28D9 !important; font-weight: 600 !important; box-shadow: none !important; }
     .kpi-card {
         display: flex; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #ECE6FA;
@@ -2850,18 +2862,23 @@ def _reset_dashboard_filters():
 
 
 def show_dashboard_v2(groups):
-    st.markdown(
-        '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
-        'Select the analysis view you are interested in</p>',
-        unsafe_allow_html=True
-    )
-    dashboard_view = st.segmented_control(
-        "Dashboard view",
-        ["Commercial", "Staffing"],
-        default="Commercial",
-        key="dashboard_v2_view",
-        label_visibility="collapsed",
-    ) or "Commercial"
+    toggle_col, export_col = st.columns([4, 1.3])
+
+    with toggle_col:
+        st.markdown(
+            '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
+            'Select the analysis view you are interested in</p>',
+            unsafe_allow_html=True
+        )
+        dashboard_view = st.segmented_control(
+            "Dashboard view",
+            ["Commercial", "Staffing"],
+            default="Commercial",
+            key="dashboard_v2_view",
+            label_visibility="collapsed",
+        ) or "Commercial"
+
+    export_slot = export_col.empty()
 
     response = api(
         "GET",
@@ -3152,6 +3169,43 @@ def show_dashboard_v2(groups):
         for column, (icon, label, value) in zip(st.columns(4), kpi_row):
             column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
         st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+
+    # ── EXPORT POWERPOINT ─────────────────────────────────────────────────────
+    selection_labels = [
+        ("Industry", selected_industries),
+        ("Client", selected_clients),
+        ("Technology", selected_technologies),
+        ("Opportunity Status", selected_statuses),
+        ("Service Group", selected_service_groups),
+        ("Manager", selected_manager_names),
+    ]
+    filters_summary = " · ".join(
+        f"{label}: {', '.join(values)}" for label, values in selection_labels if values
+    ) or "No filters applied"
+
+    try:
+        from cockpit_export import build_cockpit_pptx
+
+        pptx_bytes = build_cockpit_pptx({
+            "commercial": filtered_commercial,
+            "resources": resource_rows,
+            "osr": osr_rows,
+            "commercial_filters_active": any(values for _, values in selection_labels),
+            "filters_summary": filters_summary,
+            "kpis": [(label, str(value)) for _, label, value in kpi_row_1 + kpi_row_2],
+        })
+
+        export_slot.download_button(
+            "Export PowerPoint",
+            data=pptx_bytes,
+            file_name=f"MIRA_Practice_Cockpit_{datetime.now():%Y%m%d}.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            icon=":material/download:",
+            key="dash_export",
+            use_container_width=True,
+        )
+    except Exception as export_error:
+        export_slot.caption(f"Export unavailable: {export_error}")
 
     if dashboard_view == "Commercial":
         section_title("Commercial Performance", "trend")
