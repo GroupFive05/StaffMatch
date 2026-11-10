@@ -294,3 +294,39 @@ class ResourceSelectionRationaleRequest(BaseModel):
     start_date: str
     end_date: str
     osr_id: Optional[str] = None
+
+class ContractCreate(BaseModel):
+    contract_title: str
+    client_name: str
+    industry_sector: Optional[str] = None
+    country: Optional[str] = None
+    service_group: Optional[str] = None
+    practice_lead: Optional[str] = None
+    manager_eid: Optional[int] = None
+    data_inizio: str
+    data_fine: str
+    contract_revenue: float = 0
+    costi: float = 0
+    contract_status: Optional[str] = "Active"
+
+
+class OpportunityCreate(BaseModel):
+    opportunity_title: str
+    contract_id: str
+    opportunity_stage: Optional[str] = None
+    main_tech_cluster: Optional[str] = None
+    functional_area: Optional[str] = None
+    data_inizio: str
+    data_fine: str
+    opportunity_value: float = 0
+    opportunity_status: Optional[str] = "Pipeline"
+
+
+class OSRCreate(BaseModel):
+    eid: int
+    opportunity_id: str
+    ruolo_in_progetto: str
+    perc_allocazione: int
+    chargeability_pct: int = 0
+    data_inizio: str
+    data_fine: str

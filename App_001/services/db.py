@@ -2794,3 +2794,390 @@ def sm_run_matching_ai(payload):
 
         "candidates": candidates
     }
+
+# ── DATA ENTRY (Practice Hub) ───────────────────────────────────────────────────
+
+def _as_date(value):
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+
+
+def _required_text(value, message):
+    text = str(value or "").strip()
+
+    if not text:
+        raise ValueError(message)
+
+    return text
+
+
+def _optional_text(value):
+    text = str(value or "").strip()
+    return text or None
+
+
+def _date_range(data, label):
+    start = _as_date(data.get("data_inizio"))
+    end = _as_date(data.get("data_fine"))
+
+    if start is None or end is None:
+        raise ValueError(f"Data inizio e data fine {label} sono obbligatorie.")
+
+    if end < start:
+        raise ValueError("La data fine non può precedere la data inizio.")
+
+    return start, end
+
+
+def _next_sequential_id(cursor, table, column, fallback_prefix, fallback_width=3):
+    import re
+
+    cursor.execute(f"SELECT {column} FROM {table}")
+
+    pattern = re.compile(r"^(.*?)(\d+)$")
+    groups = {}
+
+    for (value,) in cursor.fetchall():
+        match = pattern.match(str(value or "").strip())
+
+        if not match:
+            continue
+
+        prefix, number = match.groups()
+        info = groups.setdefault(prefix, {"count": 0, "max": 0, "width": len(number)})
+        info["count"] += 1
+        info["max"] = max(info["max"], int(number))
+        info["width"] = max(info["width"], len(number))
+
+    if not groups:
+        return f"{fallback_prefix}{1:0{fallback_width}d}"
+
+    prefix, info = max(groups.items(), key=lambda item: item[1]["count"])
+
+    return f"{prefix}{info['max'] + 1:0{info['width']}d}"
+
+
+def _distinct_values(table, column):
+    rows = _fetchall(
+        f"SELECT DISTINCT {column} AS value FROM {table} "
+        f"WHERE {column} IS NOT NULL AND {column} <> '' ORDER BY {column}"
+    )
+
+    return [row["value"] for row in rows]
+
+
+def sm_get_data_entry_catalogs():
+    contracts = _fetchall("""
+        SELECT
+            CONTRACTID    AS contract_id,
+            CONTRACTTITLE AS contract_title,
+            CLIENTNAME    AS client_name,
+            DATAINIZIO    AS start_date,
+            DATAFINE      AS end_date
+        FROM STAFFMATCH_SM_CONTRACT
+        ORDER BY CONTRACTID
+    """)
+
+    for contract in contracts:
+        for field in ("start_date", "end_date"):
+            if contract.get(field) is not None:
+                contract[field] = str(contract[field])[:10]
+
+    return {
+        "clients": _distinct_values("STAFFMATCH_SM_CONTRACT", "CLIENTNAME"),
+        "industries": _distinct_values("STAFFMATCH_SM_CONTRACT", "INDUSTRYSECTOR"),
+        "countries": _distinct_values("STAFFMATCH_SM_CONTRACT", "COUNTRY"),
+        "service_groups": _distinct_values("STAFFMATCH_SM_CONTRACT", "SERVICEGROUP"),
+        "contract_statuses": _distinct_values("STAFFMATCH_SM_CONTRACT", "CONTRACTSTATUS"),
+        "opportunity_stages": _distinct_values("STAFFMATCH_SM_OPPORTUNITY", "OPPORTUNITYSTAGE"),
+        "opportunity_statuses": _distinct_values("STAFFMATCH_SM_OPPORTUNITY", "OPPORTUNITYSTATUS"),
+        "tech_clusters": _distinct_values("STAFFMATCH_SM_OPPORTUNITY", "MAINTECHCLUSTER"),
+        "functional_areas": _distinct_values("STAFFMATCH_SM_OPPORTUNITY", "FUNCTIONALAREA"),
+        "project_roles": _distinct_values("STAFFMATCH_SM_OSR", "RUOLOINPROGETTO"),
+        "contracts": contracts,
+        "opportunities": _fetchall("""
+            SELECT
+                OPPORTUNITYID    AS opportunity_id,
+                OPPORTUNITYTITLE AS opportunity_title,
+                CONTRACTID       AS contract_id
+            FROM STAFFMATCH_SM_OPPORTUNITY
+            ORDER BY OPPORTUNITYID
+        """),
+        "resources": _fetchall("""
+            SELECT
+                EID       AS eid,
+                NOME      AS nome,
+                COGNOME   AS cognome,
+                LEVELNAME AS level_name
+            FROM STAFFMATCH_SM_RISORSA
+            ORDER BY COGNOME, NOME
+        """),
+    }
+
+
+def sm_create_contract(data):
+    conn = _get_conn()
+    cursor = conn.cursor()
+
+    try:
+        title = _required_text(data.get("contract_title"), "Il titolo del contratto è obbligatorio.")
+        client = _required_text(data.get("client_name"), "Il cliente è obbligatorio.")
+        start, end = _date_range(data, "del contratto")
+
+        revenue = float(data.get("contract_revenue") or 0)
+        costs = float(data.get("costi") or 0)
+
+        if revenue < 0 or costs < 0:
+            raise ValueError("Revenue e costi non possono essere negativi.")
+
+        manager_eid = data.get("manager_eid")
+        manager_name = None
+
+        if manager_eid not in (None, ""):
+            manager_eid = int(manager_eid)
+
+            cursor.execute(
+                "SELECT NOME, COGNOME FROM STAFFMATCH_SM_RISORSA WHERE EID = ?",
+                (manager_eid,)
+            )
+            manager = cursor.fetchone()
+
+            if not manager:
+                raise ValueError(f"Manager con EID {manager_eid} non trovato.")
+
+            manager_name = f"{manager[0]} {manager[1]}".strip()
+        else:
+            manager_eid = None
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM STAFFMATCH_SM_CONTRACT
+            WHERE LOWER(CONTRACTTITLE) = LOWER(?)
+              AND LOWER(CLIENTNAME) = LOWER(?)
+              AND DATAINIZIO = ?
+            """,
+            (title, client, start)
+        )
+
+        if cursor.fetchone()[0] > 0:
+            raise ValueError(
+                "Esiste già un contratto con lo stesso titolo, cliente e data inizio."
+            )
+
+        contract_id = _next_sequential_id(
+            cursor, "STAFFMATCH_SM_CONTRACT", "CONTRACTID", "CNT-"
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO STAFFMATCH_SM_CONTRACT (
+                CONTRACTID, CONTRACTTITLE, CLIENTNAME, INDUSTRYSECTOR, COUNTRY,
+                CONTRACTMANAGER, SERVICEGROUP, PRACTICELEAD, DATAINIZIO, DATAFINE,
+                CONTRACTREVENUE, COSTI, CONTRACTSTATUS, EID
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                contract_id,
+                title,
+                client,
+                _optional_text(data.get("industry_sector")),
+                _optional_text(data.get("country")),
+                manager_name,
+                _optional_text(data.get("service_group")),
+                _optional_text(data.get("practice_lead")),
+                start,
+                end,
+                revenue,
+                costs,
+                _optional_text(data.get("contract_status")) or "Active",
+                manager_eid,
+            )
+        )
+
+        conn.commit()
+
+        return {"contract_id": contract_id, "contract_title": title}
+
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def sm_create_opportunity(data):
+    conn = _get_conn()
+    cursor = conn.cursor()
+
+    try:
+        title = _required_text(data.get("opportunity_title"), "Il titolo dell'opportunity è obbligatorio.")
+        contract_id = _required_text(data.get("contract_id"), "Il contratto è obbligatorio.")
+        start, end = _date_range(data, "dell'opportunity")
+
+        value = float(data.get("opportunity_value") or 0)
+
+        if value < 0:
+            raise ValueError("Il valore dell'opportunity non può essere negativo.")
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM STAFFMATCH_SM_CONTRACT WHERE CONTRACTID = ?",
+            (contract_id,)
+        )
+
+        if cursor.fetchone()[0] == 0:
+            raise ValueError(f"Contratto {contract_id} non trovato.")
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM STAFFMATCH_SM_OPPORTUNITY
+            WHERE LOWER(OPPORTUNITYTITLE) = LOWER(?)
+              AND CONTRACTID = ?
+              AND DATAINIZIO = ?
+            """,
+            (title, contract_id, start)
+        )
+
+        if cursor.fetchone()[0] > 0:
+            raise ValueError(
+                "Esiste già un'opportunity con lo stesso titolo, contratto e data inizio."
+            )
+
+        opportunity_id = _next_sequential_id(
+            cursor, "STAFFMATCH_SM_OPPORTUNITY", "OPPORTUNITYID", "OPP-"
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO STAFFMATCH_SM_OPPORTUNITY (
+                OPPORTUNITYID, OPPORTUNITYTITLE, CONTRACTID, OPPORTUNITYSTAGE,
+                MAINTECHCLUSTER, FUNCTIONALAREA, DATAINIZIO, DATAFINE,
+                OPPORTUNITYVALUE, OPPORTUNITYSTATUS
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                opportunity_id,
+                title,
+                contract_id,
+                _optional_text(data.get("opportunity_stage")),
+                _optional_text(data.get("main_tech_cluster")),
+                _optional_text(data.get("functional_area")),
+                start,
+                end,
+                value,
+                _optional_text(data.get("opportunity_status")) or "Pipeline",
+            )
+        )
+
+        conn.commit()
+
+        return {"opportunity_id": opportunity_id, "opportunity_title": title}
+
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def sm_create_osr(data):
+    conn = _get_conn()
+    cursor = conn.cursor()
+
+    try:
+        eid = int(data.get("eid"))
+        opportunity_id = _required_text(data.get("opportunity_id"), "L'opportunity è obbligatoria.")
+        role = _required_text(data.get("ruolo_in_progetto"), "Il ruolo nel progetto è obbligatorio.")
+        start, end = _date_range(data, "dell'OSR")
+
+        allocation = int(data.get("perc_allocazione") or 0)
+        chargeability = int(data.get("chargeability_pct") or 0)
+
+        if not 1 <= allocation <= 100:
+            raise ValueError("La percentuale di allocazione deve essere tra 1 e 100.")
+
+        if not 0 <= chargeability <= 100:
+            raise ValueError("La chargeability deve essere tra 0 e 100.")
+
+        cursor.execute(
+            "SELECT NOME, COGNOME FROM STAFFMATCH_SM_RISORSA WHERE EID = ?",
+            (eid,)
+        )
+        resource = cursor.fetchone()
+
+        if not resource:
+            raise ValueError(f"Risorsa con EID {eid} non trovata.")
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM STAFFMATCH_SM_OPPORTUNITY WHERE OPPORTUNITYID = ?",
+            (opportunity_id,)
+        )
+
+        if cursor.fetchone()[0] == 0:
+            raise ValueError(f"Opportunity {opportunity_id} non trovata.")
+
+        # Allocazione massima raggiunta in un qualunque giorno del periodo
+        cursor.execute(
+            """
+            SELECT PERCALLOCAZIONE, DATAINIZIO, DATAFINE
+            FROM STAFFMATCH_SM_OSR
+            WHERE EID = ? AND DATAINIZIO <= ? AND DATAFINE >= ?
+            """,
+            (eid, end, start)
+        )
+
+        existing = [
+            (int(row[0] or 0), _as_date(row[1]), _as_date(row[2]))
+            for row in cursor.fetchall()
+        ]
+
+        checkpoints = {start} | {
+            row_start for _, row_start, _ in existing
+            if row_start and start <= row_start <= end
+        }
+
+        peak = max(
+            sum(
+                percentage for percentage, row_start, row_end in existing
+                if row_start and row_end and row_start <= day <= row_end
+            ) + allocation
+            for day in checkpoints
+        )
+
+        if peak > 100:
+            raise ValueError(
+                f"L'allocazione di {resource[0]} {resource[1]} arriverebbe al {peak}% "
+                "nel periodo selezionato (massimo 100%)."
+            )
+
+        osr_id = _next_sequential_id(
+            cursor, "STAFFMATCH_SM_OSR", "OSRID", "OSR-"
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO STAFFMATCH_SM_OSR (
+                OSRID, EID, OPPORTUNITYID, RUOLOINPROGETTO,
+                PERCALLOCAZIONE, CHARGEABILITYPCT, DATAINIZIO, DATAFINE
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (osr_id, eid, opportunity_id, role, allocation, chargeability, start, end)
+        )
+
+        conn.commit()
+
+        return {
+            "osr_id": osr_id,
+            "resource": f"{resource[0]} {resource[1]}".strip(),
+            "peak_allocation": peak,
+        }
+
+    except Exception:
+        conn.rollback()
+        raise

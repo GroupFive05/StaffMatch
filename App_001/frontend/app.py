@@ -2,7 +2,7 @@ import os
 import sys
 from urllib.parse import quote
 import base64
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import streamlit as st
 import requests
 import plotly.graph_objects as go
@@ -786,7 +786,7 @@ def show_sidebar(groups):
         pages = [
             (":material/bar_chart:", "Practice Cockpit", "dashboard_v2"),
             (":material/group:", "Resources", "risorsa_v2"),
-            (":material/calendar_month:", "Staffing Management", "staffing_management_v2"),
+            (":material/calendar_month:", "Practice Hub", "staffing_management_v2"),
             (":material/auto_fix_high:", "Match AI", "matching_v2"),
             (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
@@ -3950,13 +3950,230 @@ def show_dashboard_v2(groups):
                         "for the selected filters."
                     )
     # ── GESTIONE STAFFING V2 ─────────────────────────────────────────────────────
+def _create_entry(endpoint, payload, success_message):
+    response = api("POST", endpoint, json=payload)
+
+    if response is not None and response.status_code == 201:
+        st.success(success_message(response.json()))
+        return True
+
+    st.error(f"Could not save: {_api_detail(response)}")
+    return False
+
+
+def _entry_select(container, label, options, **kwargs):
+    return container.selectbox(
+        label,
+        options,
+        index=None,
+        accept_new_options=True,
+        placeholder="Select or type a new value",
+        **kwargs
+    )
+
+
+def _default_index(options, wanted):
+    return options.index(wanted) if wanted in options else None
+
+
+def show_practice_hub_data_entry(groups):
+    st.markdown('<p class="main-title">🗂️ Practice Hub — Data Entry</p>', unsafe_allow_html=True)
+    st.caption(
+        "Add contracts, opportunities and OSRs manually. "
+        "Create them in this order: contract → opportunity → OSR."
+    )
+
+    response = api("GET", "/sm/data-entry-catalogs")
+
+    if response is None:
+        return
+
+    if response.status_code != 200:
+        st.error(f"Loading error: {_api_detail(response)}")
+        return
+
+    catalogs = response.json()
+
+    resource_labels = {
+        f"{r.get('nome', '')} {r.get('cognome', '')} (EID {r.get('eid')})"
+        + (f" — {r.get('level_name')}" if r.get("level_name") else ""): r.get("eid")
+        for r in catalogs.get("resources", [])
+    }
+    contract_labels = {
+        f"{c.get('contract_id')} — {c.get('contract_title') or ''} ({c.get('client_name') or 'n/a'})": c.get("contract_id")
+        for c in catalogs.get("contracts", [])
+    }
+    opportunity_labels = {
+        f"{o.get('opportunity_id')} — {o.get('opportunity_title') or ''}": o.get("opportunity_id")
+        for o in catalogs.get("opportunities", [])
+    }
+
+    today = date.today()
+    tab_contract, tab_opportunity, tab_osr = st.tabs(
+        ["📄 New Contract", "💼 New Opportunity", "👥 New OSR"]
+    )
+
+    # ── NEW CONTRACT ──────────────────────────────────────────────────────────
+    with tab_contract:
+        with st.form("data_entry_contract", clear_on_submit=True):
+            col_1, col_2 = st.columns(2)
+            title = col_1.text_input("Contract title *")
+            client = _entry_select(col_2, "Client *", catalogs.get("clients", []))
+            industry = _entry_select(col_1, "Industry sector", catalogs.get("industries", []))
+            country = _entry_select(col_2, "Country", catalogs.get("countries", []))
+            service_group = _entry_select(col_1, "Service group", catalogs.get("service_groups", []))
+            manager_label = col_2.selectbox(
+                "Contract manager", list(resource_labels.keys()), index=None,
+                placeholder="Select a manager"
+            )
+            practice_lead = col_1.text_input("Practice lead")
+            statuses = catalogs.get("contract_statuses", [])
+            status = col_2.selectbox(
+                "Contract status", statuses or ["Active"],
+                index=_default_index(statuses or ["Active"], "Active")
+            )
+            date_1, date_2 = st.columns(2)
+            start = date_1.date_input("Start date *", value=today)
+            end = date_2.date_input("End date *", value=today + timedelta(days=365))
+            money_1, money_2 = st.columns(2)
+            revenue = money_1.number_input("Contract revenue (€)", min_value=0.0, step=1000.0, format="%.2f")
+            costs = money_2.number_input("Costs (€)", min_value=0.0, step=1000.0, format="%.2f")
+
+            save_contract = st.form_submit_button("Save contract", type="primary")
+
+        if save_contract:
+            if not title.strip() or not client:
+                st.error("Contract title and client are required.")
+            else:
+                _create_entry(
+                    "/sm/contracts",
+                    {
+                        "contract_title": title,
+                        "client_name": client,
+                        "industry_sector": industry,
+                        "country": country,
+                        "service_group": service_group,
+                        "practice_lead": practice_lead,
+                        "manager_eid": resource_labels.get(manager_label),
+                        "data_inizio": start.isoformat(),
+                        "data_fine": end.isoformat(),
+                        "contract_revenue": revenue,
+                        "costi": costs,
+                        "contract_status": status,
+                    },
+                    lambda r: f"Contract {r.get('contract_id')} created.",
+                )
+
+    # ── NEW OPPORTUNITY ───────────────────────────────────────────────────────
+    with tab_opportunity:
+        with st.form("data_entry_opportunity", clear_on_submit=True):
+            col_1, col_2 = st.columns(2)
+            opp_title = col_1.text_input("Opportunity title *")
+            contract_label = col_2.selectbox(
+                "Contract *", list(contract_labels.keys()), index=None,
+                placeholder="Select the contract"
+            )
+            stage = _entry_select(col_1, "Stage", catalogs.get("opportunity_stages", []))
+            tech = _entry_select(col_2, "Main technology cluster", catalogs.get("tech_clusters", []))
+            area = _entry_select(col_1, "Functional area", catalogs.get("functional_areas", []))
+            opp_statuses = catalogs.get("opportunity_statuses", [])
+            opp_status = col_2.selectbox(
+                "Opportunity status", opp_statuses or ["Pipeline"],
+                index=_default_index(opp_statuses or ["Pipeline"], "Pipeline")
+            )
+            date_1, date_2 = st.columns(2)
+            opp_start = date_1.date_input("Start date *", value=today, key="de_opp_start")
+            opp_end = date_2.date_input("End date *", value=today + timedelta(days=180), key="de_opp_end")
+            value = st.number_input("Opportunity value (€)", min_value=0.0, step=1000.0, format="%.2f")
+
+            save_opportunity = st.form_submit_button("Save opportunity", type="primary")
+
+        if save_opportunity:
+            if not opp_title.strip() or not contract_label:
+                st.error("Opportunity title and contract are required.")
+            else:
+                _create_entry(
+                    "/sm/opportunities",
+                    {
+                        "opportunity_title": opp_title,
+                        "contract_id": contract_labels[contract_label],
+                        "opportunity_stage": stage,
+                        "main_tech_cluster": tech,
+                        "functional_area": area,
+                        "opportunity_status": opp_status,
+                        "data_inizio": opp_start.isoformat(),
+                        "data_fine": opp_end.isoformat(),
+                        "opportunity_value": value,
+                    },
+                    lambda r: f"Opportunity {r.get('opportunity_id')} created.",
+                )
+
+    # ── NEW OSR ───────────────────────────────────────────────────────────────
+    with tab_osr:
+        with st.form("data_entry_osr", clear_on_submit=True):
+            col_1, col_2 = st.columns(2)
+            resource_label = col_1.selectbox(
+                "Resource *", list(resource_labels.keys()), index=None,
+                placeholder="Select a resource"
+            )
+            osr_opportunity_label = col_2.selectbox(
+                "Opportunity *", list(opportunity_labels.keys()), index=None,
+                placeholder="Select the opportunity"
+            )
+            role = _entry_select(col_1, "Project role *", catalogs.get("project_roles", []))
+            allocation = col_2.number_input("Allocation % *", min_value=1, max_value=100, value=50, step=5)
+            chargeability = col_1.number_input("Chargeability %", min_value=0, max_value=100, value=80, step=5)
+            date_1, date_2 = st.columns(2)
+            osr_start = date_1.date_input("Start date *", value=today, key="de_osr_start")
+            osr_end = date_2.date_input("End date *", value=today + timedelta(days=90), key="de_osr_end")
+
+            save_osr = st.form_submit_button("Save OSR", type="primary")
+
+        if save_osr:
+            if not resource_label or not osr_opportunity_label or not role:
+                st.error("Resource, opportunity and project role are required.")
+            else:
+                _create_entry(
+                    "/sm/osr",
+                    {
+                        "eid": resource_labels[resource_label],
+                        "opportunity_id": opportunity_labels[osr_opportunity_label],
+                        "ruolo_in_progetto": role,
+                        "perc_allocazione": int(allocation),
+                        "chargeability_pct": int(chargeability),
+                        "data_inizio": osr_start.isoformat(),
+                        "data_fine": osr_end.isoformat(),
+                    },
+                    lambda r: f"OSR {r.get('osr_id')} created for {r.get('resource')} "
+                              f"(peak allocation {r.get('peak_allocation')}%).",
+                )
+
+
 def show_staffing_management_v2(groups):
 
     if "staffing_v2_view" not in st.session_state:
         st.session_state["staffing_v2_view"] = "osr"
 
+    hub_modes = ["Explore", "Data Entry"] if can_write(groups) else ["Explore"]
+
+    hub_mode = (
+        st.segmented_control(
+            "Practice Hub mode",
+            hub_modes,
+            default="Explore",
+            key="practice_hub_mode",
+            label_visibility="collapsed",
+        )
+        if len(hub_modes) > 1
+        else "Explore"
+    ) or "Explore"
+
+    if hub_mode == "Data Entry":
+        show_practice_hub_data_entry(groups)
+        return
+
     st.markdown(
-        '<p class="main-title">🐈 Staffing Management </p>',
+        '<p class="main-title">🗂️ Practice Hub</p>',
         unsafe_allow_html=True
     )
 

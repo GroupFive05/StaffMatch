@@ -2,13 +2,17 @@
 Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05).
 NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -dev.
 """
-from fastapi import APIRouter, HTTPException
-from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai
+from fastapi import APIRouter, Depends, HTTPException
+from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai,sm_get_data_entry_catalogs,sm_create_contract,sm_create_opportunity,sm_create_osr
 from services.match_service import (
     suggest_matching_weights,
     generate_resource_selection_rationale,
 )
+from services.auth_service import is_manager_or_admin
 from models.schemas import (
+    ContractCreate,
+    OpportunityCreate,
+    OSRCreate,
     ResourceV2Create, 
     MatchingAIRequest,
     MatchingWeightsSuggestionRequest,
@@ -153,3 +157,39 @@ def selection_rationale(
                 f"{str(exc)}"
             )
         )
+
+
+# ── DATA ENTRY (Practice Hub) — richiede ruolo Manager/Executive/Administrator ──
+
+@router.get("/data-entry-catalogs")
+def get_data_entry_catalogs(user: dict = Depends(is_manager_or_admin)):
+    return sm_get_data_entry_catalogs()
+
+
+def _create_with_validation(creator, payload, label):
+    try:
+        return creator(payload.model_dump())
+
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{label} creation error: {str(exc)}"
+        )
+
+
+@router.post("/contracts", status_code=201)
+def create_contract(payload: ContractCreate, user: dict = Depends(is_manager_or_admin)):
+    return _create_with_validation(sm_create_contract, payload, "Contract")
+
+
+@router.post("/opportunities", status_code=201)
+def create_opportunity(payload: OpportunityCreate, user: dict = Depends(is_manager_or_admin)):
+    return _create_with_validation(sm_create_opportunity, payload, "Opportunity")
+
+
+@router.post("/osr", status_code=201)
+def create_osr(payload: OSRCreate, user: dict = Depends(is_manager_or_admin)):
+    return _create_with_validation(sm_create_osr, payload, "OSR")
