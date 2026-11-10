@@ -150,11 +150,16 @@ st.markdown("""
     /* ── MIRA THEME ── */
     .mira-title { font-size: 2rem; font-weight: 800; color: #1E1B4B; letter-spacing: -0.5px; line-height: 1.15; margin: 0; }
     .mira-sub { color: #6B7280; font-size: 0.95rem; margin-top: 2px; }
-    .st-key-hdr_advisor button {
-        border: 1.5px solid #A78BFA !important; background: #ffffff !important; color: #5B21B6 !important;
-        border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
+    .st-key-fab_ask_mira {
+        position: fixed !important; bottom: 1.6rem; right: 2.2rem; z-index: 99999; width: auto !important;
     }
-    .st-key-hdr_advisor button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
+    .st-key-fab_ask_mira button {
+        background: linear-gradient(135deg, #7C3AED, #6D28D9) !important; color: #ffffff !important;
+        border: none !important; border-radius: 999px !important; padding: 0.7rem 1.5rem !important;
+        font-weight: 700 !important; font-size: 1rem !important;
+        box-shadow: 0 8px 24px rgba(124,58,237,0.45) !important; transition: all 0.2s ease !important;
+    }
+    .st-key-fab_ask_mira button:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(124,58,237,0.55) !important; }
     [data-testid="stButtonGroup"] button[data-testid^="stBaseButton-segmented_control"] {
         border-radius: 999px !important; border: 1px solid #E4DDF5 !important; background: #ffffff !important;
         color: #4C1D95 !important; padding: 6px 24px !important; font-weight: 600 !important;
@@ -582,24 +587,24 @@ def chart_layout(fig, height=360, **kwargs):
 
 
 def show_app_header():
-    left, right = st.columns([6, 1.5])
+    st.markdown(
+        '<div class="mira-title">D&amp;A Advisory Cockpit</div>'
+        '<div class="mira-sub">Practice performance, resources and commercial insights</div>',
+        unsafe_allow_html=True
+    )
 
-    with left:
-        st.markdown(
-            '<div class="mira-title">D&amp;A Advisory Cockpit</div>'
-            '<div class="mira-sub">Practice performance, resources and commercial insights</div>',
-            unsafe_allow_html=True
-        )
 
-    with right:
-        if st.button(
-            "MIRA Advisor",
-            icon=":material/auto_awesome:",
-            key="hdr_advisor",
-            use_container_width=True
-        ):
-            st.session_state.page = "chatbot"
-            st.rerun()
+def show_ask_mira_button():
+    if st.session_state.page == "chatbot":
+        return
+
+    if st.button(
+        "Ask MIRA",
+        icon=":material/auto_awesome:",
+        key="fab_ask_mira"
+    ):
+        st.session_state.page = "chatbot"
+        st.rerun()
 
 def nav(page: str):
     st.session_state.page = page
@@ -6070,6 +6075,7 @@ def main():
     groups = get_groups()
     show_sidebar(groups)
     show_app_header()
+    show_ask_mira_button()
 
     page = st.session_state.page or "dashboard"
 
