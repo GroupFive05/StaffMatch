@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote
 import base64
 import streamlit as st
 import requests
@@ -4888,18 +4889,44 @@ def show_resource_request(groups):
         key="resource_request_page_body"
     )
 
-    st.info(
-        "Email delivery will be connected in the next step. "
-        "The recipient, subject and body are fully editable."
-    )
+    to_value = (recipient_email or "").strip()
+    cc_value = (cc_email or "").strip()
 
-    st.button(
-        "📨 Send Resource Request",
-        type="primary",
-        use_container_width=True,
-        disabled=True,
-        key="send_resource_request_page"
-    )
+    if to_value:
+        outlook_url = (
+            "https://outlook.office.com/mail/deeplink/compose"
+            f"?to={quote(to_value)}"
+            f"&subject={quote(email_subject)}"
+            f"&body={quote(email_body)}"
+        )
+
+        if cc_value:
+            outlook_url += f"&cc={quote(cc_value)}"
+
+        st.link_button(
+            "📨 Open in Outlook and Send",
+            outlook_url,
+            type="primary",
+            use_container_width=True
+        )
+
+        st.caption(
+            "Outlook opens with recipient, subject and body pre-filled. "
+            "Review the email and click Send."
+        )
+
+    else:
+        st.button(
+            "📨 Open in Outlook and Send",
+            type="primary",
+            use_container_width=True,
+            disabled=True,
+            key="send_resource_request_page"
+        )
+
+        st.caption(
+            "Enter at least one recipient to continue."
+        )
 # ── MATCHING AI - NEW ─────────────────────────────────────────────────────────
 def show_matching_ai(groups):
     results = st.session_state.get(
