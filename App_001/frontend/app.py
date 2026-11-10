@@ -4151,7 +4151,7 @@ def show_practice_hub_data_entry(groups):
 def show_practice_hub_drilldown():
     from practice_hub_tree import build_tree
 
-    st.markdown('<p class="main-title">🗂️ Practice Hub — Drill-down</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🗂️ Practice Hub — Contract hierarchy</p>', unsafe_allow_html=True)
     st.caption(
         "Contract → Opportunity → OSR → Resource. Open a contract to see its opportunities, "
         "then an opportunity to see the OSRs and the people assigned. "
@@ -4210,30 +4210,27 @@ def show_staffing_management_v2(groups):
 
     hub_modes = ["Explore", "Data Entry"] if can_write(groups) else ["Explore"]
 
-    mode_col, flag_col = st.columns([3, 2])
-
-    with mode_col:
-        hub_mode = (
-            st.segmented_control(
-                "Practice Hub mode",
-                hub_modes,
-                default="Explore",
-                key="practice_hub_mode",
-                label_visibility="collapsed",
-            )
-            if len(hub_modes) > 1
-            else "Explore"
-        ) or "Explore"
+    hub_mode = (
+        st.segmented_control(
+            "Practice Hub mode",
+            hub_modes,
+            default="Explore",
+            key="practice_hub_mode",
+            label_visibility="collapsed",
+        )
+        if len(hub_modes) > 1
+        else "Explore"
+    ) or "Explore"
 
     drilldown = False
 
-    with flag_col:
-        if hub_mode == "Explore":
-            drilldown = st.toggle(
-                "Drill-down view",
-                key="practice_hub_drilldown",
-                help="Contract → Opportunity → OSR → Resource"
-            )
+    if hub_mode == "Explore":
+        drilldown = st.toggle(
+            "Contract hierarchy view",
+            value=True,
+            key="practice_hub_hierarchy",
+            help="Contract → Opportunity → OSR → Resource. Switch off for the flat OSR / Opportunity / Contracts tables."
+        )
 
     if hub_mode == "Data Entry":
         show_practice_hub_data_entry(groups)
