@@ -55,6 +55,8 @@ st.markdown("""
         margin: 0 !important;
         width: 100% !important;
         max-width: none !important;
+        height: 2.5rem !important;
+        min-height: 0 !important;
     }
     [data-testid="stSidebarUserContent"] {
         padding: 0 1.9rem 6rem 1.9rem !important;
@@ -64,11 +66,21 @@ st.markdown("""
     }
     .sm-logo-bleed {
         background: #ffffff;
-        margin: 0 -1.9rem 0.75rem -1.9rem;
-        padding: 0 0.5rem 0.9rem 0.5rem;
+        margin: 0 -1.9rem 0.25rem -1.9rem;
+        padding: 0 0.5rem 0.6rem 0.5rem;
         text-align: center;
     }
-    .sm-logo-bleed img { width: 100%; max-width: 250px; }
+    .sm-logo-title {
+        color: #A100FF;
+        font-weight: 900;
+        font-size: 1.3rem;
+        letter-spacing: -0.5px;
+        line-height: 1.1;
+        margin: 0 0 0.35rem 0;
+        white-space: nowrap;
+    }
+    .sm-logo-bleed img { width: 100%; max-width: 220px; }
+    [data-testid="stMainBlockContainer"] { padding-top: 3.5rem !important; }
     section[data-testid="stSidebar"] + div { border-left: none !important; box-shadow: none !important; }
     [data-testid="stSidebar"] .stMarkdown p,
     [data-testid="stSidebar"] label,
@@ -127,16 +139,6 @@ st.markdown("""
         margin: 0.5rem 0 0.75rem 0 !important;
     }
 
-    /* ── COCKPIT FIXED HEADER (top-left main area) ── */
-    #sm-cockpit-header {
-        position: fixed; top: 0; left: 22rem; z-index: 9998;
-        height: 3.75rem;
-        display: flex; align-items: center; padding-left: 0.5rem;
-    }
-    #sm-cockpit-header .sm-cockpit-name {
-        font-size: 2.2rem; font-weight: 900;
-        color: #A100FF !important; white-space: nowrap; letter-spacing: -1px;
-    }
     .page-header {
         background: white;
         border-radius: 16px;
@@ -512,7 +514,7 @@ def show_login():
 def show_sidebar(groups):
     with st.sidebar:
         st.markdown(
-            f'<div class="sm-logo-bleed">'
+            f'<div class="sm-logo-bleed"><div class="sm-logo-title">D&amp;A Advisory Cockpit</div>'
             f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}"></div>',
             unsafe_allow_html=True
         )
@@ -546,9 +548,6 @@ def show_sidebar(groups):
 <div id="sm-userbar">
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
   <a href="?logout=1" class="sm-exit">Logout</a>
-</div>
-<div id="sm-cockpit-header">
-  <span class="sm-cockpit-name">D&amp;A Advisory Cockpit</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -2637,7 +2636,7 @@ def show_risorsa_v2(groups):
 # ── DASHBOARD V2 ──────────────────────────────────────────────────────────────
 def show_dashboard_v2(groups):
     st.markdown(
-        '<p style="margin:-1.6rem 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
+        '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
         'Select the analysis view you are interested in</p>',
         unsafe_allow_html=True
     )
