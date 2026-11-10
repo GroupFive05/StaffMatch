@@ -3280,7 +3280,7 @@ def show_dashboard_v2(groups):
         }
 
         level_distribution = {}
-        skill_distribution = {}
+        certification_distribution = {}
         manager_distribution = {}
 
         for resource in filtered_resources:
@@ -3304,21 +3304,24 @@ def show_dashboard_v2(groups):
                     "Available"
                 ] += 1
 
-            level_name = (
-                resource.get("level_name")
-                or "Unclassified"
+            level_key = (
+                resource.get("level"),
+                resource.get("level_name") or "Unclassified"
             )
 
-            level_distribution[level_name] = (
-                level_distribution.get(level_name, 0) + 1
+            level_distribution[level_key] = (
+                level_distribution.get(level_key, 0) + 1
             )
 
-            for skill in resource.get("skills", []):
-                skill_name = skill.get("skill_name")
+            resource_certifications = {
+                certification.get("nome_cert") or certification.get("cert_id")
+                for certification in resource.get("certifications", [])
+            }
 
-                if skill_name:
-                    skill_distribution[skill_name] = (
-                        skill_distribution.get(skill_name, 0) + 1
+            for certification_name in resource_certifications:
+                if certification_name:
+                    certification_distribution[certification_name] = (
+                        certification_distribution.get(certification_name, 0) + 1
                     )
 
             for manager in resource.get("managers", []):
@@ -3335,23 +3338,26 @@ def show_dashboard_v2(groups):
                         ) + 1
                     )
 
+        # Livello 4 (più alto) in cima, livello 11 (più basso) in fondo
         level_sorted = sorted(
             level_distribution.items(),
-            key=lambda item: item[1],
-            reverse=True
+            key=lambda item: (
+                item[0][0] is None,
+                item[0][0] if item[0][0] is not None else 0
+            )
         )
 
-        skill_sorted = sorted(
-            skill_distribution.items(),
+        certification_sorted = sorted(
+            certification_distribution.items(),
             key=lambda item: item[1],
             reverse=True
-        )[:10]
+        )[:5]
 
         manager_sorted = sorted(
             manager_distribution.items(),
             key=lambda item: item[1],
             reverse=True
-        )[:10]
+        )[:5]
 
         staffing_col1, staffing_col2 = st.columns(2)
 
@@ -3412,127 +3418,132 @@ def show_dashboard_v2(groups):
                 use_container_width=True
             )
 
-        # ── RESOURCES BY LEVEL ────────────────────────────────────────────────────
+        # ── RESOURCES BY LEVEL (PIRAMIDE) ─────────────────────────────────────────
         with staffing_col2:
             st.markdown("#### Resources by Level")
 
-            level_display = list(
-                reversed(level_sorted)
-            )
+            if level_sorted:
+                level_count = len(level_sorted)
+                pyramid_start = (30, 64, 175)
+                pyramid_end = (147, 197, 253)
+                pyramid_colors = [
+                    "#%02x%02x%02x" % tuple(
+                        int(
+                            pyramid_start[j]
+                            + (pyramid_end[j] - pyramid_start[j])
+                            * i / max(level_count - 1, 1)
+                        )
+                        for j in range(3)
+                    )
+                    for i in range(level_count)
+                ]
 
-            fig_levels = go.Figure()
-
-            fig_levels.add_trace(
-                go.Bar(
-                    x=[
-                        item[1]
-                        for item in level_display
-                    ],
-                    y=[
-                        item[0]
-                        for item in level_display
-                    ],
-                    orientation="h",
-                    marker_color=[
-                        dashboard_palette[i % len(dashboard_palette)]
-                        for i in range(len(level_display))
-                    ],
-                    text=[
-                        item[1]
-                        for item in level_display
-                    ],
-                    textposition="outside",
-                    hovertemplate=(
-                        "<b>%{y}</b><br>"
-                        "Resources: %{x}"
-                        "<extra></extra>"
+                fig_levels = go.Figure(
+                    go.Funnel(
+                        y=[
+                            f"{key[1]} (L{key[0]})"
+                            if key[0] is not None
+                            else key[1]
+                            for key, _ in level_sorted
+                        ],
+                        x=[count for _, count in level_sorted],
+                        textinfo="value+percent total",
+                        textposition="inside",
+                        marker=dict(
+                            color=pyramid_colors,
+                            line=dict(width=2, color="white")
+                        ),
+                        connector=dict(visible=False),
+                        hovertemplate=(
+                            "<b>%{y}</b><br>"
+                            "Resources: %{x}"
+                            "<extra></extra>"
+                        )
                     )
                 )
-            )
 
-            fig_levels.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=40,
-                    t=20,
-                    b=20
-                ),
-                showlegend=False,
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                xaxis_title="Number of Resources",
-                yaxis_title=""
-            )
+                fig_levels.update_layout(
+                    height=380,
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    showlegend=False,
+                    paper_bgcolor="white"
+                )
 
-            st.plotly_chart(
-                fig_levels,
-                use_container_width=True
-            )
+                st.plotly_chart(
+                    fig_levels,
+                    use_container_width=True
+                )
+
+            else:
+                st.info("No resources available for the selected filters.")
 
         staffing_col3, staffing_col4 = st.columns(2)
 
-        # ── TOP SKILLS ─────────────────────────────────────────────────────────────
+        # ── TOP 5 CERTIFICATIONS ──────────────────────────────────────────────────
         with staffing_col3:
-            st.markdown("#### Top Skills")
+            st.markdown("#### Top 5 Certifications")
 
-            skill_display = list(
-                reversed(skill_sorted)
+            certification_display = list(
+                reversed(certification_sorted)
             )
 
-            fig_skills = go.Figure()
+            if certification_display:
+                fig_certifications = go.Figure()
 
-            fig_skills.add_trace(
-                go.Bar(
-                    x=[
-                        item[1]
-                        for item in skill_display
-                    ],
-                    y=[
-                        item[0]
-                        for item in skill_display
-                    ],
-                    orientation="h",
-                    marker_color=[
-                        dashboard_palette[i % len(dashboard_palette)]
-                        for i in range(len(skill_display))
-                    ],
-                    text=[
-                        item[1]
-                        for item in skill_display
-                    ],
-                    textposition="outside",
-                    hovertemplate=(
-                        "<b>%{y}</b><br>"
-                        "Resources: %{x}"
-                        "<extra></extra>"
+                fig_certifications.add_trace(
+                    go.Bar(
+                        x=[
+                            item[1]
+                            for item in certification_display
+                        ],
+                        y=[
+                            item[0]
+                            for item in certification_display
+                        ],
+                        orientation="h",
+                        marker_color=[
+                            dashboard_palette[i % len(dashboard_palette)]
+                            for i in range(len(certification_display))
+                        ],
+                        text=[
+                            item[1]
+                            for item in certification_display
+                        ],
+                        textposition="outside",
+                        hovertemplate=(
+                            "<b>%{y}</b><br>"
+                            "Certified resources: %{x}"
+                            "<extra></extra>"
+                        )
                     )
                 )
-            )
 
-            fig_skills.update_layout(
-                height=380,
-                margin=dict(
-                    l=20,
-                    r=40,
-                    t=20,
-                    b=20
-                ),
-                showlegend=False,
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                xaxis_title="Number of Resources",
-                yaxis_title=""
-            )
+                fig_certifications.update_layout(
+                    height=380,
+                    margin=dict(
+                        l=20,
+                        r=40,
+                        t=20,
+                        b=20
+                    ),
+                    showlegend=False,
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
+                    xaxis_title="Number of Certified Resources",
+                    yaxis_title=""
+                )
 
-            st.plotly_chart(
-                fig_skills,
-                use_container_width=True
-            )
+                st.plotly_chart(
+                    fig_certifications,
+                    use_container_width=True
+                )
+
+            else:
+                st.info("No certifications available for the selected filters.")
 
         # ── STAFFING BY MANAGER ───────────────────────────────────────────────────
         with staffing_col4:
-            st.markdown("#### Staffing by Manager")
+            st.markdown("#### Top 5 Managers by Active OSR")
 
             manager_display = list(
                 reversed(manager_sorted)
