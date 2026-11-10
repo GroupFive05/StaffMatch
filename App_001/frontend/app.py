@@ -1,13 +1,23 @@
 import os
+import base64
 import streamlit as st
 import requests
 import plotly.graph_objects as go
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+
+
+@st.cache_resource
+def _asset_b64(filename):
+    with open(os.path.join(ASSETS_DIR, filename), "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
 st.set_page_config(
     page_title="AI Practice Advisory — Accenture Italy",
-    page_icon="🎯",
+    page_icon=os.path.join(ASSETS_DIR, "mira_icon.png"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -406,7 +416,12 @@ def nav(page: str):
 def show_login():
     _, col, _ = st.columns([1, 2, 1])
     with col:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="text-align:center;margin-bottom:0.5rem">'
+            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}" style="width:240px;max-width:100%"></div>',
+            unsafe_allow_html=True
+        )
         st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
         st.markdown(
             '<p class="login-sub1">Intelligent Staffing &amp; Practice Management Platform</p>'
@@ -442,7 +457,11 @@ def show_login():
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 def show_sidebar(groups):
     with st.sidebar:
-        st.markdown("## 🎯 AI Practice Advisory")
+        st.markdown(
+            f'<div style="background:#ffffff;border-radius:12px;padding:10px 8px;margin-bottom:0.75rem;text-align:center">'
+            f'<img src="data:image/png;base64,{_asset_b64("mira_logo.png")}" style="width:100%;max-width:190px"></div>',
+            unsafe_allow_html=True
+        )
         u = st.session_state.user or {}
 
         # Header fisso in alto a destra — nome + Logout allineati con ⋮
