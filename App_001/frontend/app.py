@@ -689,6 +689,15 @@ def show_login():
         margin-right: auto !important;
     }
     .login-app-title, .login-sub1, .login-sub2 { text-align: center; }
+    [data-testid="stMarkdownContainer"] p.login-app-title {
+        font-size: 3rem !important; color: #1E1B4B !important; font-weight: 800 !important;
+        letter-spacing: -1px !important; line-height: 1.1 !important; white-space: nowrap;
+        width: max-content; position: relative; left: 50%; transform: translateX(-50%);
+        margin: 0.4rem 0 0.4rem 0 !important;
+    }
+    @media (max-width: 600px) {
+        [data-testid="stMarkdownContainer"] p.login-app-title { font-size: 2rem !important; }
+    }
     [data-testid="InputInstructions"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -703,7 +712,6 @@ def show_login():
         )
         st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
         st.markdown(
-            '<p class="login-sub1">Intelligent Staffing &amp; Practice Management Platform</p>'
             '<p class="login-sub2">D&amp;A Practice · Accenture Italy · Powered by SAP AI Core &amp; Claude</p>',
             unsafe_allow_html=True
         )
