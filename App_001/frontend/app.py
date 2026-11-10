@@ -160,6 +160,11 @@ st.markdown("""
         box-shadow: 0 8px 24px rgba(124,58,237,0.45) !important; transition: all 0.2s ease !important;
     }
     .st-key-fab_ask_mira button:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(124,58,237,0.55) !important; }
+    [data-testid="stPopoverBody"] { width: 440px !important; max-width: 92vw !important; border-radius: 16px !important; }
+    [data-testid="stInputInstructions"], [data-testid="InputInstructions"] { display: none !important; }
+    [data-testid="stChatMessageAvatarUser"] { background: #7C3AED !important; }
+    [data-testid="stChatMessageAvatarAssistant"] { background: #A78BFA !important; }
+    .mira-panel-title { font-size: 1.05rem; font-weight: 800; color: #1E1B4B; margin-bottom: 0.4rem; }
     [data-testid="stButtonGroup"] button[data-testid^="stBaseButton-segmented_control"] {
         border-radius: 999px !important; border: 1px solid #E4DDF5 !important; background: #ffffff !important;
         color: #4C1D95 !important; padding: 6px 24px !important; font-weight: 600 !important;
@@ -594,17 +599,61 @@ def show_app_header():
     )
 
 
+@st.fragment
+def _mira_chat_panel():
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    st.markdown('<div class="mira-panel-title">✨ MIRA — Practice Advisor</div>', unsafe_allow_html=True)
+    messages_box = st.container(height=360, border=False)
+
+    with st.form("mira_chat_form", clear_on_submit=True, border=False):
+        question = st.text_input(
+            "Ask MIRA",
+            placeholder="Ask about resources, staffing, opportunities…",
+            label_visibility="collapsed"
+        )
+        send_col, clear_col = st.columns([3, 1])
+        send = send_col.form_submit_button("Send", type="primary", use_container_width=True)
+        clear = clear_col.form_submit_button("Clear", use_container_width=True)
+
+    if clear:
+        st.session_state.chat_history = []
+
+    if send and question.strip():
+        question = question.strip()
+        prior_history = list(st.session_state.chat_history)
+        st.session_state.chat_history.append({"role": "user", "content": question})
+
+        with st.spinner("MIRA is thinking…"):
+            resp = api("POST", "/chat/", json={"question": question, "history": prior_history})
+
+        if resp and resp.status_code == 200:
+            answer = resp.json().get("answer", "")
+        else:
+            answer = f"Backend response error ({resp.status_code if resp else 'non raggiungibile'})."
+
+        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+
+    with messages_box:
+        if not st.session_state.chat_history:
+            st.caption("✨ Hi, I'm MIRA. Ask me about resources, staffing, opportunities and contracts.")
+
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+
 def show_ask_mira_button():
     if st.session_state.page == "chatbot":
         return
 
-    if st.button(
+    with st.popover(
         "Ask MIRA",
         icon=":material/auto_awesome:",
         key="fab_ask_mira"
     ):
-        st.session_state.page = "chatbot"
-        st.rerun()
+        _mira_chat_panel()
 
 def nav(page: str):
     st.session_state.page = page
