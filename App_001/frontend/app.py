@@ -4149,6 +4149,61 @@ def show_practice_hub_data_entry(groups):
                 )
 
 
+def show_practice_hub_drilldown():
+    from practice_hub_tree import build_tree
+
+    st.markdown('<p class="main-title">🗂️ Practice Hub — Drill-down</p>', unsafe_allow_html=True)
+    st.caption(
+        "Contract → Opportunity → OSR → Resource. Open a contract to see its opportunities, "
+        "then an opportunity to see the OSRs and the people assigned. "
+        "A contract total is the sum of its won opportunities."
+    )
+
+    response = api("GET", "/sm/staffing-management-v2")
+
+    if response is None:
+        return
+
+    if response.status_code != 200:
+        st.error(f"Loading error: {_api_detail(response)}")
+        return
+
+    data = response.json()
+
+    filter_1, filter_2, filter_3 = st.columns([3, 2, 1])
+
+    with filter_1:
+        search = st.text_input(
+            "🔍 Search contract, client, opportunity, resource or EID",
+            key="hub_tree_search"
+        )
+
+    with filter_2:
+        statuses = sorted({
+            c.get("contract_status") for c in data.get("contracts", []) if c.get("contract_status")
+        })
+        selected_statuses = st.multiselect("Contract status", statuses, key="hub_tree_status")
+
+    with filter_3:
+        st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+        expand_all = st.checkbox("Expand all", key="hub_tree_expand")
+
+    tree_html, stats = build_tree(data, search, selected_statuses, expand_all)
+
+    kpis = [
+        ("file", "Contracts", stats["contracts"]),
+        ("briefcase", "Opportunities", stats["opportunities"]),
+        ("users", "OSR · Resources", f"{stats['osr']} · {stats['resources']}"),
+        ("layers", "Won opportunities total", f"€ {stats['total'] / 1_000_000:.2f} M"),
+    ]
+
+    for column, (icon, label, value) in zip(st.columns(4), kpis):
+        column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
+    st.markdown(tree_html, unsafe_allow_html=True)
+
+
 def show_staffing_management_v2(groups):
 
     if "staffing_v2_view" not in st.session_state:
@@ -4156,20 +4211,37 @@ def show_staffing_management_v2(groups):
 
     hub_modes = ["Explore", "Data Entry"] if can_write(groups) else ["Explore"]
 
-    hub_mode = (
-        st.segmented_control(
-            "Practice Hub mode",
-            hub_modes,
-            default="Explore",
-            key="practice_hub_mode",
-            label_visibility="collapsed",
-        )
-        if len(hub_modes) > 1
-        else "Explore"
-    ) or "Explore"
+    mode_col, flag_col = st.columns([3, 2])
+
+    with mode_col:
+        hub_mode = (
+            st.segmented_control(
+                "Practice Hub mode",
+                hub_modes,
+                default="Explore",
+                key="practice_hub_mode",
+                label_visibility="collapsed",
+            )
+            if len(hub_modes) > 1
+            else "Explore"
+        ) or "Explore"
+
+    drilldown = False
+
+    with flag_col:
+        if hub_mode == "Explore":
+            drilldown = st.toggle(
+                "Drill-down view",
+                key="practice_hub_drilldown",
+                help="Contract → Opportunity → OSR → Resource"
+            )
 
     if hub_mode == "Data Entry":
         show_practice_hub_data_entry(groups)
+        return
+
+    if drilldown:
+        show_practice_hub_drilldown()
         return
 
     st.markdown(
