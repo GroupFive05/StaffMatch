@@ -15,6 +15,8 @@ ASSETS_DIR = os.path.join(APP_DIR, "assets")
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
+import fiscal
+
 
 ROLE_LABELS = {
     "Employee": "Data Explorer",
@@ -228,6 +230,13 @@ st.markdown("""
     .kpi-ico { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex: 0 0 52px; border-radius: 14px; background: #F3EEFF; color: #7C3AED; }
     .kpi-label { font-size: 0.9rem; color: #374151; }
     .kpi-value { font-size: 1.95rem; font-weight: 800; color: #1E1B4B; line-height: 1.15; }
+    .kpi-delta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.15rem; font-size: 0.8rem; }
+    .kpi-arrow { font-weight: 700; }
+    .kpi-arrow.up { color: #16A34A; }
+    .kpi-arrow.down { color: #DC2626; }
+    .kpi-arrow.flat { color: #6B7280; }
+    .kpi-prev { color: #6B7280; }
+    .fy-chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; margin-left: 0.7rem; letter-spacing: 0; }
     .tech-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #1E1B4B; border: none !important; }
     .tech-table th { text-align: right; font-weight: 600; padding: 7px 6px; border: none !important; border-bottom: 1px solid #ECE6FA !important; white-space: nowrap; background: transparent !important; }
     .tech-table th:first-child, .tech-table td:first-child { text-align: left; }
@@ -589,11 +598,47 @@ def _svg(name, size=24):
     )
 
 
-def kpi_card(icon, label, value):
+def kpi_card(icon, label, value, delta=None):
+    delta_html = ""
+
+    if delta:
+        pct = delta.get("pct")
+
+        if pct is None:
+            arrow = '<span class="kpi-arrow flat">n/d</span>'
+        else:
+            tone = "up" if pct > 0 else "down" if pct < 0 else "flat"
+            symbol = "▲" if pct > 0 else "▼" if pct < 0 else "■"
+            arrow = f'<span class="kpi-arrow {tone}">{symbol} {pct:+.1f}%</span>'
+
+        delta_html = (
+            f'<div class="kpi-delta">{arrow}'
+            f'<span class="kpi-prev">vs {delta["previous_label"]} € {delta["previous"] / 1_000_000:.2f} M</span></div>'
+        )
+
     return (
         f'<div class="kpi-card"><div class="kpi-ico">{_svg(icon, 26)}</div>'
-        f'<div><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div></div></div>'
+        f'<div><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>{delta_html}</div></div>'
     )
+
+
+def fy_select(container, key, options):
+    labels = [fiscal.fy_label(fy) for fy in options]
+    default = fiscal.fy_label(fiscal.current_fy())
+    preferred = st.session_state.get("fy_pref")
+
+    if st.session_state.get(key) not in labels:
+        st.session_state[key] = preferred if preferred in labels else (default if default in labels else labels[-1])
+
+    value = container.selectbox(
+        "Fiscal year",
+        labels,
+        key=key,
+        help="Fiscal year runs September – August (FY2027 = Sep 2026 – Aug 2027). Multi-year contracts are split by month."
+    )
+    st.session_state["fy_pref"] = value
+
+    return int(value[2:])
 
 
 def section_title(text, icon):
@@ -816,14 +861,26 @@ def show_sidebar(groups):
 <style>
 #sm-userbar {{
     background: rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 8px 12px;
-    margin: 0 0 0.5rem 0;
-    display: flex; align-items: center; justify-content: space-between;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin: 0.2rem 0 0.5rem 0;
+    display: flex; align-items: center; gap: 0.6rem;
+}}
+#sm-userbar .sm-avatar {{
+    flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #EC4899, #8B5CF6); color: #ffffff;
+    font-size: 0.72rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
 }}
 #sm-userbar .sm-name {{
-    font-size: 0.82rem; font-weight: 600;
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.85rem; font-weight: 600;
     color: #EADFFF; white-space: nowrap;
+}}
+.sm-nav-divider {{
+    height: 1px; margin: 0.7rem 0 0.9rem 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent);
 }}
 #sm-userbar .sm-exit {{
     font-size: 0.70rem; color: #EADFFF;
@@ -835,9 +892,11 @@ def show_sidebar(groups):
 #sm-userbar .sm-exit:hover {{ background: #7C3AED; color: white; }}
 </style>
 <div id="sm-userbar">
+  <span class="sm-avatar">{(nome_hdr[:1] + cognome_hdr[:1]).upper() or "?"}</span>
   <span class="sm-name">{nome_hdr} {cognome_hdr}</span>
   <a href="?logout=1" class="sm-exit">Logout</a>
 </div>
+<div class="sm-nav-divider"></div>
 """, unsafe_allow_html=True)
 
         pages = [
@@ -2938,6 +2997,10 @@ def _reset_dashboard_filters():
     ):
         st.session_state[key] = []
 
+    current_label = fiscal.fy_label(fiscal.current_fy())
+    st.session_state["dash_fy"] = current_label
+    st.session_state["fy_pref"] = current_label
+
 
 def show_dashboard_v2(groups):
     st.markdown(
@@ -3002,6 +3065,11 @@ def show_dashboard_v2(groups):
         if manager.get("name")
     }
 
+    fy_options = fiscal.available_fys(
+        [r.get(k) for r in commercial_rows for k in ("opportunity_start_date", "opportunity_end_date")]
+        + [r.get(k) for r in contract_rows for k in ("contract_start_date", "contract_end_date")]
+    )
+
     with st.container(key="card_filters"):
         filters_head = st.empty()
 
@@ -3060,6 +3128,9 @@ def show_dashboard_v2(groups):
                 list(manager_options.keys()),
                 key="dash_f_manager"
             )
+
+        with filter_row_2[3]:
+            fiscal_year = fy_select(st, "dash_fy", fy_options)
 
         selected_manager_eids = {
             manager_options[name]
@@ -3175,32 +3246,33 @@ def show_dashboard_v2(groups):
             if row.get("contract_id") in visible_contract_ids
         ]
 
-    # ── KPI LIVE ──────────────────────────────────────────────────────────────
-    opportunity_value = sum(
-        float(row.get("opportunity_value") or 0)
-        for row in filtered_commercial
-    )
+    # ── KPI LIVE (valori per anno fiscale, mensilizzati) ──────────────────────
+    def fy_value(rows, amount_key, start_key, end_key, year):
+        return fiscal.fy_sum(
+            rows,
+            lambda row: row.get(amount_key),
+            lambda row: row.get(start_key),
+            lambda row: row.get(end_key),
+            year
+        )
 
-    pipeline_value = sum(
-        float(row.get("opportunity_value") or 0)
-        for row in filtered_commercial
-        if row.get("opportunity_status") == "Pipeline"
-    )
+    previous_fy = fiscal_year - 1
+    pipeline_rows = [row for row in filtered_commercial if row.get("opportunity_status") == "Pipeline"]
 
-    contract_revenue = sum(
-        float(row.get("contract_revenue") or 0)
-        for row in filtered_contracts
-    )
+    def opportunity_kpi(rows, year):
+        return fy_value(rows, "opportunity_value", "opportunity_start_date", "opportunity_end_date", year)
 
-    contract_costs = sum(
-        float(row.get("contract_costs") or 0)
-        for row in filtered_contracts
-    )
+    def contract_kpi(key, year):
+        return fy_value(filtered_contracts, key, "contract_start_date", "contract_end_date", year)
 
-    contract_margin = (
-        contract_revenue
-        - contract_costs
-    )
+    opportunity_value = opportunity_kpi(filtered_commercial, fiscal_year)
+    opportunity_value_prev = opportunity_kpi(filtered_commercial, previous_fy)
+    pipeline_value = opportunity_kpi(pipeline_rows, fiscal_year)
+    pipeline_value_prev = opportunity_kpi(pipeline_rows, previous_fy)
+    contract_revenue = contract_kpi("contract_revenue", fiscal_year)
+    contract_revenue_prev = contract_kpi("contract_revenue", previous_fy)
+    contract_margin = contract_revenue - contract_kpi("contract_costs", fiscal_year)
+    contract_margin_prev = contract_revenue_prev - contract_kpi("contract_costs", previous_fy)
 
     opportunity_count = len(
         filtered_commercial
@@ -3225,24 +3297,32 @@ def show_dashboard_v2(groups):
     )
 
     # ── KPI (comuni a Commercial e Staffing) ──────────────────────────────────
-    section_title("Practice Indicators", "bars")
+    fy_text = fiscal.fy_label(fiscal_year)
+    section_title(
+        f'Practice Indicators<span class="fy-chip">{fy_text} · {fiscal.fy_period_text(fiscal_year)}</span>',
+        "bars"
+    )
 
     kpi_row_1 = [
-        ("briefcase", "Opportunity Value", f"€ {opportunity_value / 1_000_000:.2f} M"),
-        ("bars", "Pipeline Value", f"€ {pipeline_value / 1_000_000:.2f} M"),
-        ("layers", "Contract Revenue", f"€ {contract_revenue / 1_000_000:.2f} M"),
-        ("target", "Margin", f"€ {contract_margin / 1_000_000:.2f} M"),
+        ("briefcase", "Opportunity Value", f"€ {opportunity_value / 1_000_000:.2f} M",
+         fiscal.delta_info(opportunity_value, opportunity_value_prev, fiscal_year)),
+        ("bars", "Pipeline Value", f"€ {pipeline_value / 1_000_000:.2f} M",
+         fiscal.delta_info(pipeline_value, pipeline_value_prev, fiscal_year)),
+        ("layers", "Contract Revenue", f"€ {contract_revenue / 1_000_000:.2f} M",
+         fiscal.delta_info(contract_revenue, contract_revenue_prev, fiscal_year)),
+        ("target", "Margin", f"€ {contract_margin / 1_000_000:.2f} M",
+         fiscal.delta_info(contract_margin, contract_margin_prev, fiscal_year)),
     ]
     kpi_row_2 = [
-        ("euro", "Opportunities", opportunity_count),
-        ("file", "Active Contracts", active_contract_count),
-        ("users", "Available Resources", available_resources),
-        ("user-check", "Fully Allocated", fully_allocated_resources),
+        ("euro", "Opportunities", opportunity_count, None),
+        ("file", "Active Contracts", active_contract_count, None),
+        ("users", "Available Resources", available_resources, None),
+        ("user-check", "Fully Allocated", fully_allocated_resources, None),
     ]
 
     for kpi_row in (kpi_row_1, kpi_row_2):
-        for column, (icon, label, value) in zip(st.columns(4), kpi_row):
-            column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
+        for column, (icon, label, value, delta) in zip(st.columns(4), kpi_row):
+            column.markdown(kpi_card(icon, label, value, delta), unsafe_allow_html=True)
         st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
     # ── EXPORT POWERPOINT ─────────────────────────────────────────────────────
@@ -3267,7 +3347,18 @@ def show_dashboard_v2(groups):
             "osr": osr_rows,
             "commercial_filters_active": any(values for _, values in selection_labels),
             "filters_summary": filters_summary,
-            "kpis": [(label, str(value)) for _, label, value in kpi_row_1 + kpi_row_2],
+            "fiscal_year": fiscal_year,
+            "kpis": [
+                (
+                    label,
+                    str(value),
+                    "" if not delta else (
+                        "n/d" if delta["pct"] is None else f"{delta['pct']:+.1f}%"
+                    ) + f" vs {delta['previous_label']} € {delta['previous'] / 1_000_000:.2f} M",
+                    "" if not delta or delta["pct"] is None else ("up" if delta["pct"] > 0 else "down" if delta["pct"] < 0 else "flat"),
+                )
+                for _, label, value, delta in kpi_row_1 + kpi_row_2
+            ],
         })
 
         export_slot.download_button(
@@ -3290,7 +3381,10 @@ def show_dashboard_v2(groups):
             technology = row.get("main_tech_cluster") or "Unclassified"
             technology_value[technology] = (
                 technology_value.get(technology, 0)
-                + float(row.get("opportunity_value") or 0)
+                + fiscal.fy_share(
+                    row.get("opportunity_value"), row.get("opportunity_start_date"),
+                    row.get("opportunity_end_date"), fiscal_year
+                )
             )
 
         technology_sorted = sorted(
@@ -3319,7 +3413,10 @@ def show_dashboard_v2(groups):
             industry = row.get("industry_sector") or "Unclassified"
             industry_value[industry] = (
                 industry_value.get(industry, 0)
-                + float(row.get("opportunity_value") or 0)
+                + fiscal.fy_share(
+                    row.get("opportunity_value"), row.get("opportunity_start_date"),
+                    row.get("opportunity_end_date"), fiscal_year
+                )
             )
 
         industry_sorted = sorted(
@@ -3341,7 +3438,7 @@ def show_dashboard_v2(groups):
         # ── Opportunity Value & Technology Fragmentation ──────────────────────
         with chart_col1:
             with st.container(key="card_tech_value"):
-                card_title("Opportunity Value &amp; Technology Fragmentation")
+                card_title(f"Opportunity Value &amp; Technology Fragmentation · {fy_text}")
 
                 if technology_sorted:
                     tech_names = [item[0] for item in technology_sorted]
@@ -3428,7 +3525,7 @@ def show_dashboard_v2(groups):
         # ── Technology Distribution (donut + tabella) ─────────────────────────
         with chart_col2:
             with st.container(key="card_tech_dist"):
-                card_title("Technology Distribution")
+                card_title(f"Technology Distribution · {fy_text}")
 
                 distribution = list(technology_sorted[:6])
                 others_value = sum(item[1] for item in technology_sorted[6:])
@@ -3509,7 +3606,7 @@ def show_dashboard_v2(groups):
         # ── Opportunity Value by Industry ─────────────────────────────────────
         with chart_col3:
             with st.container(key="card_industry"):
-                card_title("Opportunity Value by Industry")
+                card_title(f"Opportunity Value by Industry · {fy_text}")
 
                 industry_nonzero = [
                     item for item in industry_sorted if item[1] > 0
@@ -4228,7 +4325,7 @@ def show_practice_hub_drilldown():
 
     data = response.json()
 
-    filter_1, filter_2, filter_3 = st.columns([3, 2, 1])
+    filter_1, filter_2, filter_fy, filter_3 = st.columns([3, 2, 1.3, 1])
 
     with filter_1:
         search = st.text_input(
@@ -4245,6 +4342,14 @@ def show_practice_hub_drilldown():
     with filter_3:
         st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
         expand_all = st.checkbox("Expand all", key="hub_tree_expand")
+
+    hub_fy_options = fiscal.available_fys(
+        [r.get(k) for r in data.get("opportunities", []) for k in ("start_date", "end_date")]
+        + [r.get(k) for r in data.get("contracts", []) for k in ("start_date", "end_date")]
+    )
+
+    with filter_fy:
+        hub_fiscal_year = fy_select(st, "hub_fy", hub_fy_options)
 
     contract_list = data.get("contracts", [])
     manager_names = sorted({
@@ -4273,18 +4378,21 @@ def show_practice_hub_drilldown():
 
     tree_html, stats = build_tree(
         data, search, selected_statuses, expand_all,
-        clients=selected_clients, industries=selected_industries, managers=selected_managers
+        clients=selected_clients, industries=selected_industries, managers=selected_managers,
+        fy=hub_fiscal_year
     )
 
     kpis = [
-        ("file", "Contracts", stats["contracts"]),
-        ("briefcase", "Opportunities", stats["opportunities"]),
-        ("users", "OSR · Resources", f"{stats['osr']} · {stats['resources']}"),
-        ("layers", "Won opportunities total", f"€ {stats['total'] / 1_000_000:.2f} M"),
+        ("file", "Contracts", stats["contracts"], None),
+        ("briefcase", "Opportunities", stats["opportunities"], None),
+        ("users", "OSR · Resources", f"{stats['osr']} · {stats['resources']}", None),
+        ("layers", f"Won value · {fiscal.fy_label(hub_fiscal_year)}",
+         f"€ {stats['fy_total'] / 1_000_000:.2f} M",
+         fiscal.delta_info(stats["fy_total"], stats["fy_prev_total"], hub_fiscal_year)),
     ]
 
-    for column, (icon, label, value) in zip(st.columns(4), kpis):
-        column.markdown(kpi_card(icon, label, value), unsafe_allow_html=True)
+    for column, (icon, label, value, delta) in zip(st.columns(4), kpis):
+        column.markdown(kpi_card(icon, label, value, delta), unsafe_allow_html=True)
 
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
     st.markdown(tree_html, unsafe_allow_html=True)

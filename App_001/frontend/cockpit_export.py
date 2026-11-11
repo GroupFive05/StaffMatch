@@ -10,6 +10,8 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
+import fiscal
+
 PURPLE = RGBColor(0x7C, 0x3A, 0xED)
 PURPLE_DARK = RGBColor(0x5B, 0x21, 0xB6)
 INK = RGBColor(0x1E, 0x1B, 0x4B)
@@ -183,8 +185,17 @@ def _aggregate(ctx):
 
     technology_value, technology_count, industry_value = {}, {}, {}
 
+    fy = ctx.get("fiscal_year")
+
     for row in commercial:
         value = float(row.get("opportunity_value") or 0)
+
+        if fy:
+            value = fiscal.fy_share(
+                row.get("opportunity_value"), row.get("opportunity_start_date"),
+                row.get("opportunity_end_date"), fy
+            )
+
         technology = row.get("main_tech_cluster") or "Unclassified"
         industry = row.get("industry_sector") or "Unclassified"
         technology_value[technology] = technology_value.get(technology, 0) + value
@@ -263,8 +274,9 @@ def _cover(prs, ctx, date_label):
 
     _text(slide, Inches(0.8), Inches(2.2), Inches(7.4), Inches(1.4),
           "D&A Advisory Cockpit", size=44, bold=True, color=WHITE)
+    fy = ctx.get("fiscal_year")
     _text(slide, Inches(0.8), Inches(3.55), Inches(7.4), Inches(0.5),
-          "Practice Cockpit report", size=22, color=_rgb("D4C4F7"))
+          "Practice Cockpit report" + (f" — {fiscal.fy_label(fy)}" if fy else ""), size=22, color=_rgb("D4C4F7"))
     _text(slide, Inches(0.8), Inches(4.4), Inches(7.4), Inches(0.35),
           date_label, size=14, color=_rgb("D4C4F7"))
     _text(slide, Inches(0.8), Inches(5.0), Inches(7.4), Inches(1.0),
@@ -284,25 +296,34 @@ def build_cockpit_pptx(ctx):
     page = 2
 
     # ── Practice Indicators ───────────────────────────────────────────────────
-    slide = _base_slide(prs, "Practice Indicators", ctx["filters_summary"], page, date_label)
+    fy = ctx.get("fiscal_year")
+    fy_text = f"{fiscal.fy_label(fy)} ({fiscal.fy_period_text(fy)}) · " if fy else ""
+    slide = _base_slide(prs, "Practice Indicators", fy_text + ctx["filters_summary"], page, date_label)
     kpis = ctx["kpis"]
     tile_w, tile_h, gap = Inches(2.85), Inches(1.9), Inches(0.25)
     left, top = Inches(0.6), Inches(1.7)
-    for index, (label, value) in enumerate(kpis):
+    tone_colors = {"up": RGBColor(0x16, 0xA3, 0x4A), "down": RGBColor(0xDC, 0x26, 0x26)}
+    for index, kpi in enumerate(kpis):
+        label, value = kpi[0], kpi[1]
+        sub = kpi[2] if len(kpi) > 2 else ""
+        tone = kpi[3] if len(kpi) > 3 else ""
         row, col = divmod(index, 4)
         x = left + col * (tile_w + gap)
         y = top + row * (tile_h + gap)
         _card(slide, x, y, tile_w, tile_h)
-        _text(slide, x + Inches(0.3), y + Inches(0.35), tile_w - Inches(0.6), Inches(0.4), label, size=14, color=MUTED)
-        _text(slide, x + Inches(0.3), y + Inches(0.85), tile_w - Inches(0.6), Inches(0.8), value,
-              size=32, bold=True, color=INK)
+        _text(slide, x + Inches(0.3), y + Inches(0.3), tile_w - Inches(0.6), Inches(0.4), label, size=14, color=MUTED)
+        _text(slide, x + Inches(0.3), y + Inches(0.72), tile_w - Inches(0.6), Inches(0.7), value,
+              size=30, bold=True, color=INK)
+        if sub:
+            _text(slide, x + Inches(0.3), y + Inches(1.42), tile_w - Inches(0.6), Inches(0.35), sub,
+                  size=11, bold=bool(tone), color=tone_colors.get(tone, MUTED))
     page += 1
 
     # ── Commercial: technology ────────────────────────────────────────────────
     slide = _base_slide(prs, "Commercial Performance", "Opportunity value by technology", page, date_label)
     card_w, card_h, card_y = Inches(6.05), Inches(5.0), Inches(1.6)
 
-    _chart_card(slide, Inches(0.6), card_y, card_w, card_h, "Opportunity Value & Technology Fragmentation (€ M)")
+    _chart_card(slide, Inches(0.6), card_y, card_w, card_h, "Opportunity Value & Technology Fragmentation (€ M)" + (f" · {fiscal.fy_label(fy)}" if fy else ""))
     if agg["technology_value"]:
         names = [n for n, _ in agg["technology_value"]]
         values = [v / 1_000_000 for _, v in agg["technology_value"]]
@@ -312,7 +333,7 @@ def build_cockpit_pptx(ctx):
     else:
         _empty(slide, Inches(0.6), card_y, card_w, card_h)
 
-    _chart_card(slide, Inches(6.9), card_y, card_w, card_h, "Technology Distribution")
+    _chart_card(slide, Inches(6.9), card_y, card_w, card_h, "Technology Distribution" + (f" · {fiscal.fy_label(fy)}" if fy else ""))
     distribution = list(agg["technology_value"][:6])
     others = sum(v for _, v in agg["technology_value"][6:])
     if others > 0:
@@ -329,7 +350,7 @@ def build_cockpit_pptx(ctx):
     # ── Commercial: industry + top 5 technologies ─────────────────────────────
     slide = _base_slide(prs, "Commercial Performance", "Industry and technology rankings", page, date_label)
 
-    _chart_card(slide, Inches(0.6), card_y, card_w, card_h, "Opportunity Value by Industry (€ M)")
+    _chart_card(slide, Inches(0.6), card_y, card_w, card_h, "Opportunity Value by Industry (€ M)" + (f" · {fiscal.fy_label(fy)}" if fy else ""))
     industries = [(n, v) for n, v in agg["industry_value"] if v > 0]
     if industries:
         shown = list(reversed(industries[:8]))

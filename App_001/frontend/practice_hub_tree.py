@@ -1,6 +1,8 @@
 import html
 from collections import defaultdict
 
+import fiscal
+
 TREE_CSS = """
 <style>
 .ph-tree { font-size: 0.92rem; color: #1E1B4B; }
@@ -93,7 +95,14 @@ def _osr_table(osr_rows):
     )
 
 
-def _opportunity_block(opportunity, osr_rows, expand):
+def _fy_amount(opportunity, fy):
+    return fiscal.fy_share(
+        opportunity.get("opportunity_value"), opportunity.get("start_date"), opportunity.get("end_date"), fy
+    )
+
+
+def _opportunity_block(opportunity, osr_rows, expand, fy=None):
+    fy_line = f"<small>{fiscal.fy_label(fy)} {_eur(_fy_amount(opportunity, fy))}</small>" if fy else ""
     summary = (
         f'<span class="id">{_e(opportunity.get("opportunity_id"))}</span>'
         f'<span class="title">{_e(opportunity.get("opportunity_title"))}</span>'
@@ -102,7 +111,7 @@ def _opportunity_block(opportunity, osr_rows, expand):
         f'{_badge(opportunity.get("opportunity_status") or "n/a")}'
         f'<span class="period">{_period(opportunity)}</span>'
         f'<span class="metric">{len(osr_rows)} OSR</span>'
-        f'<span class="total">{_eur(opportunity.get("opportunity_value"))}</span>'
+        f'<span class="total">{_eur(opportunity.get("opportunity_value"))}{fy_line}</span>'
     )
 
     if not osr_rows:
@@ -116,7 +125,7 @@ def _opportunity_block(opportunity, osr_rows, expand):
     )
 
 
-def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=(), industries=(), managers=()):
+def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=(), industries=(), managers=(), fy=None):
     contracts = sorted(data.get("contracts", []), key=lambda c: str(c.get("contract_id")))
     opportunities = data.get("opportunities", [])
     osr_rows = data.get("osr", [])
@@ -150,7 +159,7 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
 
         return needle in " ".join(str(p) for p in parts if p).lower()
 
-    stats = {"contracts": 0, "opportunities": 0, "osr": 0, "resources": set(), "total": 0.0}
+    stats = {"contracts": 0, "opportunities": 0, "osr": 0, "resources": set(), "total": 0.0, "fy_total": 0.0, "fy_prev_total": 0.0}
     entries = []
     any_contract_filter = bool(contract_statuses or clients or industries or managers)
 
@@ -179,6 +188,11 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
             float(o.get("opportunity_value") or 0)
             for o in contract_opportunities if o.get("opportunity_stage") == "Won"
         )
+        won_opportunities = [o for o in contract_opportunities if o.get("opportunity_stage") == "Won"]
+        fy_won = sum(_fy_amount(o, fy) for o in won_opportunities) if fy else 0.0
+        stats["fy_total"] += fy_won
+        stats["fy_prev_total"] += sum(_fy_amount(o, fy - 1) for o in won_opportunities) if fy else 0.0
+
         contract_osr = [
             row for o in contract_opportunities
             for row in osr_by_opportunity.get(o.get("opportunity_id"), [])
@@ -206,7 +220,7 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
         )
 
         children = "".join(
-            _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all)
+            _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy)
             for o in contract_opportunities
         ) or '<div class="leaf"><span class="muted">No opportunities linked to this contract</span></div>'
 
@@ -225,7 +239,7 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
             f'<span class="metric">{len(contract_opportunities)} OPP</span>'
             f'<span class="metric">{len(contract_osr)} OSR</span>'
             f'<span class="metric">{len(resources)} res.</span>'
-            f'<span class="total">{_eur(won_total)}<small>won opportunities</small></span>'
+            f'<span class="total">{_eur(won_total)}<small>{fiscal.fy_label(fy) + " " + _eur(fy_won) if fy else "won opportunities"}</small></span>'
             f'</summary><div class="body"><div class="meta">{meta}</div>{children}</div></details>'
         ))
 
@@ -260,7 +274,7 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
             f'<div class="group-note">{len(visible_uncontracted)} open opportunities · '
             f'{_eur(pipeline_total)} potential value (not included in contract totals)</div>'
             + "".join(
-                _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all)
+                _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy)
                 for o in visible_uncontracted
             )
         )
