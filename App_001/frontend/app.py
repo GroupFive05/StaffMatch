@@ -2483,11 +2483,14 @@ def show_risorsa_v2(groups):
             if int(resource.get("disponibilita") or 0) > 0
         ]
 
+    # Dal livello più alto (numero più basso) al più basso; a parità di livello A-Z
     filtered_resources = sorted(
         filtered_resources,
         key=lambda resource: (
-            resource.get("cognome", ""),
-            resource.get("nome", "")
+            resource.get("level") is None,
+            resource.get("level") if resource.get("level") is not None else 0,
+            resource.get("cognome") or "",
+            resource.get("nome") or ""
         )
     )
 
