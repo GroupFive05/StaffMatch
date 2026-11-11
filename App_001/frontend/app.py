@@ -213,10 +213,11 @@ st.markdown("""
     .flt-head .flt-ico { display: inline-flex; color: #7C3AED; }
     .flt-head .flt-title { font-size: 1.3rem; font-weight: 700; color: #1E1B4B; }
     .flt-head .chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; }
-    .st-key-dash_export { margin-top: 1.6rem; }
+    .st-key-dash_export { position: fixed !important; top: 0.8rem; right: 3.6rem; z-index: 999990; width: auto !important; }
     .st-key-dash_export button {
         border: 1.5px solid #A78BFA !important; background: #ffffff !important; color: #5B21B6 !important;
         border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
+        min-height: 2rem !important; padding: 0.15rem 0.9rem !important; font-size: 0.8rem !important;
     }
     .st-key-dash_export button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
     .st-key-dash_reset button { background: transparent !important; border: none !important; color: #6D28D9 !important; font-weight: 600 !important; box-shadow: none !important; }
@@ -2935,23 +2936,20 @@ def _reset_dashboard_filters():
 
 
 def show_dashboard_v2(groups):
-    toggle_col, export_col = st.columns([4, 1.3])
+    st.markdown(
+        '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
+        'Select the analysis view you are interested in</p>',
+        unsafe_allow_html=True
+    )
+    dashboard_view = st.segmented_control(
+        "Dashboard view",
+        ["Commercial", "Staffing"],
+        default="Commercial",
+        key="dashboard_v2_view",
+        label_visibility="collapsed",
+    ) or "Commercial"
 
-    with toggle_col:
-        st.markdown(
-            '<p style="margin:0 0 0.2rem 0;font-size:0.85rem;color:#6b7280">'
-            'Select the analysis view you are interested in</p>',
-            unsafe_allow_html=True
-        )
-        dashboard_view = st.segmented_control(
-            "Dashboard view",
-            ["Commercial", "Staffing"],
-            default="Commercial",
-            key="dashboard_v2_view",
-            label_visibility="collapsed",
-        ) or "Commercial"
-
-    export_slot = export_col.empty()
+    export_slot = st.empty()
 
     response = api(
         "GET",
@@ -3275,7 +3273,6 @@ def show_dashboard_v2(groups):
             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             icon=":material/download:",
             key="dash_export",
-            use_container_width=True,
         )
     except Exception as export_error:
         export_slot.caption(f"Export unavailable: {export_error}")
