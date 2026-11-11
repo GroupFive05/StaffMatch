@@ -4,6 +4,7 @@ NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -de
 """
 from fastapi import APIRouter, Depends, HTTPException
 from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai,sm_get_data_entry_catalogs,sm_create_contract,sm_create_opportunity,sm_create_osr
+from services import practice_alerts
 from services.match_service import (
     suggest_matching_weights,
     generate_resource_selection_rationale,
@@ -87,6 +88,12 @@ def get_dashboard_v2():
 @router.get("/staffing-management-v2")
 def get_staffing_management_v2():
     return sm_get_staffing_management_v2()    
+
+@router.get("/practice-alerts")
+def get_practice_alerts(days: int = 30):
+    return practice_alerts.build_practice_alerts(
+        expiry_days=max(1, min(days, 365))
+    )
 
 @router.get("/matching-context")
 def get_matching_context():

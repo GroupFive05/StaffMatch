@@ -845,6 +845,7 @@ def show_sidebar(groups):
             (":material/group:", "Resources", "risorsa_v2"),
             (":material/calendar_month:", "Practice Hub", "staffing_management_v2"),
             (":material/auto_fix_high:", "Match AI", "matching_v2"),
+            (":material/notifications_active:", "Practice Alert", "practice_alerts"),
             (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
         if is_admin(groups):
@@ -6537,6 +6538,318 @@ def show_matching_ai(groups):
                     open_resource_request(candidate)
 
     # ── MAIN ───────────────────────────────────────────────────────────────────────
+# ── PRACTICE ALERT ────────────────────────────────────────────────────────────
+def show_practice_alerts(groups):
+    st.markdown(
+        '<p class="main-title">🚨 Practice Alert</p>',
+        unsafe_allow_html=True
+    )
+
+    response = api("GET", "/sm/practice-alerts")
+
+    if response is None:
+        st.error("No response from backend.")
+        return
+
+    if response.status_code != 200:
+        st.error(f"Loading error: {_api_detail(response)}")
+        return
+
+    payload = response.json()
+    alerts = payload.get("alerts", [])
+    catalog = payload.get("catalog", [])
+    expiry_days = payload.get("expiry_days", 30)
+
+    areas = [
+        ("contract", "📄 Contracts",
+         "Open contracts: missing opportunities, expiry, margin, manager.",
+         [("📊 Open Practice Hub", "staffing_management_v2")]),
+        ("opportunity", "💼 Opportunities",
+         "Open opportunities: contract link, staffing, expiry, milestones.",
+         [("📊 Open Practice Hub", "staffing_management_v2"),
+          ("🤖 Open Match AI", "matching_v2")]),
+        ("osr", "👥 OSR",
+         "Active assignments: ending soon, low chargeability.",
+         [("📊 Open Practice Hub", "staffing_management_v2"),
+          ("🤖 Open Match AI", "matching_v2")]),
+        ("resource", "🧑‍💻 Resources",
+         "People: bench, over/under allocation, certifications.",
+         [("🧑‍💻 Open Resources", "risorsa_v2"),
+          ("🤖 Open Match AI", "matching_v2")]),
+        ("billing", "💶 Billing",
+         "Milestones not yet invoiced: overdue or due soon.",
+         [("📊 Open Practice Hub", "staffing_management_v2")]),
+        ("data_quality", "🧹 Data quality",
+         "Missing or inconsistent data that makes other checks unreliable.",
+         [("📊 Open Practice Hub", "staffing_management_v2"),
+          ("🧑‍💻 Open Resources", "risorsa_v2")]),
+    ]
+    area_by_key = {a[0]: a for a in areas}
+    severity_label = {
+        "high": "🔴 High",
+        "medium": "🟠 Medium",
+        "low": "🔵 Low",
+    }
+
+    if "practice_alert_view" not in st.session_state:
+        st.session_state.practice_alert_view = "overview"
+
+    view = st.session_state.practice_alert_view
+
+    if view not in area_by_key:
+        view = "overview"
+
+    def count(area=None, severity=None):
+        return sum(
+            1 for a in alerts
+            if (area is None or a["area"] == area)
+            and (severity is None or a["severity"] == severity)
+        )
+
+    code_area = {c["code"]: c["area"] for c in catalog}
+
+    for a in alerts:
+        a["area"] = code_area.get(a["code"])
+
+    # ── Barra di navigazione tra le pagine ───────────────────────────────────
+    nav_cols = st.columns(len(areas) + 1)
+
+    if nav_cols[0].button(
+        f"🏠 Overview ({count()})",
+        type="primary" if view == "overview" else "secondary",
+        use_container_width=True,
+        key="pa_nav_overview"
+    ):
+        st.session_state.practice_alert_view = "overview"
+        st.rerun()
+
+    for col, (key, label, _, _) in zip(nav_cols[1:], areas):
+        if col.button(
+            f"{label} ({count(key)})",
+            type="primary" if view == key else "secondary",
+            use_container_width=True,
+            key=f"pa_nav_{key}"
+        ):
+            st.session_state.practice_alert_view = key
+            st.rerun()
+
+    st.caption(
+        f"Reference date: {payload.get('today')} · "
+        f"Closed contracts and opportunities are ignored."
+    )
+
+    # ── Overview ─────────────────────────────────────────────────────────────
+    if view == "overview":
+        with st.expander("ℹ️ How to read this page", expanded=count() == 0):
+            st.markdown(
+                f"""
+Every night-and-day check below looks at the **live data** of Contracts,
+Opportunities, OSR, Resources and Billing milestones.
+
+- 🔴 **High** – needs action now (something is wrong or already late).
+- 🟠 **Medium** – to be planned soon (something is expiring or missing).
+- 🔵 **Low** – nice to fix (spare capacity, minor missing data).
+- **Expiring** means ending within **{expiry_days} days**;
+  **low chargeability** means below **{payload.get('low_chargeability_pct')}%**.
+
+Use the buttons above (or the cards below) to open one area.
+Each check explains **what it means** and **what to do**, and links to the
+page where you can fix it.
+"""
+            )
+
+        total_cols = st.columns(4)
+        total_cols[0].metric("🚨 Total alerts", count())
+        total_cols[1].metric("🔴 High", count(severity="high"))
+        total_cols[2].metric("🟠 Medium", count(severity="medium"))
+        total_cols[3].metric("🔵 Low", count(severity="low"))
+
+        st.markdown("### Areas")
+
+        for row_start in range(0, len(areas), 3):
+            cols = st.columns(3)
+
+            for col, (key, label, description, _) in zip(
+                cols, areas[row_start:row_start + 3]
+            ):
+                with col.container(border=True):
+                    total = count(key)
+                    high = count(key, "high")
+
+                    st.markdown(f"**{label}**")
+                    st.caption(description)
+
+                    if total == 0:
+                        st.success("✅ All good")
+                    else:
+                        st.markdown(
+                            f"**{total}** alerts"
+                            + (f" · 🔴 **{high}** high" if high else "")
+                        )
+
+                    if st.button(
+                        "Open details →",
+                        key=f"pa_card_{key}",
+                        use_container_width=True
+                    ):
+                        st.session_state.practice_alert_view = key
+                        st.rerun()
+
+        st.markdown("### Most urgent items")
+
+        urgent = [a for a in alerts if a["severity"] == "high"][:10]
+
+        if not urgent:
+            st.success("No high-severity alerts.")
+        else:
+            labels = {c["code"]: c["label"] for c in catalog}
+
+            st.dataframe(
+                [
+                    {
+                        "Area": area_by_key[a["area"]][1],
+                        "Alert": labels.get(a["code"]),
+                        "Item": a["title"],
+                        "Detail": a["detail"],
+                    }
+                    for a in urgent
+                ],
+                use_container_width=True,
+                hide_index=True
+            )
+
+            if count(severity="high") > len(urgent):
+                st.caption(
+                    f"Showing {len(urgent)} of "
+                    f"{count(severity='high')} high alerts – "
+                    "open an area to see all."
+                )
+
+        if alerts:
+            labels = {c["code"]: c for c in catalog}
+            export_rows = [
+                {
+                    "Area": a["area"],
+                    "Severity": a["severity"],
+                    "Alert": labels[a["code"]]["label"],
+                    "ID": a["item_id"],
+                    "Item": a["title"],
+                    "Client": a["client"],
+                    "Owner": a["owner"],
+                    "Date": a["end_date"],
+                    "Days": a["days_to_end"],
+                    "Detail": a["detail"],
+                    "Suggested action": labels[a["code"]]["action"],
+                }
+                for a in alerts
+            ]
+
+            import csv
+            import io
+
+            buffer = io.StringIO()
+            writer = csv.DictWriter(
+                buffer, fieldnames=list(export_rows[0].keys())
+            )
+            writer.writeheader()
+            writer.writerows(export_rows)
+
+            st.download_button(
+                "⬇️ Download all alerts (CSV)",
+                buffer.getvalue(),
+                file_name=f"practice_alerts_{payload.get('today')}.csv",
+                mime="text/csv"
+            )
+
+        return
+
+    # ── Pagina di un'area ────────────────────────────────────────────────────
+    _, label, description, links = area_by_key[view]
+
+    st.subheader(label)
+    st.caption(description)
+
+    head_cols = st.columns([3, 2] + [2] * len(links))
+
+    severity_filter = head_cols[0].segmented_control(
+        "Severity",
+        ["All", "High", "Medium", "Low"],
+        default="All",
+        key="practice_alert_severity"
+    ) or "All"
+
+    only_issues = head_cols[1].toggle(
+        "Hide checks with no issues",
+        value=False,
+        key="practice_alert_hide_ok"
+    )
+
+    for col, (link_label, page_key) in zip(head_cols[2:], links):
+        col.write("")
+
+        if col.button(
+            link_label,
+            key=f"pa_link_{view}_{page_key}",
+            use_container_width=True
+        ):
+            st.session_state.page = page_key
+            st.rerun()
+
+    for check in [c for c in catalog if c["area"] == view]:
+        if (
+            severity_filter != "All"
+            and check["severity"] != severity_filter.lower()
+        ):
+            continue
+
+        rows = [a for a in alerts if a["code"] == check["code"]]
+
+        if not rows and only_issues:
+            continue
+
+        with st.container(border=True):
+            title_col, count_col = st.columns([5, 1])
+
+            title_col.markdown(
+                f"{severity_label[check['severity']]} · "
+                f"**{check['label']}**"
+            )
+            count_col.markdown(
+                f"**{len(rows)}**" if rows else "✅ 0"
+            )
+
+            st.caption(f"{check['description']}")
+
+            if not rows:
+                continue
+
+            st.markdown(f"👉 **What to do:** {check['action']}")
+
+            with st.expander(f"Show {len(rows)} item(s)"):
+                table = [
+                    {
+                        "ID": a["item_id"],
+                        "Item": a["title"],
+                        "Client": a["client"],
+                        "Owner": a["owner"],
+                        "Date": a["end_date"],
+                        "Days": a["days_to_end"],
+                        "Detail": a["detail"],
+                    }
+                    for a in rows
+                ]
+                used = [
+                    col for col in table[0]
+                    if any(r[col] is not None for r in table)
+                ]
+
+                st.dataframe(
+                    [{col: r[col] for col in used} for r in table],
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+
 def show_matching_v2(groups):
     st.markdown('<p class="main-title">🤖 Matching AI</p>', unsafe_allow_html=True)
     st.markdown("---")
@@ -6621,6 +6934,8 @@ def main():
         show_matching(groups)
     elif page == "matching_v2":
         show_matching_ai(groups)
+    elif page == "practice_alerts":
+        show_practice_alerts(groups)
     elif page == "resource_request":
         show_resource_request(groups)
     elif page == "chatbot":
