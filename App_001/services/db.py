@@ -13,14 +13,24 @@ def _get_conn():
             return _conn
     except:
         _conn = None
+    missing = [
+        name for name in ("HANA_ADDRESS", "HANA_USER", "HANA_PASSWORD", "HANA_SCHEMA")
+        if not os.environ.get(name)
+    ]
+
+    if missing:
+        raise RuntimeError(
+            "Missing HANA environment variables: " + ", ".join(missing)
+        )
+
     _conn = dbapi.connect(
-        address=os.environ.get("HANA_ADDRESS", "268718a1-2b08-4eb6-99ec-87a77e84bab0.hna2.prod-eu10.hanacloud.ondemand.com"),
+        address=os.environ["HANA_ADDRESS"],
         port=int(os.environ.get("HANA_PORT", "443")),
-        user=os.environ.get("HANA_USER", "43986AB4EB174D8AAB87650958CCA6AD_31OU7WNFBO7Y4JDWIWL6COUSQ_RT"),
-        password=os.environ.get("HANA_PASSWORD", "Mq9SnAW4NkeTlQdMql_fxBSZAqijMBIx5MMJHx0r-7O47-OYE.7O.dTJAmE2RTOMSPqU0CQvdlof-WmDKkSX7jO0Z4Mnt_ZM9UIrd-A2gUfgVGo3rvOB9W1w7ku3hgMK"),
+        user=os.environ["HANA_USER"],
+        password=os.environ["HANA_PASSWORD"],
         encrypt=True,
         sslValidateCertificate=True,
-        currentSchema=os.environ.get("HANA_SCHEMA", "43986AB4EB174D8AAB87650958CCA6AD")
+        currentSchema=os.environ["HANA_SCHEMA"]
     )
     return _conn
 
