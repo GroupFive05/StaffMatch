@@ -754,6 +754,37 @@ def sm_get_risorse_v2():
             for osr in valid_osr
         ]
 
+        # Ultima assegnazione conclusa (data fine più recente tra le OSR scadute)
+        ended_osr = [
+            osr for osr in resource_osr
+            if osr.get("data_fine_date")
+            and osr["data_fine_date"] < today
+        ]
+
+        if ended_osr:
+            last_osr = max(
+                ended_osr,
+                key=lambda osr: osr["data_fine_date"]
+            )
+
+            resource["last_assignment"] = {
+                "osr_id": last_osr.get("osr_id"),
+                "opportunity_title": last_osr.get("opportunity_title"),
+                "client_name": last_osr.get("client_name"),
+                "project_role": last_osr.get("project_role"),
+                "allocation_pct": int(
+                    last_osr.get("perc_allocazione") or 0
+                ),
+                "start_date": (
+                    last_osr["data_inizio_date"].isoformat()
+                    if last_osr.get("data_inizio_date")
+                    else None
+                ),
+                "end_date": last_osr["data_fine_date"].isoformat(),
+            }
+        else:
+            resource["last_assignment"] = None
+
         active_allocation = sum(
             int(osr.get("perc_allocazione") or 0)
             for osr in valid_osr
@@ -2705,6 +2736,11 @@ def sm_run_matching_ai(payload):
                 resource.get(
                     "current_assignments",
                     []
+                ),
+
+            "last_assignment":
+                resource.get(
+                    "last_assignment"
                 )
         }
 
