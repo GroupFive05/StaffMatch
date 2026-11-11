@@ -519,6 +519,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown(
+    "<style>[data-testid=\"stSidebar\"] { background: "
+    f"url(data:image/svg+xml;base64,{_asset_b64('sidebar_wave.svg')}) no-repeat left bottom / 100% auto, "
+    "linear-gradient(180deg, #1A0840 0%, #2C0F63 52%, #5B1DB5 100%) !important; }</style>",
+    unsafe_allow_html=True
+)
+
 # ── session state ──────────────────────────────────────────────────────────────
 for k in ["token", "user", "page", "match_opp_id"]:
     if k not in st.session_state:
@@ -702,6 +709,26 @@ def show_login():
         [data-testid="stMarkdownContainer"] p.login-app-title { font-size: 2rem !important; }
     }
     [data-testid="InputInstructions"] { display: none !important; }
+    .login-subtitle { text-align: center; color: #6B7280; font-size: 1.05rem; margin: 0.1rem 0 1.5rem 0; }
+    [data-testid="stForm"] {
+        background: #ffffff; border: 1px solid #E6E0F5 !important; border-radius: 28px !important;
+        padding: 2rem 2rem 1.6rem 2rem !important; box-shadow: 0 10px 34px rgba(76,29,149,0.08);
+    }
+    [data-testid="stForm"] label p { font-size: 1.02rem !important; font-weight: 500 !important; color: #1E1B4B !important; }
+    [data-testid="stForm"] [data-baseweb="input"], [data-testid="stForm"] [data-baseweb="base-input"] {
+        border-radius: 16px !important; background: #F7F6FB !important; min-height: 52px;
+    }
+    [data-testid="stForm"] [data-baseweb="input"] { border: 1px solid #DDD6F0 !important; }
+    [data-testid="stForm"] input { font-size: 1rem !important; }
+    .login-forgot { text-align: right; margin: -0.2rem 0 0.4rem 0; }
+    .login-forgot a { color: #7C2AE8; font-size: 0.95rem; font-weight: 500; text-decoration: none; }
+    .login-forgot a:hover { text-decoration: underline; }
+    .st-key-login_submit button {
+        height: 54px; border-radius: 28px !important; font-size: 1.15rem !important; font-weight: 600 !important;
+        background: #7C2AE8 !important;
+    }
+    .login-icons { text-align: center; margin-top: 1.6rem; }
+    .login-icons img { width: 100%; max-width: 440px; }
 </style>
 """, unsafe_allow_html=True)
     with st.container():
@@ -709,36 +736,46 @@ def show_login():
         st.markdown(
             f'<div style="text-align:center;margin-bottom:0.5rem">'
             f'<div class="login-logo-wrap">'
-            f'<img src="data:image/png;base64,{_asset_b64("mira_logo_login.png")}" style="width:100%">'
-            f'<div class="login-tagline">BRINGING TALENT TOGETHER</div></div></div>',
+            f'<img src="data:image/png;base64,{_asset_b64("mira_logo_login.png")}" style="width:100%"></div></div>',
             unsafe_allow_html=True
         )
         st.markdown('<p class="login-app-title">D&amp;A Advisory Cockpit</p>', unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            '<p class="login-subtitle">Sign in to access your practice intelligence</p>',
+            unsafe_allow_html=True
+        )
 
-        with st.form("login"):
-            email    = st.text_input("Email aziendale", placeholder="name.surname@staffmatch-demo.com")
+        if st.query_params.get("forgot") == "1":
+            st.info("Password resets are managed by your Practice administrator. Please contact them to reset your password.")
+
+        with st.form("login", border=False):
+            email = st.text_input("Corporate email", placeholder="name.surname@company.com")
             password = st.text_input("Password", type="password")
-            ok       = st.form_submit_button("Sign in →", use_container_width=True, type="primary")
+            st.markdown('<div class="login-forgot"><a href="?forgot=1">Forgot password?</a></div>', unsafe_allow_html=True)
+            ok = st.form_submit_button("Sign in →", use_container_width=True, type="primary", key="login_submit")
 
         if ok:
             if not email or not password:
                 st.error("Enter email and password.")
-                return
-            resp = api("POST", "/auth/login", json={"email": email, "password": password})
-            if resp is None:
-                return
-            if resp.status_code == 200:
-                data = resp.json()
-                st.session_state.token = data["access_token"]
-                me = api("GET", "/auth/me")
-                if me and me.status_code == 200:
-                    st.session_state.user = me.json()
-                st.session_state.page = "dashboard_v2"
-                st.session_state.pop("cached_groups", None)
-                st.rerun()
             else:
-                st.error("Invalid credentials.")
+                resp = api("POST", "/auth/login", json={"email": email, "password": password})
+                if resp is not None:
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        st.session_state.token = data["access_token"]
+                        me = api("GET", "/auth/me")
+                        if me and me.status_code == 200:
+                            st.session_state.user = me.json()
+                        st.session_state.page = "dashboard_v2"
+                        st.session_state.pop("cached_groups", None)
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials.")
+
+        st.markdown(
+            f'<div class="login-icons"><img src="data:image/png;base64,{_asset_b64("mira_icons_row.png")}"></div>',
+            unsafe_allow_html=True
+        )
 
 # ── SIDEBAR ────────────────────────────────────────────────────────────────────
 def show_sidebar(groups):
