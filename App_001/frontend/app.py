@@ -691,7 +691,7 @@ def show_login():
     st.markdown("""
 <style>
     [data-testid="stMainBlockContainer"], .main .block-container {
-        max-width: 480px !important;
+        max-width: 760px !important;
         margin-left: auto !important;
         margin-right: auto !important;
     }
@@ -700,8 +700,8 @@ def show_login():
     }
     .login-app-title, .login-sub1, .login-sub2 { text-align: center; }
     [data-testid="stMarkdownContainer"] p.login-app-title {
-        font-size: 3rem !important; color: #1E1B4B !important; font-weight: 800 !important;
-        letter-spacing: -1px !important; line-height: 1.1 !important; white-space: nowrap;
+        font-size: 3rem !important; color: #1E1B4B !important; font-weight: 400 !important;
+        letter-spacing: -0.5px !important; line-height: 1.1 !important; white-space: nowrap;
         width: max-content; position: relative; left: 50%; transform: translateX(-50%);
         margin: 0.4rem 0 0.4rem 0 !important;
     }
@@ -713,13 +713,24 @@ def show_login():
     [data-testid="stForm"] {
         background: #ffffff; border: 1px solid #E6E0F5 !important; border-radius: 28px !important;
         padding: 2rem 2rem 1.6rem 2rem !important; box-shadow: 0 10px 34px rgba(76,29,149,0.08);
+        width: 487px; max-width: 100%; margin-left: auto; margin-right: auto;
     }
     [data-testid="stForm"] label p { font-size: 1.02rem !important; font-weight: 500 !important; color: #1E1B4B !important; }
-    [data-testid="stForm"] [data-baseweb="input"], [data-testid="stForm"] [data-baseweb="base-input"] {
-        border-radius: 16px !important; background: #F7F6FB !important; min-height: 52px;
+    [data-testid="stForm"] [data-testid="stTextInputRootElement"] {
+        border: 1px solid #C4C4CE !important; border-radius: 16px !important; background: #ffffff !important;
+        overflow: hidden; min-height: 56px;
     }
-    [data-testid="stForm"] [data-baseweb="input"] { border: 1px solid #DDD6F0 !important; }
-    [data-testid="stForm"] input { font-size: 1rem !important; }
+    [data-testid="stForm"] [data-baseweb="input"], [data-testid="stForm"] [data-baseweb="base-input"] {
+        border: none !important; background: transparent !important; box-shadow: none !important; min-height: 54px;
+    }
+    [data-testid="stForm"] [data-testid="stTextInputRootElement"] input[data-testid="stTextInputField"],
+    [data-testid="stForm"] .stTextInput > div > div > input {
+        font-size: 1rem !important; border: none !important; border-radius: 0 !important;
+        box-shadow: none !important; background: transparent !important; outline: none !important;
+    }
+    [data-testid="stForm"] [data-testid="stTextInputRootElement"]:focus-within {
+        border-color: #7C3AED !important; box-shadow: 0 0 0 3px rgba(124,58,237,0.12) !important;
+    }
     .login-forgot { text-align: right; margin: -0.2rem 0 0.4rem 0; }
     .login-forgot a { color: #7C2AE8; font-size: 0.95rem; font-weight: 500; text-decoration: none; }
     .login-forgot a:hover { text-decoration: underline; }
