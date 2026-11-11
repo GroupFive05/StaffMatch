@@ -5433,16 +5433,22 @@ def show_matching_ai(groups):
         "opportunity_id"
     ]
 
-    # Solo OSR appartenenti alla Opportunity selezionata
+    # Solo OSR attive (data fine >= oggi) della Opportunity selezionata
+    import datetime as _dt_osr
+
+    today_iso = _dt_osr.date.today().isoformat()
+
     opportunity_osr = [
         row
         for row in osr_rows
         if row.get("opportunity_id")
         == selected_opportunity_id
+        and row.get("end_date")
+        and row["end_date"] >= today_iso
     ]
 
     osr_options = {
-        "No OSR": None
+        "No OSR selected": None
     }
 
     for osr in opportunity_osr:
