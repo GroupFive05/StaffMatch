@@ -16,6 +16,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
 import fiscal
+from assignments import summarize_assignment
 
 
 ROLE_LABELS = {
@@ -5600,28 +5601,18 @@ def show_matching_ai(groups):
             key="matching_new_role"
         )
 
-    # Date suggerite:
-    # OSR selezionata -> date OSR
-    # altrimenti -> date Opportunity
+    # Start Date: sempre la data odierna (esecuzione della dashboard).
+    # End Date suggerita: OSR selezionata -> fine OSR, altrimenti fine Opportunity.
     if selected_osr:
-        suggested_start = selected_osr.get("start_date")
         suggested_end = selected_osr.get("end_date")
     else:
-        suggested_start = selected_opportunity.get(
-            "start_date"
-        )
         suggested_end = selected_opportunity.get(
             "end_date"
         )
 
     import datetime as _dt_matching
 
-    try:
-        default_start = _dt_matching.date.fromisoformat(
-            suggested_start
-        )
-    except Exception:
-        default_start = _dt_matching.date.today()
+    default_start = _dt_matching.date.today()
 
     try:
         default_end = _dt_matching.date.fromisoformat(
@@ -5630,12 +5621,19 @@ def show_matching_ai(groups):
     except Exception:
         default_end = default_start
 
+    end_already_past = default_end < default_start
+
+    if end_already_past:
+        default_end = default_start
+
     date_col1, date_col2 = st.columns(2)
 
     with date_col1:
         matching_start_date = st.date_input(
             "Start Date *",
             value=default_start,
+            disabled=True,
+            help="The matching always starts today (execution date).",
             key=(
                 f"matching_start_"
                 f"{selected_opportunity_id}_"
@@ -5647,11 +5645,18 @@ def show_matching_ai(groups):
         matching_end_date = st.date_input(
             "End Date *",
             value=default_end,
+            min_value=default_start,
             key=(
                 f"matching_end_"
                 f"{selected_opportunity_id}_"
                 f"{selected_osr_label}"
             )
+        )
+
+    if end_already_past:
+        st.caption(
+            f"The planned end date ({suggested_end}) is already past: "
+            "End Date has been set to today. Adjust it if needed."
         )
 
     if matching_end_date < matching_start_date:
@@ -6647,6 +6652,70 @@ def show_matching_ai(groups):
                                 f"{osr.get('start_date')} → "
                                 f"{osr.get('end_date')}"
                             )
+
+                    # ── ASSEGNAZIONE ATTUALE ─────────────────────────────────
+                    assignment_view = summarize_assignment(
+                        candidate.get("current_assignments"),
+                        candidate.get("last_assignment"),
+                        date.today()
+                    )
+
+                    with st.container(border=True):
+                        st.markdown("**Current assignment**")
+
+                        if assignment_view["state"] == "assigned":
+                            allocated_pct = assignment_view["allocated_pct"]
+                            st.markdown(
+                                f"{'🔴' if allocated_pct >= 100 else '🟠'} "
+                                f"**Assigned · {allocated_pct}% allocated**"
+                            )
+
+                            for active_osr in assignment_view["active"]:
+                                st.caption(
+                                    f"{active_osr.get('osr_id')} · "
+                                    f"{active_osr.get('project_role') or '—'} · "
+                                    f"{active_osr.get('allocation_pct', 0)}% · "
+                                    f"{active_osr.get('opportunity_title') or '—'} · "
+                                    f"ends {active_osr.get('end_date')}"
+                                )
+
+                            st.markdown(
+                                f"Nearest end date: "
+                                f"**{assignment_view['nearest_end']}**"
+                            )
+
+                            if len(assignment_view["active"]) > 1:
+                                st.markdown(
+                                    f"Fully free from: "
+                                    f"**{assignment_view['fully_free_from']}**"
+                                )
+                        else:
+                            st.markdown("🟢 **Free now**")
+
+                            last_assignment = assignment_view["last"]
+
+                            if last_assignment:
+                                st.markdown(
+                                    f"Free since: "
+                                    f"**{assignment_view['free_since']}**"
+                                )
+                                st.caption(
+                                    f"Last assignment: "
+                                    f"{last_assignment.get('osr_id')} · "
+                                    f"{last_assignment.get('project_role') or '—'} · "
+                                    f"{last_assignment.get('opportunity_title') or '—'} · "
+                                    f"ended {last_assignment.get('end_date')}"
+                                )
+                            else:
+                                st.caption("No previous assignments.")
+
+                        if assignment_view["next_start"]:
+                            st.caption(
+                                f"Next assignment starts "
+                                f"{assignment_view['next_start']} "
+                                f"({assignment_view['next_assignment'].get('osr_id')})"
+                            )
+
                 st.markdown("---")
 
                 if st.button(
