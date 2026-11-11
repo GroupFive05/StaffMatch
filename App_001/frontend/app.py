@@ -152,7 +152,7 @@ st.markdown("""
         line-height: 1.1;
     }
     .login-logo-wrap {
-        width: 408px; max-width: 94vw; position: relative; left: 50%; transform: translateX(-50%);
+        width: 340px; max-width: 94vw; position: relative; left: 50%; transform: translateX(-50%);
     }
     .login-tagline {
         color: #7C3AED; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.24em;
@@ -694,6 +694,16 @@ def show_login():
         max-width: 760px !important;
         margin-left: auto !important;
         margin-right: auto !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 3rem !important;
+        min-height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+    [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
+    [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {
+        flex: 0 0 auto !important; margin-top: auto !important; margin-bottom: auto !important;
     }
     [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {
         display: none !important;
@@ -709,19 +719,19 @@ def show_login():
         [data-testid="stMarkdownContainer"] p.login-app-title { font-size: 2rem !important; }
     }
     [data-testid="InputInstructions"] { display: none !important; }
-    .login-subtitle { text-align: center; color: #6B7280; font-size: 1.05rem; margin: 0.1rem 0 1.5rem 0; }
+    .login-subtitle { text-align: center; color: #6B7280; font-size: 1.05rem; margin: 0.1rem 0 0.9rem 0; }
     [data-testid="stForm"] {
         background: #ffffff; border: 1px solid #E6E0F5 !important; border-radius: 28px !important;
-        padding: 2rem 2rem 1.6rem 2rem !important; box-shadow: 0 10px 34px rgba(76,29,149,0.08);
+        padding: 1.6rem 2rem 1.3rem 2rem !important; box-shadow: 0 10px 34px rgba(76,29,149,0.08);
         width: 487px; max-width: 100%; margin-left: auto; margin-right: auto;
     }
     [data-testid="stForm"] label p { font-size: 1.02rem !important; font-weight: 500 !important; color: #1E1B4B !important; }
     [data-testid="stForm"] [data-testid="stTextInputRootElement"] {
         border: 1px solid #C4C4CE !important; border-radius: 16px !important; background: #ffffff !important;
-        overflow: hidden; min-height: 56px;
+        overflow: hidden; min-height: 52px;
     }
     [data-testid="stForm"] [data-baseweb="input"], [data-testid="stForm"] [data-baseweb="base-input"] {
-        border: none !important; background: transparent !important; box-shadow: none !important; min-height: 54px;
+        border: none !important; background: transparent !important; box-shadow: none !important; min-height: 50px;
     }
     [data-testid="stForm"] [data-testid="stTextInputRootElement"] input[data-testid="stTextInputField"],
     [data-testid="stForm"] .stTextInput > div > div > input {
@@ -738,12 +748,11 @@ def show_login():
         height: 54px; border-radius: 28px !important; font-size: 1.15rem !important; font-weight: 600 !important;
         background: #7C2AE8 !important;
     }
-    .login-icons { text-align: center; margin-top: 1.6rem; }
-    .login-icons img { width: 100%; max-width: 440px; }
+    .login-icons { text-align: center; margin-top: 0.8rem; }
+    .login-icons img { width: 100%; max-width: 430px; }
 </style>
 """, unsafe_allow_html=True)
     with st.container():
-        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(
             f'<div style="text-align:center;margin-bottom:0.5rem">'
             f'<div class="login-logo-wrap">'
