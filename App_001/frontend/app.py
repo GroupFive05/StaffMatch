@@ -4207,7 +4207,8 @@ def show_practice_hub_drilldown():
 
     st.markdown('<p class="main-title">🗂️ Practice Hub — Contract hierarchy</p>', unsafe_allow_html=True)
     st.caption(
-        "Contract → Opportunity → OSR → Resource. Open a contract to see its opportunities, "
+        "Contract → Opportunity → OSR → Resource. Open contracts come first, ranked by value, "
+        "then the closed ones. Open a contract to see its opportunities, "
         "then an opportunity to see the OSRs and the people assigned. "
         "A contract total is the sum of its won opportunities."
     )
@@ -4241,7 +4242,35 @@ def show_practice_hub_drilldown():
         st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
         expand_all = st.checkbox("Expand all", key="hub_tree_expand")
 
-    tree_html, stats = build_tree(data, search, selected_statuses, expand_all)
+    contract_list = data.get("contracts", [])
+    manager_names = sorted({
+        f"{c.get('manager_nome') or ''} {c.get('manager_cognome') or ''}".strip()
+        for c in contract_list
+    } - {""})
+
+    account_col, industry_col, manager_col = st.columns(3)
+
+    with account_col:
+        selected_clients = st.multiselect(
+            "Account (client)",
+            sorted({c.get("client_name") for c in contract_list if c.get("client_name")}),
+            key="hub_tree_clients"
+        )
+
+    with industry_col:
+        selected_industries = st.multiselect(
+            "Industry",
+            sorted({c.get("industry_sector") for c in contract_list if c.get("industry_sector")}),
+            key="hub_tree_industries"
+        )
+
+    with manager_col:
+        selected_managers = st.multiselect("Manager", manager_names, key="hub_tree_managers")
+
+    tree_html, stats = build_tree(
+        data, search, selected_statuses, expand_all,
+        clients=selected_clients, industries=selected_industries, managers=selected_managers
+    )
 
     kpis = [
         ("file", "Contracts", stats["contracts"]),

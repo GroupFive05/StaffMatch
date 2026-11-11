@@ -116,7 +116,7 @@ def _opportunity_block(opportunity, osr_rows, expand):
     )
 
 
-def build_tree(data, search="", contract_statuses=(), expand_all=False):
+def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=(), industries=(), managers=()):
     contracts = sorted(data.get("contracts", []), key=lambda c: str(c.get("contract_id")))
     opportunities = data.get("opportunities", [])
     osr_rows = data.get("osr", [])
@@ -151,12 +151,23 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False):
         return needle in " ".join(str(p) for p in parts if p).lower()
 
     stats = {"contracts": 0, "opportunities": 0, "osr": 0, "resources": set(), "total": 0.0}
-    blocks = []
+    entries = []
+    any_contract_filter = bool(contract_statuses or clients or industries or managers)
 
     for contract in contracts:
         status = contract.get("contract_status")
+        contract_manager = f"{contract.get('manager_nome') or ''} {contract.get('manager_cognome') or ''}".strip()
 
         if contract_statuses and status not in contract_statuses:
+            continue
+
+        if clients and contract.get("client_name") not in clients:
+            continue
+
+        if industries and contract.get("industry_sector") not in industries:
+            continue
+
+        if managers and contract_manager not in managers:
             continue
 
         contract_opportunities = opportunities_by_contract.get(contract.get("contract_id"), [])
@@ -201,7 +212,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False):
 
         open_attr = " open" if expand_all or (needle and len(contracts) > 0) else ""
 
-        blocks.append(
+        entries.append((
+            status != "Closed",
+            won_total,
+            str(contract.get("contract_id")),
             f'<details{open_attr}><summary>'
             f'<span class="id">{_e(contract.get("contract_id"))}</span>'
             f'<span class="title">{_e(contract.get("contract_title"))}</span>'
@@ -213,7 +227,25 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False):
             f'<span class="metric">{len(resources)} res.</span>'
             f'<span class="total">{_eur(won_total)}<small>won opportunities</small></span>'
             f'</summary><div class="body"><div class="meta">{meta}</div>{children}</div></details>'
+        ))
+
+    def _group(title, group_entries):
+        if not group_entries:
+            return ""
+
+        group_total = sum(entry[1] for entry in group_entries)
+
+        return (
+            f'<div class="group-title">{title}</div>'
+            f'<div class="group-note">{len(group_entries)} contracts · {_eur(group_total)} won opportunities</div>'
+            + "".join(entry[3] for entry in group_entries)
         )
+
+    ranked = sorted(entries, key=lambda entry: (-entry[1], entry[2]))
+    contracts_html = (
+        _group("Open contracts", [entry for entry in ranked if entry[0]])
+        + _group("Closed contracts", [entry for entry in ranked if not entry[0]])
+    )
 
     pipeline_block = ""
     visible_uncontracted = [
@@ -221,7 +253,7 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False):
         if not needle or needle in f"{o.get('opportunity_id')} {o.get('opportunity_title')}".lower()
     ]
 
-    if visible_uncontracted and not contract_statuses:
+    if visible_uncontracted and not any_contract_filter:
         pipeline_total = sum(float(o.get("opportunity_value") or 0) for o in visible_uncontracted)
         pipeline_block = (
             '<div class="group-title">Pipeline — opportunities not yet contracted</div>'
@@ -233,10 +265,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False):
             )
         )
 
-    if not blocks and not pipeline_block:
+    if not entries and not pipeline_block:
         body = '<div class="group-note">No contracts match the selected filters.</div>'
     else:
-        body = "".join(blocks) + pipeline_block
+        body = contracts_html + pipeline_block
 
     stats["resources"] = len(stats["resources"])
 
