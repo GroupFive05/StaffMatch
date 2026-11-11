@@ -225,17 +225,29 @@ st.markdown("""
     .st-key-dash_reset button { background: transparent !important; border: none !important; color: #6D28D9 !important; font-weight: 600 !important; box-shadow: none !important; }
     .kpi-card {
         display: flex; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #ECE6FA;
-        border-radius: 16px; padding: 1rem 1.2rem; box-shadow: 0 2px 12px rgba(76,29,149,0.07); height: 100%;
+        border-radius: 16px; padding: 0.8rem 1.2rem; box-shadow: 0 2px 12px rgba(76,29,149,0.07); height: 128px; box-sizing: border-box;
     }
     .kpi-ico { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex: 0 0 52px; border-radius: 14px; background: #F3EEFF; color: #7C3AED; }
     .kpi-label { font-size: 0.9rem; color: #374151; }
     .kpi-value { font-size: 1.95rem; font-weight: 800; color: #1E1B4B; line-height: 1.15; }
-    .kpi-delta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.15rem; font-size: 0.8rem; }
+    .kpi-delta { display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem; margin-top: 0.15rem; font-size: 0.8rem; line-height: 1.25; }
     .kpi-arrow { font-weight: 700; }
     .kpi-arrow.up { color: #16A34A; }
     .kpi-arrow.down { color: #DC2626; }
     .kpi-arrow.flat { color: #6B7280; }
     .kpi-prev { color: #6B7280; }
+    @media (max-width: 1400px) {
+        .kpi-ico { display: none; }
+        .kpi-card { padding: 0.8rem 1rem; gap: 0; }
+        .kpi-value { font-size: 1.6rem; }
+        .kpi-label { font-size: 0.85rem; }
+        .kpi-delta { font-size: 0.74rem; }
+    }
+    @media (max-width: 1000px) {
+        .kpi-value { font-size: 1.35rem; }
+        .kpi-label { font-size: 0.78rem; }
+        .kpi-delta { font-size: 0.7rem; }
+    }
     .fy-chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; margin-left: 0.7rem; letter-spacing: 0; }
     .tech-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #1E1B4B; border: none !important; }
     .tech-table th { text-align: right; font-weight: 600; padding: 7px 6px; border: none !important; border-bottom: 1px solid #ECE6FA !important; white-space: nowrap; background: transparent !important; }
