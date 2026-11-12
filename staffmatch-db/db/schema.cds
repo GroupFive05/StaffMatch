@@ -251,3 +251,15 @@ entity SM_RisorsaSkill {
   key eid             : Integer;
   key skillName       : String(100);
 }
+
+@cds.persistence.name: 'SM_ACCESS'
+entity SM_Access {
+  key email           : String(255);
+  nome                : String(100);
+  cognome             : String(100);
+  passwordHash        : String(200);
+  accessGroup         : String(30);
+  isActive            : Boolean default true;
+  mustChangePassword  : Boolean default false;
+  eid                 : Integer;
+}
