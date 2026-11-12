@@ -5582,11 +5582,18 @@ def show_matching_ai(groups):
         for item in opportunities
     }
 
+    no_opportunity_label = "—"
+
     selected_opportunity_label = st.selectbox(
         "Opportunity *",
-        list(opportunity_options.keys()),
+        [no_opportunity_label] + list(opportunity_options.keys()),
+        index=0,
         key="matching_new_opportunity"
     )
+
+    if selected_opportunity_label == no_opportunity_label:
+        st.info("Select an Opportunity to start the matching.")
+        return
 
     selected_opportunity = opportunity_options[
         selected_opportunity_label
