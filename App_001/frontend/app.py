@@ -71,7 +71,8 @@ st.markdown("""
         margin: 0 !important;
     }
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
-    .sm-logo { text-align: center; padding: 0.25rem 0 0 0; }
+    [data-testid="stSidebarNav"] { display: none !important; }
+    .sm-logo { text-align: center; padding: 0; margin-top: -0.5rem; }
     .sm-logo img { width: 100%; max-width: 190px; }
     .sm-tagline {
         text-align: center; color: #F1E9FF; font-size: 0.78rem; font-weight: 500;
