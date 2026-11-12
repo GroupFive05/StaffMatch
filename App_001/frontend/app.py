@@ -19,11 +19,7 @@ import fiscal
 from assignments import summarize_assignment
 
 
-ROLE_LABELS = {
-    "Employee": "Data Explorer",
-    "Manager": "Executive",
-    "Executive": "Executive & Approver",
-}
+ROLE_LABELS = {}
 
 
 def role_label(name):
@@ -1997,70 +1993,67 @@ def show_admin(groups):
 
     tab_users, tab_groups, tab_skills, tab_new_dip, tab_edit_dip = st.tabs([
         "👥 Assign Role", "🔐 Access Roles", "🛠 Skills",
-        "👤 New Employee", "✏️ Edit Employee"
+        "🔑 Grant Access", "✏️ Edit Access"
     ])
 
     with tab_users:
         st.markdown("### Assegna Ruolo a una Risorsa")
-        r_res = api("GET", "/resources/")
+        r_res = api("GET", "/access/")
         r_grp = api("GET", "/roles/")
-        resources   = r_res.json() if r_res and r_res.status_code == 200 else []
+        accesses    = r_res.json() if r_res and r_res.status_code == 200 else []
         role_groups = r_grp.json() if r_grp and r_grp.status_code == 200 else []
-        grp_map     = {role_label(g["nome"]): g["id"] for g in role_groups}
-        grp_id_map  = {g["id"]: role_label(g["nome"]) for g in role_groups}
+        group_names = [g["nome"] for g in role_groups]
 
         # barre di ricerca
         sc1, sc2 = st.columns(2)
         with sc1:
             search_nome = st.text_input("🔍 Cerca per nome", key="admin_search_nome")
         with sc2:
-            ruoli_presenti = sorted({r.get("ruolo_nome","") for r in resources if r.get("ruolo_nome","")})
-            filter_ruolo   = st.selectbox("Filtra per mansione", ["— tutti —"] + ruoli_presenti, key="admin_filter_ruolo")
+            livelli_presenti = sorted({a.get("level_name", "") for a in accesses if a.get("level_name", "")})
+            filter_ruolo   = st.selectbox("Filtra per mansione", ["— tutti —"] + livelli_presenti, key="admin_filter_ruolo")
 
         # filtra
-        filtered = resources
+        filtered = accesses
         if search_nome:
-            filtered = [r for r in filtered
-                        if search_nome.lower() in f"{r.get('nome','')} {r.get('cognome','')}".lower()]
+            filtered = [a for a in filtered
+                        if search_nome.lower() in f"{a.get('nome','')} {a.get('cognome','')}".lower()]
         if filter_ruolo != "— tutti —":
-            filtered = [r for r in filtered if r.get("ruolo_nome","") == filter_ruolo]
+            filtered = [a for a in filtered if a.get("level_name", "") == filter_ruolo]
 
-        # ordina per ruolo attuale
-        filtered = sorted(filtered, key=lambda r: r.get("ruolo_nome",""))
+        # ordina per livello (dal più senior) e cognome
+        filtered = sorted(filtered, key=lambda a: (a.get("level") or 99, a.get("cognome", "")))
 
-        # etichetta con ruolo professionale e gruppo di accesso
-        def _res_label(r):
-            grp_names = ", ".join(grp_id_map.get(gid,"?") for gid in r.get("gruppo_ruolo_ids",[]))
-            sen = r.get("seniority", "")
-            mansione = r.get("ruolo_nome","")
-            return f"{r['nome']} {r['cognome']}  |  👔 Mansione: {mansione} ({sen})  |  🔑 Ruolo: {grp_names}"
+        # etichetta con livello professionale e gruppo di accesso
+        def _res_label(a):
+            return (
+                f"{a['nome']} {a['cognome']}  |  👔 Mansione: {a.get('level_name') or '—'}"
+                f"  |  🔑 Ruolo: {role_label(a.get('access_group') or '—')}"
+            )
 
-        res_labels = [_res_label(r) for r in filtered]
-        res_ids    = [r["id"] for r in filtered]
-
-        if not res_labels:
-            st.info("Nessuna risorsa trovata con i filtri selezionati.")
+        if not filtered:
+            st.info("Nessuna risorsa con accesso trovata con i filtri selezionati.")
         else:
-            sel_idx  = st.selectbox("Risorsa", range(len(res_labels)),
-                                    format_func=lambda i: res_labels[i],
+            sel_idx  = st.selectbox("Risorsa", range(len(filtered)),
+                                    format_func=lambda i: _res_label(filtered[i]),
                                     key="admin_sel_res")
             sel_res  = filtered[sel_idx]
 
-            cur_grps = [grp_id_map.get(gid,"?") for gid in sel_res.get("gruppo_ruolo_ids",[])]
-            st.caption(f"Ruolo attuale: **{', '.join(cur_grps) if cur_grps else 'nessuno'}**")
+            current_group = sel_res.get("access_group")
+            st.caption(f"Ruolo attuale: **{role_label(current_group) if current_group else 'nessuno'}**")
 
-            sel_grps = st.multiselect("Nuovo Ruolo da assegnare", list(grp_map.keys()),
-                                      default=[g for g in cur_grps if g in grp_map])
+            new_group = st.selectbox(
+                "Nuovo Ruolo da assegnare", group_names,
+                index=group_names.index(current_group) if current_group in group_names else 0,
+                key=f"admin_new_group_{sel_res['access_email']}",
+            )
 
-            if st.button("Aggiorna Gruppi", type="primary"):
-                gids = [grp_map[g] for g in sel_grps]
-                r    = api("PATCH", f"/roles/resources/{sel_res['id']}/groups", json=gids)
+            if st.button("Aggiorna Ruolo", type="primary"):
+                r = api("PATCH", f"/access/{sel_res['access_email']}/group", json={"group": new_group})
                 if r and r.status_code == 200:
-                    st.success("✅ Gruppi aggiornati!")
-                    st.session_state.pop("cached_groups", None)
+                    st.success("✅ Ruolo aggiornato!")
+                    st.rerun()
                 else:
-                    detail = _api_detail(r)
-                    st.error(f"Errore: {detail}")
+                    st.error(f"Errore: {_api_detail(r)}")
 
     with tab_groups:
         st.markdown("### Ruoli Autorizzativi — Permessi e Utenti Assegnati")
@@ -2071,37 +2064,35 @@ def show_admin(groups):
                 "👁 Visualizza risultati matching AI",
             ],
             "Manager": [
-                "✅ Tutto ciò che può fare Data Explorer",
-                "➕ Crea e modifica le proprie opportunity",
+                "✅ Tutto ciò che può fare Employee",
+                "➕ Crea contratti, opportunity e OSR dal Data Entry",
                 "🤖 Lancia il Matching AI",
                 "✔️ Conferma/rifiuta risorse dalla shortlist",
-                "📤 Richiede promozione Opportunity → Progetto (approvazione Executive & Approver)",
-                "🔧 Modifica il proprio progetto (approvazione Executive & Approver)",
+                "📤 Richiede promozione Opportunity → Progetto (approvazione Executive)",
+                "🔧 Modifica il proprio progetto (approvazione Executive)",
             ],
             "Executive": [
-                "✅ Tutto ciò che può fare Executive",
+                "✅ Tutto ciò che può fare Manager",
                 "📋 Approva o rifiuta promozioni Opportunity → Progetto",
                 "📋 Approva o rifiuta modifiche ai progetti",
             ],
             "Administrator": [
-                "✅ Tutto ciò che può fare Executive & Approver",
-                "👤 Aggiunge e modifica dipendenti",
+                "✅ Tutto ciò che può fare Executive",
+                "🔑 Concede, modifica e disattiva gli accessi",
                 "🛠 Aggiunge nuove skill",
-                "🔑 Assegna ruoli autorizzativi alle risorse",
+                "🔐 Assegna i ruoli autorizzativi alle risorse",
             ],
         }
 
         r_grp2 = api("GET", "/roles/")
-        r_res  = api("GET", "/resources/?include_system=true")
+        r_acc  = api("GET", "/access/")
         all_groups  = r_grp2.json() if r_grp2 and r_grp2.status_code == 200 else []
-        all_res     = r_res.json()  if r_res  and r_res.status_code  == 200 else []
-
-        grp_id_map2 = {g["id"]: g["nome"] for g in all_groups}
+        all_access  = r_acc.json()  if r_acc  and r_acc.status_code  == 200 else []
 
         _ROLE_ORDER = ["Employee", "Manager", "Executive", "Administrator"]
         for g in sorted(all_groups, key=lambda x: _ROLE_ORDER.index(x["nome"]) if x["nome"] in _ROLE_ORDER else 99):
             gname = g["nome"]
-            utenti = [r for r in all_res if g["id"] in r.get("gruppo_ruolo_ids", [])]
+            utenti = [a for a in all_access if a.get("access_group") == gname]
             icon   = {"Employee":"🟢","Manager":"🔵","Executive":"🟣","Administrator":"🔴"}.get(gname,"⚪")
 
             with st.expander(f"{icon} **{role_label(gname)}** — {len(utenti)} utenti assegnati"):
@@ -2114,7 +2105,7 @@ def show_admin(groups):
                     st.markdown("**Utenti assegnati:**")
                     if utenti:
                         for u in sorted(utenti, key=lambda x: x.get("cognome","")):
-                            st.markdown(f"  • {u.get('nome','')} {u.get('cognome','')} — *{u.get('ruolo_nome','')}*")
+                            st.markdown(f"  • {u.get('nome','')} {u.get('cognome','')} — *{u.get('level_name') or '—'}*")
                     else:
                         st.caption("Nessun utente assegnato")
 
@@ -2152,11 +2143,94 @@ def show_admin(groups):
                         st.error(f"Errore: {detail}")
 
     with tab_new_dip:
-        st.markdown("### ➕ Aggiungi Dipendente")
-        _form_crea_risorsa()
+        st.markdown("### 🔑 Concedi l'accesso a una risorsa")
+        st.caption(
+            "La risorsa va creata prima dal tab **Resources**. "
+            "Qui si sceglie una risorsa esistente senza accesso e si imposta ruolo e password iniziale."
+        )
+        av_r = api("GET", "/access/available-resources")
+        grp_r = api("GET", "/roles/")
+        available = av_r.json() if av_r and av_r.status_code == 200 else []
+        group_names = [g["nome"] for g in (grp_r.json() if grp_r and grp_r.status_code == 200 else [])]
+
+        if not available:
+            st.info("Tutte le risorse hanno già un accesso.")
+        else:
+            with st.form("form_grant_access", clear_on_submit=True):
+                idx = st.selectbox(
+                    "Risorsa *", range(len(available)),
+                    format_func=lambda i: (
+                        f"{available[i]['nome']} {available[i]['cognome']} — "
+                        f"{available[i].get('level_name') or '—'} ({available[i].get('email') or 'senza email'})"
+                    ),
+                )
+                grant_group = st.selectbox(
+                    "Ruolo *", group_names,
+                    index=group_names.index("Employee") if "Employee" in group_names else 0,
+                    format_func=role_label,
+                )
+                grant_pwd = st.text_input("Password iniziale * (min. 6 caratteri)", type="password")
+                if st.form_submit_button("✅ Concedi accesso", type="primary"):
+                    if len(grant_pwd) < 6:
+                        st.error("La password deve avere almeno 6 caratteri.")
+                    else:
+                        r = api("POST", "/access/", json={
+                            "eid": available[idx]["eid"], "group": grant_group, "password": grant_pwd,
+                        })
+                        if r and r.status_code == 201:
+                            st.success(f"✅ Accesso creato per {available[idx]['nome']} {available[idx]['cognome']}.")
+                            st.rerun()
+                        else:
+                            st.error(f"Errore: {_api_detail(r)}")
 
     with tab_edit_dip:
-        _form_modifica_dipendente()
+        st.markdown("### ✏️ Modifica accesso")
+        st.caption("Anagrafica, livello e disponibilità si modificano dal tab **Resources**.")
+        acc_r = api("GET", "/access/")
+        all_acc = acc_r.json() if acc_r and acc_r.status_code == 200 else []
+        if not all_acc:
+            st.info("Nessun accesso configurato.")
+        else:
+            idx = st.selectbox(
+                "Utente", range(len(all_acc)),
+                format_func=lambda i: (
+                    f"{all_acc[i]['nome']} {all_acc[i]['cognome']} — {all_acc[i].get('email', '')}"
+                    + ("" if all_acc[i].get("is_active") else "  (disattivato)")
+                ),
+                key="admin_edit_access_sel",
+            )
+            acc = all_acc[idx]
+            st.caption(
+                f"Ruolo: **{role_label(acc.get('access_group') or '—')}** · "
+                f"Stato: **{'attivo' if acc.get('is_active') else 'disattivato'}**"
+            )
+
+            col_state, col_pwd = st.columns(2)
+            with col_state:
+                st.markdown("**Stato dell'accesso**")
+                target_active = not acc.get("is_active")
+                if st.button(
+                    "Riattiva accesso" if target_active else "Disattiva accesso",
+                    key=f"admin_toggle_{acc['access_email']}",
+                ):
+                    r = api("PATCH", f"/access/{acc['access_email']}/active", json={"is_active": target_active})
+                    if r and r.status_code == 200:
+                        st.rerun()
+                    else:
+                        st.error(f"Errore: {_api_detail(r)}")
+            with col_pwd:
+                st.markdown("**Reset password**")
+                with st.form(f"form_reset_pwd_{acc['access_email']}", clear_on_submit=True):
+                    new_pwd = st.text_input("Nuova password (min. 6 caratteri)", type="password")
+                    if st.form_submit_button("🔄 Reimposta password"):
+                        if len(new_pwd) < 6:
+                            st.error("La password deve avere almeno 6 caratteri.")
+                        else:
+                            r = api("POST", f"/access/{acc['access_email']}/reset-password", json={"password": new_pwd})
+                            if r and r.status_code == 200:
+                                st.success("✅ Password aggiornata.")
+                            else:
+                                st.error(f"Errore: {_api_detail(r)}")
 # ── RISORSA V2 ────────────────────────────────────────────────────────────────
 def show_risorsa_v2(groups):
     if "show_new_resource_v2" not in st.session_state:

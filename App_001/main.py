@@ -9,6 +9,7 @@ from routers import (
     skills,
     mansioni,
     role_groups,
+    access,
     promotions,
     project_changes,
     chat,
@@ -39,6 +40,7 @@ app.include_router(matching.router)
 app.include_router(skills.router)
 app.include_router(mansioni.router)
 app.include_router(role_groups.router)
+app.include_router(access.router)
 app.include_router(promotions.router)
 app.include_router(project_changes.router)
 app.include_router(chat.router)

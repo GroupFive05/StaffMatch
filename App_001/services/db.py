@@ -116,6 +116,74 @@ def save_resources(data):
             _execute("INSERT INTO STAFFMATCH_RISORSASKILL (RISORSAID, SKILLID, LIVELLO) VALUES (?,?,?)",
                      (r.get("id"), sk.get("skill_id"), sk.get("livello",1)))
 
+# ── ACCESSI (SM_ACCESS) ───────────────────────────────────────────────────────
+ACCESS_GROUPS = ["Employee", "Manager", "Executive", "Administrator"]
+
+_ACCESS_SELECT = """
+    SELECT a.EMAIL AS access_email,
+           COALESCE(s.EMAIL, a.EMAIL) AS email,
+           COALESCE(s.NOME, a.NOME) AS nome,
+           COALESCE(s.COGNOME, a.COGNOME) AS cognome,
+           a.PASSWORDHASH AS password_hash,
+           a.ACCESSGROUP AS access_group,
+           a.ISACTIVE AS is_active,
+           a.EID AS eid,
+           s.LEVEL AS level,
+           s.LEVELNAME AS level_name
+    FROM STAFFMATCH_SM_ACCESS a
+    LEFT JOIN STAFFMATCH_SM_RISORSA s ON s.EID = a.EID
+"""
+
+def sm_get_access(email):
+    rows = _fetchall(
+        _ACCESS_SELECT + " WHERE LOWER(COALESCE(s.EMAIL, a.EMAIL)) = LOWER(?)",
+        (str(email or "").strip(),),
+    )
+    return rows[0] if rows else None
+
+def sm_list_access():
+    return _fetchall(_ACCESS_SELECT + " ORDER BY COALESCE(s.COGNOME, a.COGNOME), COALESCE(s.NOME, a.NOME)")
+
+def sm_list_resources_without_access():
+    return _fetchall(
+        "SELECT s.EID AS eid, s.NOME AS nome, s.COGNOME AS cognome, s.EMAIL AS email, s.LEVELNAME AS level_name "
+        "FROM STAFFMATCH_SM_RISORSA s "
+        "WHERE NOT EXISTS (SELECT 1 FROM STAFFMATCH_SM_ACCESS a WHERE a.EID = s.EID "
+        "OR LOWER(a.EMAIL) = LOWER(s.EMAIL)) "
+        "ORDER BY s.COGNOME, s.NOME"
+    )
+
+def sm_create_access(eid, group, password_hash):
+    resource = _fetchall(
+        "SELECT EID AS eid, NOME AS nome, COGNOME AS cognome, EMAIL AS email "
+        "FROM STAFFMATCH_SM_RISORSA WHERE EID = ?", (int(eid),)
+    )
+    if not resource:
+        raise ValueError("Risorsa non trovata")
+    res = resource[0]
+    if not res["email"]:
+        raise ValueError("La risorsa non ha un'email: impossibile creare l'accesso")
+    if sm_get_access(res["email"]):
+        raise ValueError("Questa risorsa ha già un accesso")
+    _execute(
+        "INSERT INTO STAFFMATCH_SM_ACCESS (EMAIL, NOME, COGNOME, PASSWORDHASH, ACCESSGROUP, ISACTIVE, "
+        "MUSTCHANGEPASSWORD, EID) VALUES (?,?,?,?,?,?,?,?)",
+        (res["email"].lower(), res["nome"], res["cognome"], password_hash, group, True, False, res["eid"]),
+    )
+    return res
+
+def sm_update_access(access_email, **fields):
+    columns = {
+        "access_group": "ACCESSGROUP",
+        "is_active": "ISACTIVE",
+        "password_hash": "PASSWORDHASH",
+    }
+    sets = [f"{columns[k]} = ?" for k in fields]
+    _execute(
+        f"UPDATE STAFFMATCH_SM_ACCESS SET {', '.join(sets)} WHERE EMAIL = ?",
+        tuple(fields.values()) + (access_email,),
+    )
+
 def get_opportunities():
     opps = _fetchall("SELECT ID as id, TITOLO as titolo, CLIENTE as cliente, REFERENTENOME as referente_nome, REFERENTECOGNOME as referente_cognome, MANAGERID as manager_id, DATAINIZIO as data_inizio, DATAFINEPREVISTA as data_fine_prevista, STATO as stato, DESCRIZIONE as descrizione, PRIORITA as priorita FROM STAFFMATCH_OPPORTUNITY")
     for o in opps:
