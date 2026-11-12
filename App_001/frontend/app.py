@@ -5649,7 +5649,7 @@ def show_matching_ai(groups):
             key="matching_new_role"
         )
 
-    # Start Date: sempre la data odierna (esecuzione della dashboard).
+    # Start Date: proposta = oggi (esecuzione della dashboard), modificabile in avanti.
     # End Date suggerita: OSR selezionata -> fine OSR, altrimenti fine Opportunity.
     if selected_osr:
         suggested_end = selected_osr.get("end_date")
@@ -5660,28 +5660,16 @@ def show_matching_ai(groups):
 
     import datetime as _dt_matching
 
-    default_start = _dt_matching.date.today()
-
-    try:
-        default_end = _dt_matching.date.fromisoformat(
-            suggested_end
-        )
-    except Exception:
-        default_end = default_start
-
-    end_already_past = default_end < default_start
-
-    if end_already_past:
-        default_end = default_start
+    today_date = _dt_matching.date.today()
 
     date_col1, date_col2 = st.columns(2)
 
     with date_col1:
         matching_start_date = st.date_input(
             "Start Date *",
-            value=default_start,
-            disabled=True,
-            help="The matching always starts today (execution date).",
+            value=today_date,
+            min_value=today_date,
+            help="Defaults to today (execution date); you can pick a future date.",
             key=(
                 f"matching_start_"
                 f"{selected_opportunity_id}_"
@@ -5689,22 +5677,35 @@ def show_matching_ai(groups):
             )
         )
 
+    try:
+        default_end = _dt_matching.date.fromisoformat(
+            suggested_end
+        )
+    except Exception:
+        default_end = matching_start_date
+
+    end_already_past = default_end < matching_start_date
+
+    if end_already_past:
+        default_end = matching_start_date
+
     with date_col2:
         matching_end_date = st.date_input(
             "End Date *",
             value=default_end,
-            min_value=default_start,
+            min_value=matching_start_date,
             key=(
                 f"matching_end_"
                 f"{selected_opportunity_id}_"
-                f"{selected_osr_label}"
+                f"{selected_osr_label}_"
+                f"{matching_start_date.isoformat()}"
             )
         )
 
     if end_already_past:
         st.caption(
-            f"The planned end date ({suggested_end}) is already past: "
-            "End Date has been set to today. Adjust it if needed."
+            f"The planned end date ({suggested_end}) is before the Start Date: "
+            "End Date has been set to the Start Date. Adjust it if needed."
         )
 
     if matching_end_date < matching_start_date:
