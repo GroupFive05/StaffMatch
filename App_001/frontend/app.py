@@ -1991,8 +1991,8 @@ def show_admin(groups):
     st.markdown('<p class="main-title">⚙️ Administration &amp; Security</p>', unsafe_allow_html=True)
     st.markdown("---")
 
-    tab_users, tab_groups, tab_skills, tab_new_dip, tab_edit_dip = st.tabs([
-        "👥 Assign Role", "🔐 Access Roles", "🛠 Skills",
+    tab_users, tab_groups, tab_new_dip, tab_edit_dip = st.tabs([
+        "👥 Assign Role", "🔐 Access Roles",
         "🔑 Grant Access", "✏️ Edit Access"
     ])
 
@@ -2108,39 +2108,6 @@ def show_admin(groups):
                             st.markdown(f"  • {u.get('nome','')} {u.get('cognome','')} — *{u.get('level_name') or '—'}*")
                     else:
                         st.caption("Nessun utente assegnato")
-
-    with tab_skills:
-        st.markdown("### Skill Esistenti")
-        sk_r = api("GET", "/skills/")
-        skills_list = sk_r.json() if sk_r and sk_r.status_code == 200 else []
-        funz = [s for s in skills_list if s.get("categoria") == "Funzionale"]
-        tecn = [s for s in skills_list if s.get("categoria") == "Tecnica"]
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            st.markdown("**Funzionali**")
-            for s in funz:
-                st.markdown(f"  • `{s['id']}` {s['nome']}")
-        with sc2:
-            st.markdown("**Tecniche**")
-            for s in tecn:
-                st.markdown(f"  • `{s['id']}` {s['nome']}")
-
-        st.markdown("### ➕ Aggiungi Skill")
-        with st.form("form_skill"):
-            sk_nome = st.text_input("Nome skill *")
-            sk_cat  = st.selectbox("Categoria", ["Funzionale", "Tecnica"])
-            sk_desc = st.text_input("Descrizione (opzionale)")
-            if st.form_submit_button("✅ Crea Skill", type="primary"):
-                if not sk_nome:
-                    st.error("Il nome è obbligatorio.")
-                else:
-                    r = api("POST", "/skills/", json={"nome": sk_nome, "categoria": sk_cat, "descrizione": sk_desc})
-                    if r and r.status_code == 201:
-                        st.success(f"✅ Skill '{sk_nome}' creata!")
-                        st.rerun()
-                    else:
-                        detail = _api_detail(r)
-                        st.error(f"Errore: {detail}")
 
     with tab_new_dip:
         st.markdown("### 🔑 Concedi l'accesso a una risorsa")
