@@ -16,6 +16,7 @@ from routers import (
     acn_data,
     sm_matching,
     osr_import,
+    notifications,
 )
 
 app = FastAPI(
@@ -47,6 +48,7 @@ app.include_router(chat.router)
 app.include_router(acn_data.router)
 app.include_router(sm_matching.router)
 app.include_router(osr_import.router)
+app.include_router(notifications.router)
 
 @app.get("/", tags=["Health"])
 def health():

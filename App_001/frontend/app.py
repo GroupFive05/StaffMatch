@@ -5470,17 +5470,18 @@ def show_resource_request(groups):
     st.markdown("---")
     st.markdown("#### ✉️ Email Preview")
 
-    recipient_email = st.text_input(
-        "To *",
-        placeholder="recipient@example.com",
-        key="resource_request_page_to"
-    )
-
-    cc_email = st.text_input(
-        "CC",
-        placeholder="optional@example.com",
-        key="resource_request_page_cc"
-    )
+    # --- OUTLOOK MODE (disabled): uncomment this block and the one below to restore ---
+    # recipient_email = st.text_input(
+    #     "To *",
+    #     placeholder="recipient@example.com",
+    #     key="resource_request_page_to"
+    # )
+    #
+    # cc_email = st.text_input(
+    #     "CC",
+    #     placeholder="optional@example.com",
+    #     key="resource_request_page_cc"
+    # )
 
     email_subject = st.text_input(
         "Subject",
@@ -5495,44 +5496,61 @@ def show_resource_request(groups):
         key="resource_request_page_body"
     )
 
-    to_value = (recipient_email or "").strip()
-    cc_value = (cc_email or "").strip()
+    # to_value = (recipient_email or "").strip()
+    # cc_value = (cc_email or "").strip()
+    #
+    # if to_value:
+    #     outlook_url = (
+    #         "https://outlook.office.com/mail/deeplink/compose"
+    #         f"?to={quote(to_value)}"
+    #         f"&subject={quote(email_subject)}"
+    #         f"&body={quote(email_body)}"
+    #     )
+    #
+    #     if cc_value:
+    #         outlook_url += f"&cc={quote(cc_value)}"
+    #
+    #     st.link_button(
+    #         "📨 Open in Outlook and Send",
+    #         outlook_url,
+    #         type="primary",
+    #         use_container_width=True
+    #     )
+    #
+    #     st.caption(
+    #         "Outlook opens with recipient, subject and body pre-filled. "
+    #         "Review the email and click Send."
+    #     )
+    #
+    # else:
+    #     st.button(
+    #         "📨 Open in Outlook and Send",
+    #         type="primary",
+    #         use_container_width=True,
+    #         disabled=True,
+    #         key="send_resource_request_page"
+    #     )
+    #
+    #     st.caption(
+    #         "Enter at least one recipient to continue."
+    #     )
 
-    if to_value:
-        outlook_url = (
-            "https://outlook.office.com/mail/deeplink/compose"
-            f"?to={quote(to_value)}"
-            f"&subject={quote(email_subject)}"
-            f"&body={quote(email_body)}"
+    # --- NEW MODE: send via backend (SAP Alert Notification); recipients are configured in BTP ---
+    if st.button(
+        "📨 Send request",
+        type="primary",
+        use_container_width=True,
+        key="send_resource_request_page"
+    ):
+        _r = api(
+            "POST",
+            "/notifications/staffing-request",
+            json={"subject": email_subject, "body": email_body},
         )
-
-        if cc_value:
-            outlook_url += f"&cc={quote(cc_value)}"
-
-        st.link_button(
-            "📨 Open in Outlook and Send",
-            outlook_url,
-            type="primary",
-            use_container_width=True
-        )
-
-        st.caption(
-            "Outlook opens with recipient, subject and body pre-filled. "
-            "Review the email and click Send."
-        )
-
-    else:
-        st.button(
-            "📨 Open in Outlook and Send",
-            type="primary",
-            use_container_width=True,
-            disabled=True,
-            key="send_resource_request_page"
-        )
-
-        st.caption(
-            "Enter at least one recipient to continue."
-        )
+        if _r is not None and _r.status_code == 200:
+            st.success("Request sent.")
+        elif _r is not None:
+            st.error(f"Send failed: {_r.text}")
 # ── MATCHING AI - NEW ─────────────────────────────────────────────────────────
 def show_matching_ai(groups):
     results = st.session_state.get(
