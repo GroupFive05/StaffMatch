@@ -41,7 +41,7 @@ def _token(creds: dict) -> str:
 def send_staffing_request(subject: str, body: str) -> None:
     creds = _credentials()
     event = {
-        "eventType": "StaffingRequest",
+        "eventType": os.getenv("ANS_EVENT_TYPE", "StaffingRequest"),
         "resource": {"resourceName": "StaffMatch", "resourceType": "application"},
         "severity": "INFO",
         "category": "NOTIFICATION",

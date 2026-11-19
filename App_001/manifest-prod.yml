@@ -14,6 +14,7 @@ applications:
       AICORE_DEPLOYMENT_CLAUDE: d11f08cf87ce4211
       JWT_SECRET_KEY: staffmatch-secret-key-accenture-2026
       JWT_ALGORITHM: HS256
+      ANS_EVENT_TYPE: StaffingRequestProd
       JWT_EXPIRE_HOURS: "8"
       HANA_ADDRESS: 268718a1-2b08-4eb6-99ec-87a77e84bab0.hna2.prod-eu10.hanacloud.ondemand.com
       HANA_PORT: "443"
