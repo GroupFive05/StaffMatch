@@ -30,6 +30,8 @@ You receive:
 - Selected skills
 - Selected certifications
 - Selected languages
+- Optional preferred city (key "city:<name>")
+- Optional minimum years of experience (key "experience:<years>")
 
 Return ONLY valid JSON, without markdown or additional text.
 
@@ -201,6 +203,14 @@ def suggest_matching_weights(payload: dict) -> dict:
     for language in selected_languages:
         criterion_keys.append(
             f"language:{language}"
+        )
+
+    if payload.get("city"):
+        criterion_keys.append(f"city:{payload['city']}")
+
+    if payload.get("min_experience_years"):
+        criterion_keys.append(
+            f"experience:{payload['min_experience_years']}"
         )
 
     if not criterion_keys:

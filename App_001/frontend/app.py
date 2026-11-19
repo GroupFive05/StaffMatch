@@ -2308,6 +2308,26 @@ def show_risorsa_v2(groups):
                         "Intern"
                     )
 
+                    new_hire_date = st.date_input(
+                        "Hire Date",
+                        value=None
+                    )
+
+                    new_previous_experience_years = st.number_input(
+                        "Previous Experience (years)",
+                        min_value=0,
+                        max_value=60,
+                        step=1
+                    )
+
+                    new_city = st.text_input(
+                        "City"
+                    )
+
+                    new_people_lead = st.text_input(
+                        "People Lead (email)"
+                    )
+
                 # ── SKILL E LINGUE ─────────────────────────────────────────────
                 st.markdown("#### Skills & Languages")
 
@@ -2407,6 +2427,16 @@ def show_risorsa_v2(groups):
                             "level": int(new_level),
                             "anni_esperienza": int(new_anni_esperienza),
                             "is_stagista": new_is_stagista,
+                            "hire_date": (
+                                new_hire_date.isoformat()
+                                if new_hire_date
+                                else None
+                            ),
+                            "people_lead": new_people_lead.strip().lower(),
+                            "city": new_city.strip(),
+                            "previous_experience_years": int(
+                                new_previous_experience_years
+                            ),
                             "skills": new_skills,
                             "languages": new_languages,
                             "certifications": certification_details
@@ -2731,6 +2761,26 @@ def show_risorsa_v2(groups):
                         f"**{resource.get('anni_esperienza') or 0} anni**"
                     )
 
+                    st.markdown(
+                        f"📆 Hire Date: "
+                        f"**{resource.get('hire_date') or '—'}**"
+                    )
+
+                    st.markdown(
+                        f"📈 Previous Experience: "
+                        f"**{resource.get('previous_experience_years') if resource.get('previous_experience_years') is not None else '—'}"
+                        f"{' years' if resource.get('previous_experience_years') is not None else ''}**"
+                    )
+
+                    st.markdown(
+                        f"📍 City: **{resource.get('city') or '—'}**"
+                    )
+
+                    st.markdown(
+                        f"🧑‍💼 People Lead: "
+                        f"`{resource.get('people_lead') or '—'}`"
+                    )
+
                     available_from = resource.get(
                         "available_from"
                     )
@@ -2983,6 +3033,20 @@ def show_risorsa_v2(groups):
                     resource.get(
                         "anni_esperienza"
                     ) or 0,
+
+                "Hire Date":
+                    resource.get("hire_date") or "",
+
+                "Previous Exp. (years)":
+                    resource.get(
+                        "previous_experience_years"
+                    ),
+
+                "City":
+                    resource.get("city") or "",
+
+                "People Lead":
+                    resource.get("people_lead") or "",
 
                 "Active Allocation %":
                     resource.get(
@@ -5585,6 +5649,7 @@ def show_matching_ai(groups):
     skills = context.get("skills", [])
     certifications = context.get("certifications", [])
     languages = context.get("languages", [])
+    cities = context.get("cities", [])
 
     if not opportunities:
         st.warning("No opportunities available.")
@@ -5789,6 +5854,25 @@ def show_matching_ai(groups):
         for label in selected_certification_labels
     ]
 
+    extra_col1, extra_col2 = st.columns(2)
+
+    with extra_col1:
+        selected_city = st.selectbox(
+            "City",
+            [""] + cities,
+            format_func=lambda value: value or "Any",
+            key="matching_new_city"
+        )
+
+    with extra_col2:
+        selected_min_experience = st.number_input(
+            "Minimum Years of Experience (0 = no requirement)",
+            min_value=0,
+            max_value=60,
+            step=1,
+            key="matching_new_min_experience"
+        )
+
     st.markdown("---")
 
     # ── WEIGHTS ───────────────────────────────────────────────────────────────
@@ -5817,6 +5901,20 @@ def show_matching_ai(groups):
             "key": f"language:{language}",
             "label": language,
             "type": "Language"
+        })
+
+    if selected_city:
+        active_criteria.append({
+            "key": f"city:{selected_city}",
+            "label": selected_city,
+            "type": "City"
+        })
+
+    if selected_min_experience:
+        active_criteria.append({
+            "key": f"experience:{int(selected_min_experience)}",
+            "label": f"{int(selected_min_experience)}+ years",
+            "type": "Experience"
         })
 
     suggest_weights_payload = {
@@ -5850,7 +5948,13 @@ def show_matching_ai(groups):
             selected_certification_ids,
 
         "languages":
-            selected_languages
+            selected_languages,
+
+        "city":
+            selected_city or None,
+
+        "min_experience_years":
+            int(selected_min_experience) or None
     }
 
     if active_criteria:
@@ -6082,6 +6186,8 @@ def show_matching_ai(groups):
             "skills": selected_skills,
             "certifications": selected_certification_ids,
             "languages": selected_languages,
+            "city": selected_city or None,
+            "min_experience_years": int(selected_min_experience) or None,
             "weights": normalized_weights
         }
 
@@ -6296,6 +6402,11 @@ def show_matching_ai(groups):
                         st.markdown(
                             f"Experience: "
                             f"**{candidate.get('years_of_experience', 0)} years**"
+                        )
+
+                        st.markdown(
+                            f"City: **{candidate.get('city') or '—'}** · "
+                            f"Hired: **{candidate.get('hire_date') or '—'}**"
                         )
                         st.markdown("---")
 
@@ -6544,6 +6655,11 @@ def show_matching_ai(groups):
                     st.markdown(
                         f"**Experience:** "
                         f"{candidate.get('years_of_experience', 0)} years"
+                    )
+
+                    st.markdown(
+                        f"City: **{candidate.get('city') or '—'}** · "
+                        f"Hired: **{candidate.get('hire_date') or '—'}**"
                     )
 
                 current_assignments = candidate.get(

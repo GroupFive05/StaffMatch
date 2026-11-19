@@ -252,6 +252,10 @@ class ResourceV2Create(BaseModel):
     level: int
     anni_esperienza: int = 0
     is_stagista: bool = False
+    hire_date: Optional[str] = None
+    people_lead: Optional[str] = None
+    city: Optional[str] = None
+    previous_experience_years: Optional[int] = None
     skills: list[str] = []
     languages: list[str] = []
     certifications: list[ResourceV2Certification] = []
@@ -265,6 +269,8 @@ class MatchingAIRequest(BaseModel):
     skills: list[str] = []
     certifications: list[str] = []
     languages: list[str] = []
+    city: Optional[str] = None
+    min_experience_years: Optional[int] = None
     weights: dict[str, float] = {}
 
 class MatchingAIRequest(BaseModel):
@@ -276,6 +282,8 @@ class MatchingAIRequest(BaseModel):
     skills: list[str] = []
     certifications: list[str] = []
     languages: list[str] = []
+    city: Optional[str] = None
+    min_experience_years: Optional[int] = None
     weights: dict[str, float] = {}
 
 class MatchingWeightsSuggestionRequest(BaseModel):
@@ -285,7 +293,9 @@ class MatchingWeightsSuggestionRequest(BaseModel):
     end_date: str
     skills: list[str] = []
     certifications: list[str] = []
-    languages: list[str] = []   
+    languages: list[str] = []
+    city: Optional[str] = None
+    min_experience_years: Optional[int] = None
 
 class ResourceSelectionRationaleRequest(BaseModel):
     candidate: dict

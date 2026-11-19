@@ -156,6 +156,10 @@ entity SM_Risorsa {
   disponibilita       : Integer;
   availableFrom       : Date;
   isStagista          : Boolean default false;
+  hireDate            : Date;
+  peopleLead          : String(255);
+  city                : String(100);
+  previousExperienceYears : Integer;
 }
 
 @cds.persistence.name: 'SM_RISORSALANGUAGE'

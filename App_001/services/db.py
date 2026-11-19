@@ -601,7 +601,11 @@ def sm_get_risorse_v2():
             LEVEL          AS level,
             LEVELNAME      AS level_name,
             ANNIESPERIENZA AS anni_esperienza,
-            ISSTAGISTA     AS is_stagista
+            ISSTAGISTA     AS is_stagista,
+            HIREDATE       AS hire_date,
+            PEOPLELEAD     AS people_lead,
+            CITY           AS city,
+            PREVIOUSEXPERIENCEYEARS AS previous_experience_years
         FROM STAFFMATCH_SM_RISORSA
         ORDER BY COGNOME, NOME
     """)
@@ -921,6 +925,13 @@ def sm_get_risorse_v2():
             managers.values()
         )
 
+        hire_date = resource.get("hire_date")
+        resource["hire_date"] = (
+            hire_date.isoformat()
+            if hasattr(hire_date, "isoformat")
+            else (str(hire_date) if hire_date else None)
+        )
+
         resource["is_stagista"] = bool(
             resource.get("is_stagista")
         )
@@ -986,6 +997,15 @@ def sm_create_resource_v2(data):
         level = int(data["level"])
         anni_esperienza = int(data.get("anni_esperienza") or 0)
         is_stagista = bool(data.get("is_stagista", False))
+        hire_date = data.get("hire_date") or None
+        people_lead = (data.get("people_lead") or "").strip().lower() or None
+        city = (data.get("city") or "").strip() or None
+        previous_experience_years = data.get("previous_experience_years")
+        previous_experience_years = (
+            int(previous_experience_years)
+            if previous_experience_years is not None
+            else None
+        )
 
         skills = data.get("skills") or []
         languages = data.get("languages") or []
@@ -1131,9 +1151,13 @@ def sm_create_resource_v2(data):
                 ANNIESPERIENZA,
                 DISPONIBILITA,
                 AVAILABLEFROM,
-                ISSTAGISTA
+                ISSTAGISTA,
+                HIREDATE,
+                PEOPLELEAD,
+                CITY,
+                PREVIOUSEXPERIENCEYEARS
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 eid,
@@ -1145,7 +1169,11 @@ def sm_create_resource_v2(data):
                 anni_esperienza,
                 100,
                 None,
-                is_stagista
+                is_stagista,
+                hire_date,
+                people_lead,
+                city,
+                previous_experience_years
             )
         )
 
@@ -2144,13 +2172,24 @@ def sm_get_matching_context():
         if row.get("project_role")
     })
 
+    cities = [
+        row["city"]
+        for row in _fetchall("""
+            SELECT DISTINCT CITY AS city
+            FROM STAFFMATCH_SM_RISORSA
+            WHERE CITY IS NOT NULL AND CITY <> ''
+            ORDER BY CITY
+        """)
+    ]
+
     return {
         "opportunities": opportunities,
         "osr": osr,
         "roles": roles,
         "skills": skills,
         "certifications": certifications,
-        "languages": languages
+        "languages": languages,
+        "cities": cities
     }
 def sm_get_interval_availability(
     eid,
@@ -2327,7 +2366,9 @@ def sm_calculate_weighted_match(
     selected_skills,
     selected_certifications,
     selected_languages,
-    weights
+    weights,
+    selected_city=None,
+    min_experience_years=None
 ):
     """
     Calcola esclusivamente il quality match.
@@ -2430,6 +2471,56 @@ def sm_calculate_weighted_match(
             "weight": weight
         })
 
+    # ── CITY ─────────────────────────────────────────────────────────────────
+    if selected_city:
+        weight = float(
+            weights.get(f"city:{selected_city}", 0)
+        )
+
+        matched = (
+            (resource.get("city") or "").strip().lower()
+            == selected_city.strip().lower()
+        )
+
+        total_weight += weight
+
+        if matched:
+            matched_weight += weight
+
+        criteria_results.append({
+            "type": "city",
+            "criterion": selected_city,
+            "matched": matched,
+            "weight": weight
+        })
+
+    # ── EXPERIENCE (anni totali = anni_esperienza + esperienza pregressa) ────
+    if min_experience_years:
+        weight = float(
+            weights.get(
+                f"experience:{min_experience_years}", 0
+            )
+        )
+
+        total_experience = (
+            (resource.get("anni_esperienza") or 0)
+            + (resource.get("previous_experience_years") or 0)
+        )
+
+        matched = total_experience >= min_experience_years
+
+        total_weight += weight
+
+        if matched:
+            matched_weight += weight
+
+        criteria_results.append({
+            "type": "experience",
+            "criterion": f"{min_experience_years}+ years",
+            "matched": matched,
+            "weight": weight
+        })
+
     # Se tutti gli slider sono zero:
     # peso uniforme su tutti i criteri selezionati.
     if total_weight == 0 and criteria_results:
@@ -2510,6 +2601,14 @@ def sm_run_matching_ai(payload):
     selected_languages = list(
         payload.get("languages") or []
     )
+
+    selected_city = (
+        payload.get("city") or ""
+    ).strip() or None
+
+    min_experience_years = int(
+        payload.get("min_experience_years") or 0
+    ) or None
 
     raw_weights = dict(
         payload.get("weights") or {}
@@ -2610,6 +2709,14 @@ def sm_run_matching_ai(payload):
             f"language:{language}"
         )
 
+    if selected_city:
+        criteria_keys.append(f"city:{selected_city}")
+
+    if min_experience_years:
+        criteria_keys.append(
+            f"experience:{min_experience_years}"
+        )
+
     # ── NORMALIZZAZIONE PESI ─────────────────────────────────────────────────
     sanitized_weights = {}
 
@@ -2684,7 +2791,9 @@ def sm_run_matching_ai(payload):
             selected_skills=selected_skills,
             selected_certifications=selected_certifications,
             selected_languages=selected_languages,
-            weights=normalized_weights
+            weights=normalized_weights,
+            selected_city=selected_city,
+            min_experience_years=min_experience_years
         )
 
         availability_status = availability.get(
@@ -2740,6 +2849,13 @@ def sm_run_matching_ai(payload):
 
             "is_intern": bool(
                 resource.get("is_stagista")
+            ),
+
+            "hire_date": resource.get("hire_date"),
+            "people_lead": resource.get("people_lead"),
+            "city": resource.get("city"),
+            "previous_experience_years": resource.get(
+                "previous_experience_years"
             ),
 
             "score": quality_match.get(
@@ -2865,6 +2981,12 @@ def sm_run_matching_ai(payload):
 
             "languages":
                 selected_languages,
+
+            "city":
+                selected_city,
+
+            "min_experience_years":
+                min_experience_years,
 
             "weights":
                 {

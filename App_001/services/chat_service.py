@@ -139,6 +139,13 @@ def _build_context(categories: set) -> str:
                 f"Esperienza: "
                 f"{resource.get('anni_esperienza') or 0} anni"
             ),
+            f"Città: {resource.get('city') or 'n/d'}",
+            f"Data assunzione: {resource.get('hire_date') or 'n/d'}",
+            f"People Lead: {resource.get('people_lead') or 'n/d'}",
+            (
+                f"Esperienza pregressa: "
+                f"{resource.get('previous_experience_years') if resource.get('previous_experience_years') is not None else 'n/d'} anni"
+            ),
             (
                 f"Disponibilità attuale: "
                 f"{resource.get('disponibilita') or 0}%"
