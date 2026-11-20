@@ -5668,6 +5668,60 @@ def show_matching_ai(groups):
     }
 
     no_opportunity_label = "—"
+    all_label = "All"
+
+    # Filtri opzionali Cliente / Contratto: restringono l'elenco delle Opportunity.
+    filter_col1, filter_col2 = st.columns(2)
+
+    with filter_col1:
+        client_names = sorted({
+            item["client_name"]
+            for item in opportunities
+            if item.get("client_name")
+        })
+        selected_client = st.selectbox(
+            "Client (optional)",
+            [all_label] + client_names,
+            key="matching_filter_client"
+        )
+
+    client_opportunities = [
+        item for item in opportunities
+        if selected_client == all_label
+        or item.get("client_name") == selected_client
+    ]
+
+    contract_options = {}
+
+    for item in client_opportunities:
+        if item.get("contract_id"):
+            contract_options[
+                f"{item.get('contract_title') or '—'} ({item['contract_id']})"
+            ] = item["contract_id"]
+
+    with filter_col2:
+        selected_contract_label = st.selectbox(
+            "Contract (optional)",
+            [all_label] + sorted(contract_options.keys()),
+            key=f"matching_filter_contract_{selected_client}"
+        )
+
+    if selected_contract_label != all_label:
+        selected_contract_id = contract_options[selected_contract_label]
+        client_opportunities = [
+            item for item in client_opportunities
+            if item.get("contract_id") == selected_contract_id
+        ]
+
+    opportunity_options = {
+        label: item
+        for label, item in opportunity_options.items()
+        if item in client_opportunities
+    }
+
+    if not opportunity_options:
+        st.info("No opportunities match the selected Client / Contract.")
+        return
 
     selected_opportunity_label = st.selectbox(
         "Opportunity *",

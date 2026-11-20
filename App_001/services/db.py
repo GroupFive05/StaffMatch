@@ -2105,14 +2105,18 @@ def sm_get_matching_context():
 
     opportunities = _fetchall("""
         SELECT
-            OPPORTUNITYID AS opportunity_id,
-            OPPORTUNITYTITLE AS opportunity_title,
-            MAINTECHCLUSTER AS main_tech_cluster,
-            FUNCTIONALAREA AS functional_area,
-            DATAINIZIO AS start_date,
-            DATAFINE AS end_date
-        FROM STAFFMATCH_SM_OPPORTUNITY
-        ORDER BY OPPORTUNITYTITLE
+            op.OPPORTUNITYID AS opportunity_id,
+            op.OPPORTUNITYTITLE AS opportunity_title,
+            op.MAINTECHCLUSTER AS main_tech_cluster,
+            op.FUNCTIONALAREA AS functional_area,
+            op.DATAINIZIO AS start_date,
+            op.DATAFINE AS end_date,
+            op.CONTRACTID AS contract_id,
+            c.CONTRACTTITLE AS contract_title,
+            c.CLIENTNAME AS client_name
+        FROM STAFFMATCH_SM_OPPORTUNITY op
+        LEFT JOIN STAFFMATCH_SM_CONTRACT c ON c.CONTRACTID = op.CONTRACTID
+        ORDER BY op.OPPORTUNITYTITLE
     """)
 
     osr = _fetchall("""
