@@ -1,6 +1,6 @@
 """
 Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05).
-NOTA: nessuna autenticazione richiesta — solo per test interno su ambiente -dev.
+Tutti gli endpoint richiedono login; le scritture e il matching richiedono Manager/Executive/Administrator.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai,sm_get_data_entry_catalogs,sm_create_contract,sm_create_opportunity,sm_create_osr
@@ -9,7 +9,7 @@ from services.match_service import (
     suggest_matching_weights,
     generate_resource_selection_rationale,
 )
-from services.auth_service import is_manager_or_admin
+from services.auth_service import get_current_user, is_manager_or_admin
 from models.schemas import (
     ContractCreate,
     OpportunityCreate,
@@ -19,7 +19,11 @@ from models.schemas import (
     MatchingWeightsSuggestionRequest,
     ResourceSelectionRationaleRequest,
 )
-router = APIRouter(prefix="/sm", tags=["sm-matching-test"])
+router = APIRouter(
+    prefix="/sm",
+    tags=["sm-matching-test"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/opportunities")
@@ -64,7 +68,10 @@ def get_risorse_v2():
 def get_resource_form_catalogs():
     return sm_get_resource_form_catalogs()
 @router.post("/risorse-v2")
-def create_resource_v2(payload: ResourceV2Create):
+def create_resource_v2(
+    payload: ResourceV2Create,
+    user: dict = Depends(is_manager_or_admin),
+):
     try:
         return sm_create_resource_v2(
             payload.model_dump()
@@ -100,7 +107,10 @@ def get_matching_context():
     return sm_get_matching_context()
 
 @router.post("/matching")
-def run_matching_ai(payload: MatchingAIRequest):
+def run_matching_ai(
+    payload: MatchingAIRequest,
+    user: dict = Depends(is_manager_or_admin),
+):
     try:
         return sm_run_matching_ai(
             payload.model_dump()
@@ -119,7 +129,8 @@ def run_matching_ai(payload: MatchingAIRequest):
         )
 @router.post("/matching/suggest-weights")
 def suggest_weights(
-    payload: MatchingWeightsSuggestionRequest
+    payload: MatchingWeightsSuggestionRequest,
+    user: dict = Depends(is_manager_or_admin),
 ):
     try:
         return suggest_matching_weights(
@@ -143,7 +154,8 @@ def suggest_weights(
 
 @router.post("/matching/selection-rationale")
 def selection_rationale(
-    payload: ResourceSelectionRationaleRequest
+    payload: ResourceSelectionRationaleRequest,
+    user: dict = Depends(is_manager_or_admin),
 ):
     try:
         return generate_resource_selection_rationale(

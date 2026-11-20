@@ -13,7 +13,7 @@ class StaffingRequestMail(BaseModel):
 @router.post("/staffing-request")
 def staffing_request(
     payload: StaffingRequestMail,
-    current_user: dict = Depends(auth_service.get_current_user),
+    current_user: dict = Depends(auth_service.is_manager_or_admin),
 ):
     if not payload.subject.strip() or not payload.body.strip():
         raise HTTPException(status_code=400, detail="Subject and body are required.")

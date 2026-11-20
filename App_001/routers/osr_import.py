@@ -1,15 +1,17 @@
 from io import BytesIO
 import re
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from openpyxl import load_workbook
 
+from services.auth_service import is_manager_or_admin
 from services.db import sm_upsert_osr_delta
 
 
 router = APIRouter(
     prefix="/api/osr",
     tags=["OSR Import"],
+    dependencies=[Depends(is_manager_or_admin)],
 )
 
 

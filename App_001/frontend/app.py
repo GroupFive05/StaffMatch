@@ -913,10 +913,11 @@ def show_sidebar(groups):
             (":material/bar_chart:", "Practice Cockpit", "dashboard_v2"),
             (":material/group:", "Resources", "risorsa_v2"),
             (":material/calendar_month:", "Practice Hub", "staffing_management_v2"),
-            (":material/auto_fix_high:", "Match AI", "matching_v2"),
             (":material/notifications_active:", "Practice Alert", "practice_alerts"),
             (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
+        if can_write(groups):
+            pages.insert(3, (":material/auto_fix_high:", "Match AI", "matching_v2"))
         if is_admin(groups):
             pages.append((":material/settings:", "Administration & Security", "admin"))
 
@@ -7306,11 +7307,17 @@ def main():
     elif page == "matching":
         show_matching(groups)
     elif page == "matching_v2":
-        show_matching_ai(groups)
+        if can_write(groups):
+            show_matching_ai(groups)
+        else:
+            st.warning("Match AI is available to Manager, Executive and Administrator roles only.")
     elif page == "practice_alerts":
         show_practice_alerts(groups)
     elif page == "resource_request":
-        show_resource_request(groups)
+        if can_write(groups):
+            show_resource_request(groups)
+        else:
+            st.warning("Resource requests are available to Manager, Executive and Administrator roles only.")
     elif page == "chatbot":
         show_chatbot(groups)
     elif page == "approvazioni":
