@@ -2062,27 +2062,25 @@ def show_admin(groups):
 
         PERMESSI = {
             "Employee": [
-                "👁 Visualizza risorse, progetti, opportunity",
-                "👁 Visualizza risultati matching AI",
+                "👁 Consulta Practice Cockpit, Resources, Practice Hub e Practice Alert",
+                "💬 Usa il Practice Advisor",
             ],
             "Manager": [
                 "✅ Tutto ciò che può fare Employee",
-                "➕ Crea contratti, opportunity e OSR dal Data Entry",
-                "🤖 Lancia il Matching AI",
-                "✔️ Conferma/rifiuta risorse dalla shortlist",
-                "📤 Richiede promozione Opportunity → Progetto (approvazione Executive)",
-                "🔧 Modifica il proprio progetto (approvazione Executive)",
+                "➕ Crea contratti, opportunity, OSR e risorse dal Data Entry",
+                "📥 Importa le OSR da file Excel",
+                "🤖 Lancia il Match AI, con suggerimento pesi e motivazione della scelta",
+                "✉️ Invia la richiesta di staffing",
             ],
             "Executive": [
                 "✅ Tutto ciò che può fare Manager",
-                "📋 Approva o rifiuta promozioni Opportunity → Progetto",
-                "📋 Approva o rifiuta modifiche ai progetti",
+                "ℹ️ Nessun permesso aggiuntivo nel flusso attuale",
             ],
             "Administrator": [
                 "✅ Tutto ciò che può fare Executive",
                 "🔑 Concede, modifica e disattiva gli accessi",
-                "🛠 Aggiunge nuove skill",
                 "🔐 Assegna i ruoli autorizzativi alle risorse",
+                "🔁 Reimposta le password",
             ],
         }
 
