@@ -141,6 +141,33 @@ def _milestone_table(milestone_rows):
     )
 
 
+def _osr_node(osr_rows, expand):
+    """Nodo apribile con tutte le OSR dell'opportunity, nello stesso stile dei PO."""
+    people = {r.get("resource_eid") for r in osr_rows}
+    fte = sum(int(r.get("allocation_pct") or 0) for r in osr_rows) / 100
+    by_status = {}
+    for row in osr_rows:
+        label = row.get("calculated_status") or "n/a"
+        by_status[label] = by_status.get(label, 0) + 1
+
+    status_chips = "".join(
+        f'<span class="badge {STATUS_CLASSES.get(label, "b-none")}">{count} {_e(label)}</span>'
+        for label, count in sorted(by_status.items(), key=lambda item: -item[1])
+    )
+    summary = (
+        '<span class="po-ico">OSR</span>'
+        f'<span class="id">{len(osr_rows)}</span>'
+        '<span class="title">Assigned resources</span>'
+        f'{status_chips}'
+        f'<span class="metric">{len(people)} res.</span>'
+        f'<span class="total">{fte:.1f} FTE<small>total allocation</small></span>'
+    )
+    return (
+        f'<details{" open" if expand else ""}><summary>{summary}</summary>'
+        f'<div class="body">{_osr_table(osr_rows)}</div></details>'
+    )
+
+
 def _po_gap(opportunity, milestone_rows):
     """Differenza tra il valore dell'opportunity e la somma dei suoi PO (solo per le opportunity Won)."""
     if opportunity.get("opportunity_stage") != "Won":
@@ -234,7 +261,7 @@ def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
     )
     osr_section = (
         f'<div class="sub-title">OSR <span class="metric">{len(osr_rows)}</span></div>'
-        + (_osr_table(osr_rows) if osr_rows else '<div class="empty-note">No OSR assigned</div>')
+        + (_osr_node(osr_rows, expand) if osr_rows else '<div class="empty-note">No OSR assigned</div>')
     )
 
     return (
