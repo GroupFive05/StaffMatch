@@ -920,7 +920,7 @@ def show_sidebar(groups):
             (":material/auto_awesome:", "Practice Advisor", "chatbot"),
         ]
         if can_write(groups):
-            pages.insert(3, (":material/auto_fix_high:", "Match AI", "matching_v2"))
+            pages.insert(4, (":material/auto_fix_high:", "Match AI", "matching_v2"))
         if is_admin(groups):
             pages.append((":material/settings:", "Administration & Security", "admin"))
 
