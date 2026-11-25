@@ -33,6 +33,10 @@ TREE_CSS = """
 .ph-tree th { text-align: left; color: #6B7280; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #ECE6FA; }
 .ph-tree td { padding: 6px 8px; border-bottom: 1px solid #F4F0FC; white-space: nowrap; }
 .ph-tree td.num, .ph-tree th.num { text-align: right; }
+.ph-tree .sub-title { font-weight: 700; color: #1E1B4B; font-size: 0.9rem; margin: 0.7rem 0 0 0; display: flex; align-items: center; gap: 0.6rem; }
+.ph-tree .sub-title:first-child { margin-top: 0.2rem; }
+.ph-tree .sub-title .metric { font-weight: 600; }
+.ph-tree .empty-note { color: #6B7280; font-size: 0.84rem; margin: 0.3rem 0 0 0; }
 .ph-tree .group-title { font-weight: 800; color: #1E1B4B; margin: 1.2rem 0 0.5rem 0; font-size: 1.05rem; }
 .ph-tree .group-note { color: #6B7280; font-size: 0.85rem; margin: -0.3rem 0 0.6rem 0; }
 </style>
@@ -45,6 +49,9 @@ STATUS_CLASSES = {
     "Closed": "b-closed",
     "Pipeline": "b-pipe",
     "Open": "b-pipe",
+    "Paid": "b-ok",
+    "Planned": "b-pipe",
+    "Overdue": "b-closed",
 }
 
 
@@ -95,13 +102,40 @@ def _osr_table(osr_rows):
     )
 
 
+def _milestone_table(milestone_rows):
+    rows = "".join(
+        "<tr>"
+        f"<td>{_badge(r.get('status') or 'n/a')}</td>"
+        f"<td>{_e(r.get('milestone_id'))}</td>"
+        f"<td>{_e(r.get('po_number'))}</td>"
+        f"<td>{_e(r.get('project_phase'))}</td>"
+        f"<td>{_e(r.get('description'))}</td>"
+        f"<td class='num'>{_eur(r.get('amount'))}</td>"
+        f"<td>{_e(r.get('planned_date'))}</td>"
+        f"<td>{_e(r.get('actual_date'))}</td>"
+        f"<td>{_e(r.get('invoice_number'))}</td>"
+        "</tr>"
+        for r in sorted(
+            milestone_rows,
+            key=lambda x: (x.get("planned_date") or "9999-12-31", str(x.get("milestone_id")))
+        )
+    )
+
+    return (
+        "<table><thead><tr>"
+        "<th>Status</th><th>Milestone</th><th>PO</th><th>Phase</th><th>Description</th>"
+        "<th class='num'>Amount</th><th>Planned billing</th><th>Actual billing</th><th>Invoice</th>"
+        f"</tr></thead><tbody>{rows}</tbody></table>"
+    )
+
+
 def _fy_amount(opportunity, fy):
     return fiscal.fy_share(
         opportunity.get("opportunity_value"), opportunity.get("start_date"), opportunity.get("end_date"), fy
     )
 
 
-def _opportunity_block(opportunity, osr_rows, expand, fy=None):
+def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
     fy_line = f"<small>{fiscal.fy_label(fy)} {_eur(_fy_amount(opportunity, fy))}</small>" if fy else ""
     summary = (
         f'<span class="id">{_e(opportunity.get("opportunity_id"))}</span>'
@@ -110,18 +144,30 @@ def _opportunity_block(opportunity, osr_rows, expand, fy=None):
         f'{_badge(opportunity.get("opportunity_stage") or "n/a")}'
         f'{_badge(opportunity.get("opportunity_status") or "n/a")}'
         f'<span class="period">{_period(opportunity)}</span>'
+        f'<span class="metric">{len(milestone_rows)} MS</span>'
         f'<span class="metric">{len(osr_rows)} OSR</span>'
         f'<span class="total">{_eur(opportunity.get("opportunity_value"))}{fy_line}</span>'
     )
 
-    if not osr_rows:
+    if not osr_rows and not milestone_rows:
         return (
             f'<div class="leaf">{summary}<span class="badge b-none">No OSR assigned</span></div>'
         )
 
+    milestone_total = sum(float(r.get("amount") or 0) for r in milestone_rows)
+
+    milestones_section = (
+        f'<div class="sub-title">Milestones <span class="metric">{len(milestone_rows)} · {_eur(milestone_total)}</span></div>'
+        + (_milestone_table(milestone_rows) if milestone_rows else '<div class="empty-note">No milestones planned</div>')
+    )
+    osr_section = (
+        f'<div class="sub-title">OSR <span class="metric">{len(osr_rows)}</span></div>'
+        + (_osr_table(osr_rows) if osr_rows else '<div class="empty-note">No OSR assigned</div>')
+    )
+
     return (
         f'<details{" open" if expand else ""}><summary>{summary}</summary>'
-        f'<div class="body">{_osr_table(osr_rows)}</div></details>'
+        f'<div class="body">{milestones_section}{osr_section}</div></details>'
     )
 
 
@@ -129,10 +175,15 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
     contracts = sorted(data.get("contracts", []), key=lambda c: str(c.get("contract_id")))
     opportunities = data.get("opportunities", [])
     osr_rows = data.get("osr", [])
+    milestone_rows = data.get("milestones", [])
 
     osr_by_opportunity = defaultdict(list)
     for row in osr_rows:
         osr_by_opportunity[row.get("opportunity_id")].append(row)
+
+    milestones_by_opportunity = defaultdict(list)
+    for row in milestone_rows:
+        milestones_by_opportunity[row.get("opportunity_id")].append(row)
 
     opportunities_by_contract = defaultdict(list)
     uncontracted = []
@@ -156,6 +207,8 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
             parts += [opportunity.get("opportunity_id"), opportunity.get("opportunity_title")]
             for row in osr_by_opportunity.get(opportunity.get("opportunity_id"), []):
                 parts += [_resource_name(row), row.get("resource_eid"), row.get("osr_id"), row.get("project_role")]
+            for row in milestones_by_opportunity.get(opportunity.get("opportunity_id"), []):
+                parts += [row.get("milestone_id"), row.get("po_number"), row.get("invoice_number"), row.get("description")]
 
         return needle in " ".join(str(p) for p in parts if p).lower()
 
@@ -220,7 +273,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
         )
 
         children = "".join(
-            _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy)
+            _opportunity_block(
+                o, osr_by_opportunity.get(o.get("opportunity_id"), []),
+                milestones_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy
+            )
             for o in contract_opportunities
         ) or '<div class="leaf"><span class="muted">No opportunities linked to this contract</span></div>'
 
@@ -274,7 +330,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
             f'<div class="group-note">{len(visible_uncontracted)} open opportunities · '
             f'{_eur(pipeline_total)} potential value (not included in contract totals)</div>'
             + "".join(
-                _opportunity_block(o, osr_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy)
+                _opportunity_block(
+                    o, osr_by_opportunity.get(o.get("opportunity_id"), []),
+                    milestones_by_opportunity.get(o.get("opportunity_id"), []), expand_all, fy
+                )
                 for o in visible_uncontracted
             )
         )

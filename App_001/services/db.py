@@ -1850,12 +1850,41 @@ def sm_get_staffing_management_v2():
             row.get("osr_count") or 0
         )
 
+    # ── MILESTONE ─────────────────────────────────────────────────────────────
+    try:
+        milestone_rows = _fetchall("""
+            SELECT
+                MILESTONEID           AS milestone_id,
+                OPPORTUNITYID         AS opportunity_id,
+                PONUMBER              AS po_number,
+                PROJECTPHASE          AS project_phase,
+                MILESTONEDESCRIPTION  AS description,
+                BILLABLEAMOUNTEUR     AS amount,
+                PLANNEDBILLINGDATE    AS planned_date,
+                ACTUALBILLINGDATE     AS actual_date,
+                MILESTONESTATUS       AS status,
+                INVOICENUMBER         AS invoice_number
+            FROM STAFFMATCH_SM_MILESTONE
+            ORDER BY OPPORTUNITYID, PLANNEDBILLINGDATE, MILESTONEID
+        """)
+    except Exception:
+        milestone_rows = []
+
+    for row in milestone_rows:
+        planned = to_date(row.get("planned_date"))
+        actual = to_date(row.get("actual_date"))
+
+        row["planned_date"] = planned.isoformat() if planned else None
+        row["actual_date"] = actual.isoformat() if actual else None
+        row["amount"] = float(row.get("amount") or 0)
+
     return {
         "today": today.isoformat(),
         "rolling_off_limit": rolling_off_limit.isoformat(),
         "osr": osr_rows,
         "opportunities": opportunity_rows,
-        "contracts": contract_rows
+        "contracts": contract_rows,
+        "milestones": milestone_rows
     }
 
 def _normalize_osr_text(value):
