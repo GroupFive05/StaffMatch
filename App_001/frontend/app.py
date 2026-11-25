@@ -2268,10 +2268,13 @@ def show_risorsa_v2(groups):
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    new_eid = st.number_input(
+                    new_eid_text = st.text_input(
                         "EID *",
-                        min_value=1,
-                        step=1
+                        value="",
+                        max_chars=8,
+                        placeholder="8 digits, e.g. 12345678",
+                        help="The EID must be exactly 8 numeric characters.",
+                        key="new_resource_v2_eid"
                     )
 
                     new_nome = st.text_input(
@@ -2292,9 +2295,20 @@ def show_risorsa_v2(groups):
                         for item in levels
                     }
 
+                    # Si parte dal livello piu' basso (numero piu' alto, es. 11 - Analyst)
+                    level_labels = list(level_options.keys())
+                    default_level_index = (
+                        max(
+                            range(len(level_labels)),
+                            key=lambda i: level_options[level_labels[i]]
+                        )
+                        if level_labels else 0
+                    )
+
                     selected_level_label = st.selectbox(
                         "Level *",
-                        list(level_options.keys())
+                        level_labels,
+                        index=default_level_index
                     )
 
                     new_level = level_options[selected_level_label]
@@ -2411,8 +2425,11 @@ def show_risorsa_v2(groups):
                 )
 
                 if save_resource:
+                    new_eid_clean = new_eid_text.strip()
+
                     if (
-                        not new_nome.strip()
+                        not new_eid_clean
+                        or not new_nome.strip()
                         or not new_cognome.strip()
                         or not new_email.strip()
                     ):
@@ -2420,9 +2437,19 @@ def show_risorsa_v2(groups):
                             "EID, First Name, Last Name and Email are required."
                         )
 
+                    elif not (
+                        len(new_eid_clean) == 8
+                        and new_eid_clean.isdigit()
+                        and not new_eid_clean.startswith("0")
+                    ):
+                        st.error(
+                            "The EID must be exactly 8 numeric characters "
+                            "(e.g. 12345678)."
+                        )
+
                     else:
                         payload = {
-                            "eid": int(new_eid),
+                            "eid": int(new_eid_clean),
                             "nome": new_nome.strip(),
                             "cognome": new_cognome.strip(),
                             "email": new_email.strip().lower(),

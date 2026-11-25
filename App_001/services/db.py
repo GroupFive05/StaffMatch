@@ -1011,6 +1011,9 @@ def sm_create_resource_v2(data):
         languages = data.get("languages") or []
         certifications = data.get("certifications") or []
 
+        if not (10_000_000 <= eid <= 99_999_999):
+            raise ValueError("L'EID deve essere di 8 cifre numeriche.")
+
         if not nome:
             raise ValueError("Il nome è obbligatorio.")
 
