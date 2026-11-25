@@ -7242,7 +7242,7 @@ page where you can fix it.
     st.subheader(label)
     st.caption(description)
 
-    head_cols = st.columns([3, 2] + [2] * len(links))
+    head_cols = st.columns([5] + [2] * len(links))
 
     severity_filter = head_cols[0].segmented_control(
         "Severity",
@@ -7251,13 +7251,8 @@ page where you can fix it.
         key="practice_alert_severity"
     ) or "All"
 
-    only_issues = head_cols[1].toggle(
-        "Hide checks with no issues",
-        value=False,
-        key="practice_alert_hide_ok"
-    )
-
-    for col, (link_label, page_key) in zip(head_cols[2:], links):
+    # Si mostrano sempre solo i controlli con segnalazioni (situazione attualizzata)
+    for col, (link_label, page_key) in zip(head_cols[1:], links):
         col.write("")
 
         if col.button(
@@ -7268,6 +7263,8 @@ page where you can fix it.
             st.session_state.page = page_key
             st.rerun()
 
+    shown_checks = 0
+
     for check in [c for c in catalog if c["area"] == view]:
         if (
             severity_filter != "All"
@@ -7277,8 +7274,10 @@ page where you can fix it.
 
         rows = [a for a in alerts if a["code"] == check["code"]]
 
-        if not rows and only_issues:
+        if not rows:
             continue
+
+        shown_checks += 1
 
         with st.container(border=True):
             title_col, count_col = st.columns([5, 1])
@@ -7321,6 +7320,9 @@ page where you can fix it.
                     use_container_width=True,
                     hide_index=True
                 )
+
+    if not shown_checks:
+        st.success("✅ No issues in this area: everything is up to date.")
 
 
 def show_matching_v2(groups):
