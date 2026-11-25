@@ -8,6 +8,9 @@ TREE_CSS = """
 .ph-tree { font-size: 0.92rem; color: #1E1B4B; }
 .ph-tree details { border: 1px solid #ECE6FA; border-radius: 14px; background: #ffffff; margin-bottom: 0.55rem; box-shadow: 0 2px 10px rgba(76,29,149,0.06); }
 .ph-tree details details { box-shadow: none; border-radius: 10px; background: #FBFAFF; margin: 0.4rem 0 0 0; }
+.ph-tree details details details { background: #ffffff; border-radius: 8px; margin-top: 0.35rem; }
+.ph-tree details details details > summary { padding: 0.5rem 0.9rem; }
+.ph-tree .po-ico { font-size: 0.72rem; font-weight: 800; color: #6D28D9; background: #EDE9FE; border-radius: 6px; padding: 2px 7px; letter-spacing: 0.4px; }
 .ph-tree summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 1rem; }
 .ph-tree summary::-webkit-details-marker { display: none; }
 .ph-tree summary::before { content: ""; flex: 0 0 8px; height: 8px; border-right: 2px solid #7C3AED; border-bottom: 2px solid #7C3AED; transform: rotate(-45deg); transition: transform 0.15s ease; margin-right: 4px; }
@@ -32,6 +35,8 @@ TREE_CSS = """
 .ph-tree table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.86rem; }
 .ph-tree th { text-align: left; color: #6B7280; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #ECE6FA; }
 .ph-tree td { padding: 6px 8px; border-bottom: 1px solid #F4F0FC; white-space: nowrap; }
+.ph-tree table.ms { table-layout: fixed; }
+.ph-tree table.ms td { overflow: hidden; text-overflow: ellipsis; }
 .ph-tree td.num, .ph-tree th.num { text-align: right; }
 .ph-tree .sub-title { font-weight: 700; color: #1E1B4B; font-size: 0.9rem; margin: 0.7rem 0 0 0; display: flex; align-items: center; gap: 0.6rem; }
 .ph-tree .sub-title:first-child { margin-top: 0.2rem; }
@@ -102,12 +107,16 @@ def _osr_table(osr_rows):
     )
 
 
+def _po_key(row):
+    po = row.get("po_number")
+    return str(po).strip() if po not in (None, "") else ""
+
+
 def _milestone_table(milestone_rows):
     rows = "".join(
         "<tr>"
         f"<td>{_badge(r.get('status') or 'n/a')}</td>"
         f"<td>{_e(r.get('milestone_id'))}</td>"
-        f"<td>{_e(r.get('po_number'))}</td>"
         f"<td>{_e(r.get('project_phase'))}</td>"
         f"<td>{_e(r.get('description'))}</td>"
         f"<td class='num'>{_eur(r.get('amount'))}</td>"
@@ -122,11 +131,43 @@ def _milestone_table(milestone_rows):
     )
 
     return (
-        "<table><thead><tr>"
-        "<th>Status</th><th>Milestone</th><th>PO</th><th>Phase</th><th>Description</th>"
+        '<table class="ms"><colgroup>'
+        '<col style="width:8%"><col style="width:15%"><col style="width:8%"><col style="width:22%">'
+        '<col style="width:11%"><col style="width:12%"><col style="width:12%"><col style="width:12%">'
+        '</colgroup><thead><tr>'
+        "<th>Status</th><th>Milestone</th><th>Phase</th><th>Description</th>"
         "<th class='num'>Amount</th><th>Planned billing</th><th>Actual billing</th><th>Invoice</th>"
         f"</tr></thead><tbody>{rows}</tbody></table>"
     )
+
+
+def _po_nodes(milestone_rows, expand):
+    """Raggruppa le milestone per PO e restituisce un nodo apribile per ciascun PO."""
+    groups = {}
+    for row in milestone_rows:
+        groups.setdefault(_po_key(row), []).append(row)
+
+    nodes = []
+    for po, rows in sorted(groups.items(), key=lambda item: (item[0] == "", item[0])):
+        total = sum(float(r.get("amount") or 0) for r in rows)
+        invoiced = sum(float(r.get("amount") or 0) for r in rows if r.get("status") == "Paid" or r.get("actual_date"))
+        overdue = sum(1 for r in rows if r.get("status") == "Overdue")
+        label = f"PO {_e(po)}" if po else "No PO assigned"
+        summary = (
+            f'<span class="po-ico">PO</span>'
+            f'<span class="id">{_e(po) if po else "—"}</span>'
+            f'<span class="title">{"Purchase order" if po else "Milestones without a purchase order"}</span>'
+            + (f'<span class="badge b-closed">{overdue} overdue</span>' if overdue else "")
+            + f'<span class="metric">{len(rows)} MS</span>'
+            f'<span class="total">{_eur(total)}<small>invoiced {_eur(invoiced)}</small></span>'
+        )
+        open_attr = " open" if expand or len(groups) == 1 else ""
+        nodes.append(
+            f'<details{open_attr}><summary>{summary}</summary>'
+            f'<div class="body">{_milestone_table(rows)}</div></details>'
+        )
+
+    return "".join(nodes), len(groups)
 
 
 def _fy_amount(opportunity, fy):
@@ -144,6 +185,7 @@ def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
         f'{_badge(opportunity.get("opportunity_stage") or "n/a")}'
         f'{_badge(opportunity.get("opportunity_status") or "n/a")}'
         f'<span class="period">{_period(opportunity)}</span>'
+        f'<span class="metric">{len({_po_key(r) for r in milestone_rows})} PO</span>'
         f'<span class="metric">{len(milestone_rows)} MS</span>'
         f'<span class="metric">{len(osr_rows)} OSR</span>'
         f'<span class="total">{_eur(opportunity.get("opportunity_value"))}{fy_line}</span>'
@@ -156,9 +198,10 @@ def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
 
     milestone_total = sum(float(r.get("amount") or 0) for r in milestone_rows)
 
+    po_html, po_count = _po_nodes(milestone_rows, expand)
     milestones_section = (
-        f'<div class="sub-title">Milestones <span class="metric">{len(milestone_rows)} · {_eur(milestone_total)}</span></div>'
-        + (_milestone_table(milestone_rows) if milestone_rows else '<div class="empty-note">No milestones planned</div>')
+        f'<div class="sub-title">Purchase orders <span class="metric">{po_count} PO · {len(milestone_rows)} MS · {_eur(milestone_total)}</span></div>'
+        + (po_html if milestone_rows else '<div class="empty-note">No purchase orders or milestones planned</div>')
     )
     osr_section = (
         f'<div class="sub-title">OSR <span class="metric">{len(osr_rows)}</span></div>'
