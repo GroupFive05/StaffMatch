@@ -213,13 +213,16 @@ st.markdown("""
     .flt-head .flt-ico { display: inline-flex; color: #7C3AED; }
     .flt-head .flt-title { font-size: 1.3rem; font-weight: 700; color: #1E1B4B; }
     .flt-head .chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; }
-    .st-key-dash_export { position: fixed !important; top: 0.8rem; right: 3.6rem; z-index: 999990; width: auto !important; }
-    .st-key-dash_export button {
+    .st-key-dash_export, .st-key-dash_export_pdf { position: fixed !important; right: 3.6rem; z-index: 999990; width: 9.6rem !important; }
+    .st-key-dash_export { top: 0.8rem; }
+    .st-key-dash_export_pdf { top: 3.2rem; }
+    .st-key-dash_export button, .st-key-dash_export_pdf button {
+        width: 100% !important; justify-content: center !important; white-space: nowrap !important;
         border: 1.5px solid #A78BFA !important; background: #ffffff !important; color: #5B21B6 !important;
         border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
         min-height: 2rem !important; padding: 0.15rem 0.9rem !important; font-size: 0.8rem !important;
     }
-    .st-key-dash_export button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
+    .st-key-dash_export button:hover, .st-key-dash_export_pdf button:hover { background: #F3EEFF !important; border-color: #7C3AED !important; }
     .st-key-dash_reset button { background: transparent !important; border: none !important; color: #6D28D9 !important; font-weight: 600 !important; box-shadow: none !important; }
     .kpi-card {
         display: flex; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #ECE6FA;
@@ -3135,6 +3138,7 @@ def show_dashboard_v2(groups):
     ) or "Commercial"
 
     export_slot = st.empty()
+    export_pdf_slot = st.empty()
 
     response = api(
         "GET",
@@ -3459,7 +3463,7 @@ def show_dashboard_v2(groups):
     try:
         from cockpit_export import build_cockpit_pptx
 
-        pptx_bytes = build_cockpit_pptx({
+        export_ctx = {
             "commercial": filtered_commercial,
             "resources": resource_rows,
             "osr": osr_rows,
@@ -3477,7 +3481,9 @@ def show_dashboard_v2(groups):
                 )
                 for _, label, value, delta in kpi_row_1 + kpi_row_2
             ],
-        })
+        }
+
+        pptx_bytes = build_cockpit_pptx(export_ctx)
 
         export_slot.download_button(
             "Export PowerPoint",
@@ -3487,6 +3493,20 @@ def show_dashboard_v2(groups):
             icon=":material/download:",
             key="dash_export",
         )
+
+        try:
+            from cockpit_export_pdf import build_cockpit_pdf
+
+            export_pdf_slot.download_button(
+                "Export PDF",
+                data=build_cockpit_pdf(export_ctx),
+                file_name=f"MIRA_Practice_Cockpit_{datetime.now():%Y%m%d}.pdf",
+                mime="application/pdf",
+                icon=":material/download:",
+                key="dash_export_pdf",
+            )
+        except Exception as pdf_error:
+            export_pdf_slot.caption(f"PDF export unavailable: {pdf_error}")
     except Exception as export_error:
         export_slot.caption(f"Export unavailable: {export_error}")
 
