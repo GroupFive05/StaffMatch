@@ -141,6 +141,17 @@ def _milestone_table(milestone_rows):
     )
 
 
+def _po_gap(opportunity, milestone_rows):
+    """Differenza tra il valore dell'opportunity e la somma dei suoi PO (solo per le opportunity Won)."""
+    if opportunity.get("opportunity_stage") != "Won":
+        return 0.0
+
+    value = float(opportunity.get("opportunity_value") or 0)
+    total = sum(float(r.get("amount") or 0) for r in milestone_rows)
+    gap = value - total
+    return gap if abs(gap) >= 1 else 0.0
+
+
 def _po_nodes(milestone_rows, expand):
     """Raggruppa le milestone per PO e restituisce un nodo apribile per ciascun PO."""
     groups = {}
@@ -159,7 +170,7 @@ def _po_nodes(milestone_rows, expand):
             f'<span class="title">{"Purchase order" if po else "Milestones without a purchase order"}</span>'
             + (f'<span class="badge b-closed">{overdue} overdue</span>' if overdue else "")
             + f'<span class="metric">{len(rows)} MS</span>'
-            f'<span class="total">{_eur(total)}<small>invoiced {_eur(invoiced)}</small></span>'
+            f'<span class="total">{_eur(total)}<small>invoiced {_eur(invoiced)} · to invoice {_eur(total - invoiced)}</small></span>'
         )
         open_attr = " open" if expand or len(groups) == 1 else ""
         nodes.append(
@@ -185,7 +196,8 @@ def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
         f'{_badge(opportunity.get("opportunity_stage") or "n/a")}'
         f'{_badge(opportunity.get("opportunity_status") or "n/a")}'
         f'<span class="period">{_period(opportunity)}</span>'
-        f'<span class="metric">{len({_po_key(r) for r in milestone_rows})} PO</span>'
+        + (f'<span class="badge b-warn">⚠ PO gap</span>' if _po_gap(opportunity, milestone_rows) else "")
+        + f'<span class="metric">{len({_po_key(r) for r in milestone_rows})} PO</span>'
         f'<span class="metric">{len(milestone_rows)} MS</span>'
         f'<span class="metric">{len(osr_rows)} OSR</span>'
         f'<span class="total">{_eur(opportunity.get("opportunity_value"))}{fy_line}</span>'
@@ -199,9 +211,26 @@ def _opportunity_block(opportunity, osr_rows, milestone_rows, expand, fy=None):
     milestone_total = sum(float(r.get("amount") or 0) for r in milestone_rows)
 
     po_html, po_count = _po_nodes(milestone_rows, expand)
+    gap = _po_gap(opportunity, milestone_rows)
+    if gap > 0:
+        gap_note = (
+            f'<div class="empty-note" style="color:#92400E">⚠ {_eur(gap)} of the opportunity value '
+            f'({_eur(opportunity.get("opportunity_value"))}) is not covered by any PO or milestone.</div>'
+        )
+    elif gap < 0:
+        gap_note = (
+            f'<div class="empty-note" style="color:#92400E">⚠ POs exceed the opportunity value '
+            f'({_eur(opportunity.get("opportunity_value"))}) by {_eur(-gap)}.</div>'
+        )
+    else:
+        gap_note = ""
+
     milestones_section = (
-        f'<div class="sub-title">Purchase orders <span class="metric">{po_count} PO · {len(milestone_rows)} MS · {_eur(milestone_total)}</span></div>'
+        f'<div class="sub-title">Purchase orders <span class="metric">{po_count} PO · {len(milestone_rows)} MS · {_eur(milestone_total)}</span>'
+        + (f'<span class="badge b-warn">PO total ≠ opportunity value</span>' if gap else "")
+        + '</div>'
         + (po_html if milestone_rows else '<div class="empty-note">No purchase orders or milestones planned</div>')
+        + gap_note
     )
     osr_section = (
         f'<div class="sub-title">OSR <span class="metric">{len(osr_rows)}</span></div>'
@@ -303,6 +332,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
 
         revenue = float(contract.get("contract_revenue") or 0)
         mismatch = abs(revenue - won_total) >= 1
+        po_gap_count = sum(
+            1 for o in contract_opportunities
+            if _po_gap(o, milestones_by_opportunity.get(o.get("opportunity_id"), []))
+        )
         manager = f"{contract.get('manager_nome') or ''} {contract.get('manager_cognome') or ''}".strip()
 
         meta = " · ".join(
@@ -312,6 +345,10 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
                 f"Industry: {_e(contract.get('industry_sector'))}" if contract.get("industry_sector") else "",
                 f"Revenue {_eur(revenue)} · Costs {_eur(contract.get('contract_costs'))} · Margin {_eur(contract.get('contract_margin'))}",
                 "⚠ contract revenue differs from the sum of won opportunities" if mismatch else "",
+                (
+                    f"⚠ {po_gap_count} opportunit{'y' if po_gap_count == 1 else 'ies'} with PO total different from the opportunity value"
+                    if po_gap_count else ""
+                ),
             ) if part
         )
 
