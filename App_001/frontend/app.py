@@ -2966,7 +2966,7 @@ def show_risorsa_v2(groups):
                 # ── MANAGER DI RIFERIMENTO ────────────────────────────────────
                 with col_manager:
                     st.markdown(
-                        "#### Reference Manager"
+                        "#### Project Manager"
                     )
 
                     managers = resource.get(
@@ -2993,7 +2993,7 @@ def show_risorsa_v2(groups):
                                 )
                     else:
                         st.caption(
-                            "No Reference Manager available."
+                            "No Project Manager available."
                         )
 
                 st.markdown("---")
