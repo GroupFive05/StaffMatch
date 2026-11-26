@@ -694,6 +694,8 @@ def sm_get_risorse_v2():
             o.OSRID            AS osr_id,
             o.OPPORTUNITYID    AS opportunity_id,
             op.OPPORTUNITYTITLE AS opportunity_title,
+            op.MAINTECHCLUSTER AS main_tech_cluster,
+            op.FUNCTIONALAREA  AS functional_area,
 
             o.RUOLOINPROGETTO  AS project_role,
             o.PERCALLOCAZIONE  AS perc_allocazione,
@@ -702,6 +704,7 @@ def sm_get_risorse_v2():
 
             c.CONTRACTID       AS contract_id,
             c.CLIENTNAME       AS client_name,
+            c.INDUSTRYSECTOR   AS industry_sector,
 
             c.EID              AS manager_eid,
             m.NOME             AS manager_nome,
@@ -824,6 +827,38 @@ def sm_get_risorse_v2():
                 )
             }
             for osr in valid_osr
+        ]
+
+        # Storico completo delle assegnazioni (le più recenti per prime), usato ad esempio per il CV
+        resource["assignment_history"] = [
+            {
+                "osr_id": osr.get("osr_id"),
+                "opportunity_title": osr.get("opportunity_title"),
+                "client_name": osr.get("client_name"),
+                "project_role": osr.get("project_role"),
+                "allocation_pct": int(osr.get("perc_allocazione") or 0),
+                "start_date": (
+                    osr["data_inizio_date"].isoformat()
+                    if osr.get("data_inizio_date") else None
+                ),
+                "end_date": (
+                    osr["data_fine_date"].isoformat()
+                    if osr.get("data_fine_date") else None
+                ),
+                "osr_status": osr.get("calculated_status"),
+                "main_tech_cluster": osr.get("main_tech_cluster"),
+                "functional_area": osr.get("functional_area"),
+                "industry_sector": osr.get("industry_sector"),
+                "manager_name": (
+                    f"{osr.get('manager_nome') or ''} "
+                    f"{osr.get('manager_cognome') or ''}"
+                ).strip(),
+            }
+            for osr in sorted(
+                resource_osr,
+                key=lambda item: item.get("data_fine_date") or date.min,
+                reverse=True
+            )[:12]
         ]
 
         # Ultima assegnazione conclusa (data fine più recente tra le OSR scadute)

@@ -2803,6 +2803,25 @@ def show_risorsa_v2(groups):
                         min(max(availability, 0), 100) / 100
                     )
 
+                    try:
+                        from functools import partial
+                        from cv_export import build_resource_cv_pptx
+
+                        st.download_button(
+                            "Export CV",
+                            data=partial(build_resource_cv_pptx, resource),
+                            file_name=(
+                                f"CV_{resource.get('cognome', '')}_"
+                                f"{resource.get('nome', '')}_{resource.get('eid', '')}.pptx"
+                            ).replace(" ", "_"),
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            icon=":material/download:",
+                            use_container_width=True,
+                            key=f"export_cv_{resource.get('eid')}"
+                        )
+                    except Exception as cv_error:
+                        st.caption(f"CV export unavailable: {cv_error}")
+
                     st.markdown(
                         "#### Certifications"
                     )
