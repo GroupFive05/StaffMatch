@@ -26,6 +26,23 @@ def role_label(name):
     return ROLE_LABELS.get(name, name)
 
 
+PHOTOS_DIR = os.path.join(APP_DIR, "static", "photos")
+
+
+def _resource_photo_html(eid, nome="", cognome=""):
+    """Foto tonda della risorsa: static/photos/<EID>.png, altrimenti avatar con le iniziali."""
+    photo = os.path.join(PHOTOS_DIR, f"{eid}.png")
+
+    if eid and os.path.exists(photo):
+        return (
+            f'<div class="res-photo"><img src="app/static/photos/{eid}.png" '
+            f'loading="lazy" alt="{nome} {cognome}"></div>'
+        )
+
+    initials = ((nome or "")[:1] + (cognome or "")[:1]).upper() or "?"
+    return f'<div class="res-photo ph">{initials}</div>'
+
+
 @st.cache_resource
 def _asset_b64(filename):
     with open(os.path.join(ASSETS_DIR, filename), "rb") as f:
@@ -213,6 +230,10 @@ st.markdown("""
     .flt-head .flt-ico { display: inline-flex; color: #7C3AED; }
     .flt-head .flt-title { font-size: 1.3rem; font-weight: 700; color: #1E1B4B; }
     .flt-head .chip { background: #EDE9FE; color: #6D28D9; font-size: 0.8rem; font-weight: 600; padding: 3px 12px; border-radius: 999px; }
+    .res-photo { width: 190px; height: 190px; border-radius: 50%; overflow: hidden; margin: 0.3rem auto 0.9rem auto; box-shadow: 0 4px 16px rgba(76,29,149,0.18); }
+    .res-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .res-photo.ph { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #EC4899, #8B5CF6 55%, #3B82F6); color: #ffffff; font-size: 3.6rem; font-weight: 700; letter-spacing: 2px; }
+    .res-mail { color: #6B7280; font-size: 0.85rem; overflow-wrap: anywhere; margin-bottom: 0.6rem; }
     .st-key-dash_export, .st-key-dash_export_pdf { position: fixed !important; right: 3.6rem; z-index: 999990; width: 9.6rem !important; }
     .st-key-dash_export { top: 0.8rem; }
     .st-key-dash_export_pdf { top: 3.2rem; }
@@ -2763,9 +2784,57 @@ def show_risorsa_v2(groups):
             )
 
             with st.expander(label):
-                col_profile, col_skills, col_certifications = st.columns(
-                    [1.3, 1, 1.8]
+                col_left, col_profile, col_skills, col_manager = st.columns(
+                    [1.5, 1.6, 1.1, 1.1]
                 )
+
+                # ── FOTO + DISPONIBILITA' + CERTIFICAZIONI ────────────────────
+                with col_left:
+                    st.markdown(
+                        _resource_photo_html(
+                            resource.get("eid"),
+                            resource.get("nome", ""),
+                            resource.get("cognome", "")
+                        ),
+                        unsafe_allow_html=True
+                    )
+
+                    st.progress(
+                        min(max(availability, 0), 100) / 100
+                    )
+
+                    st.markdown(
+                        "#### Certifications"
+                    )
+
+                    certifications = resource.get(
+                        "certifications",
+                        []
+                    )
+
+                    if certifications:
+                        for certification in certifications:
+                            expiration_date = (
+                                certification.get(
+                                    "expiration_date"
+                                )
+                                or "—"
+                            )
+
+                            st.markdown(
+                                f"🎓 **"
+                                f"{certification.get('nome_cert', '')}"
+                                f"**"
+                            )
+
+                            st.caption(
+                                f"{certification.get('cert_id', '')}"
+                                f" · Scadenza: {expiration_date}"
+                            )
+                    else:
+                        st.caption(
+                            "No certifications available."
+                        )
 
                 # ── ANAGRAFICA ────────────────────────────────────────────────
                 with col_profile:
@@ -2828,60 +2897,7 @@ def show_risorsa_v2(groups):
                         f"**Availability: {availability}%**"
                     )
 
-                    st.progress(
-                        min(max(availability, 0), 100) / 100
-                    )
-
-                    # ── MANAGER ───────────────────────────────────────────────
-                    managers = resource.get(
-                        "managers",
-                        []
-                    )
-
-                    st.markdown(
-                        "#### Reference Manager"
-                    )
-
-                    if managers:
-                        for manager in managers:
-                            manager_name = (
-                                f"{manager.get('nome', '')} "
-                                f"{manager.get('cognome', '')}"
-                            ).strip()
-
-                            st.markdown(
-                                f"👤 **{manager_name}**"
-                            )
-
-                            if manager.get("email"):
-                                st.caption(
-                                    manager.get("email")
-                                )
-                    else:
-                        st.caption(
-                            "No Reference Manager available."
-                        )
-
-                    # ── LINGUE ────────────────────────────────────────────────
-                    languages = [
-                        language.get("language_code")
-                        for language in resource.get(
-                            "languages",
-                            []
-                        )
-                        if language.get("language_code")
-                    ]
-
-                    if languages:
-                        st.markdown(
-                            "🌐 " + " · ".join(languages)
-                        )
-                    else:
-                        st.caption(
-                            "No languages available."
-                        )
-
-                # ── SKILL ─────────────────────────────────────────────────────
+                # ── SKILL E LINGUE ────────────────────────────────────────────
                 with col_skills:
                     st.markdown("#### Skill")
 
@@ -2900,40 +2916,57 @@ def show_risorsa_v2(groups):
                             "No skills available."
                         )
 
-                # ── CERTIFICAZIONI ────────────────────────────────────────────
-                with col_certifications:
+                    languages = [
+                        language.get("language_code")
+                        for language in resource.get(
+                            "languages",
+                            []
+                        )
+                        if language.get("language_code")
+                    ]
+
+                    if languages:
+                        st.markdown(
+                            "🌐 " + " · ".join(languages)
+                        )
+                    else:
+                        st.caption(
+                            "No languages available."
+                        )
+
+                # ── MANAGER DI RIFERIMENTO ────────────────────────────────────
+                with col_manager:
                     st.markdown(
-                        "#### Certifications"
+                        "#### Reference Manager"
                     )
 
-                    certifications = resource.get(
-                        "certifications",
+                    managers = resource.get(
+                        "managers",
                         []
                     )
 
-                    if certifications:
-                        for certification in certifications:
-                            expiration_date = (
-                                certification.get(
-                                    "expiration_date"
-                                )
-                                or "—"
-                            )
+                    if managers:
+                        for manager in managers:
+                            manager_name = (
+                                f"{manager.get('nome', '')} "
+                                f"{manager.get('cognome', '')}"
+                            ).strip()
 
                             st.markdown(
-                                f"🎓 **"
-                                f"{certification.get('nome_cert', '')}"
-                                f"**"
+                                f"👤 **{manager_name}**"
                             )
 
-                            st.caption(
-                                f"{certification.get('cert_id', '')}"
-                                f" · Scadenza: {expiration_date}"
-                            )
+                            if manager.get("email"):
+                                st.markdown(
+                                    f'<div class="res-mail">'
+                                    f'{manager.get("email")}</div>',
+                                    unsafe_allow_html=True
+                                )
                     else:
                         st.caption(
-                            "No certifications available."
+                            "No Reference Manager available."
                         )
+
                 st.markdown("---")
                 st.markdown("#### Current Assignments")
 
