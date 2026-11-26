@@ -2232,7 +2232,7 @@ def show_risorsa_v2(groups):
 
     with title_col:
         st.markdown(
-            '<p class="main-title">👥 Resources</p>',
+            '<p class="main-title">👥 Practice People</p>',
             unsafe_allow_html=True
         )
 
@@ -2740,7 +2740,7 @@ def show_risorsa_v2(groups):
 
     # ── VISTE ─────────────────────────────────────────────────────────────────
     tab_cards, tab_table = st.tabs([
-        "📋 Cards",
+        "📋 Identity cards",
         "▦ Table"
     ])
 
