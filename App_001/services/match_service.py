@@ -487,3 +487,122 @@ def generate_resource_selection_rationale(
     return {
         "rationale": rationale
     } 
+
+
+# ── RIASSUNTO PROFESSIONALE PER IL CV (AI, solo sui dati della persona) ───────
+CV_SUMMARY_SYSTEM_PROMPT = """You write the "Professional Qualification" paragraph of a one-page CV for a consultant of an IT Data & Analytics practice.
+
+Rules:
+- Use ONLY the facts in the JSON provided. Never invent employers, clients, projects, technologies, certifications, years, degrees, achievements or responsibilities.
+- English, 3 to 4 sentences, at most 75 words, professional and concrete.
+- Do not use gendered pronouns (he, she, his, her, him). Refer to the person by name or role, or use an impersonal form.
+- Mention seniority/level, experience (only if years are given), core technologies, and the kind of projects/clients only if present in the data.
+- If the data is sparse, write a shorter paragraph (1-2 sentences).
+- Output plain text only: no markdown, no bullet points, no title."""
+
+_CV_ALLOWED_WORDS = {
+    "data", "analytics", "practice", "consultant", "consulting", "delivery",
+    "d&a", "it", "bi", "business", "intelligence", "solutions", "projects",
+}
+
+
+def _cv_facts(resource):
+    """Solo i dati utili al riassunto: nessuna email, EID o contatto."""
+    history = resource.get("assignment_history") or []
+
+    return {
+        "name": f"{resource.get('nome', '')} {resource.get('cognome', '')}".strip(),
+        "level": resource.get("level_name"),
+        "city": resource.get("city"),
+        "joined_year": str(resource.get("hire_date") or "")[:4] or None,
+        "total_experience_years": resource.get("anni_esperienza") or None,
+        "previous_experience_years": resource.get("previous_experience_years") or None,
+        "skills": [s.get("skill_name") for s in resource.get("skills", []) if s.get("skill_name")][:12],
+        "languages": [l.get("language_code") for l in resource.get("languages", []) if l.get("language_code")],
+        "certifications": [c.get("nome_cert") for c in resource.get("certifications", []) if c.get("nome_cert")][:8],
+        "projects": [
+            {
+                "title": h.get("opportunity_title"),
+                "client": h.get("client_name"),
+                "role": h.get("project_role"),
+                "from": str(h.get("start_date") or "")[:7] or None,
+                "to": str(h.get("end_date") or "")[:7] or None,
+                "technology": h.get("main_tech_cluster"),
+                "functional_area": h.get("functional_area"),
+                "industry": h.get("industry_sector"),
+            }
+            for h in history[:8]
+        ],
+    }
+
+
+def _cv_summary_problems(text, facts_text):
+    """Controlla che il testo non contenga numeri, nomi propri o pronomi non supportati dai dati."""
+    import re
+
+    problems = []
+    facts_lower = facts_text.lower()
+    fact_words = set(re.findall(r"[a-z0-9&/\.\-]+", facts_lower))
+
+    if re.search(r"\b(he|she|his|her|him|hers)\b", text, flags=re.IGNORECASE):
+        problems.append("gendered pronoun")
+
+    if len(text.split()) > 110:
+        problems.append("too long")
+
+    for number in re.findall(r"\d+", text):
+        if number not in facts_text:
+            problems.append(f"number {number} not in the data")
+
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        words = sentence.split()
+
+        for index, raw in enumerate(words):
+            token = raw.strip(",.;:()\"'")
+
+            if index == 0 or not token or not token[0].isupper():
+                continue
+
+            low = token.lower()
+
+            if low in _CV_ALLOWED_WORDS or low in fact_words or low in facts_lower:
+                continue
+
+            problems.append(f"unsupported term '{token}'")
+
+    return problems
+
+
+def generate_resource_cv_summary(payload):
+    resource = payload.get("resource") or {}
+
+    if not (resource.get("nome") or resource.get("cognome")):
+        raise ValueError("Resource data is required.")
+
+    facts = _cv_facts(resource)
+    facts_text = json.dumps(facts, ensure_ascii=False)
+    hint = ""
+    last_problems = []
+
+    for _attempt in range(2):
+        raw = ai_service.call_claude(
+            CV_SUMMARY_SYSTEM_PROMPT,
+            "Write the paragraph for this person:\n\n" + json.dumps(facts, ensure_ascii=False, indent=2) + hint,
+            max_tokens=400,
+        )
+
+        text = (raw or "").replace("```text", "").replace("```", "").strip()
+        last_problems = _cv_summary_problems(text, facts_text) if text else ["empty"]
+
+        if not last_problems:
+            return {"summary": text, "source": "ai"}
+
+        hint = (
+            "\n\nYour previous answer was rejected because: "
+            + "; ".join(last_problems[:5])
+            + ". Rewrite it using only terms and numbers that appear in the JSON, without gendered pronouns."
+        )
+
+    # Dopo due tentativi non e' stato possibile ottenere un testo fedele ai dati: il frontend usa il riassunto da modello.
+    return {"summary": None, "source": "template", "reason": "; ".join(last_problems[:3])}
+

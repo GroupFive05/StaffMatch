@@ -2805,17 +2805,27 @@ def show_risorsa_v2(groups):
 
                     try:
                         from functools import partial
-                        from cv_export import build_resource_cv_pptx
+                        from cv_export import build_resource_cv_with_ai
 
                         st.download_button(
-                            "Export CV",
-                            data=partial(build_resource_cv_pptx, resource),
+                            "Export CV · AI summary",
+                            data=partial(
+                                build_resource_cv_with_ai,
+                                resource,
+                                st.session_state.token,
+                                BACKEND_URL
+                            ),
+                            help=(
+                                "Generates a one-slide CV in PowerPoint. The professional summary "
+                                "is written by AI (Claude via SAP AI Core) using only this person's "
+                                "data. It calls the AI when you click, so it takes a few seconds."
+                            ),
                             file_name=(
                                 f"CV_{resource.get('cognome', '')}_"
                                 f"{resource.get('nome', '')}_{resource.get('eid', '')}.pptx"
                             ).replace(" ", "_"),
                             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            icon=":material/download:",
+                            icon=":material/auto_awesome:",
                             use_container_width=True,
                             key=f"export_cv_{resource.get('eid')}"
                         )

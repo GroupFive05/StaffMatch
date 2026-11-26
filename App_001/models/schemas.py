@@ -305,6 +305,10 @@ class ResourceSelectionRationaleRequest(BaseModel):
     end_date: str
     osr_id: Optional[str] = None
 
+class ResourceCVSummaryRequest(BaseModel):
+    resource: dict
+
+
 class ContractCreate(BaseModel):
     contract_title: str
     client_name: str

@@ -205,7 +205,39 @@ def _summary(resource, history):
     return " ".join(parts)
 
 
-def build_resource_cv_pptx(resource):
+def _compact_resource(resource):
+    """Solo i campi necessari al riassunto (niente email, EID o contatti)."""
+    keys = ("nome", "cognome", "level_name", "city", "hire_date", "anni_esperienza",
+            "previous_experience_years", "skills", "languages", "certifications")
+    compact = {key: resource.get(key) for key in keys}
+    compact["assignment_history"] = (resource.get("assignment_history") or [])[:8]
+    return compact
+
+
+def build_resource_cv_with_ai(resource, token, backend_url):
+    """Chiama il backend per il riassunto AI e costruisce la slide; se l'AI non risponde usa il modello da dati."""
+    import requests
+
+    summary = None
+
+    try:
+        response = requests.post(
+            f"{backend_url}/sm/resource-cv-summary",
+            json={"resource": _compact_resource(resource)},
+            headers={"Authorization": f"Bearer {token}"} if token else {},
+            timeout=60,
+        )
+
+        if response.status_code == 200:
+            summary = response.json().get("summary")
+    except Exception:
+        summary = None
+
+    return build_resource_cv_pptx(resource, summary=summary)
+
+
+def build_resource_cv_pptx(resource, summary=None):
+    """Una slide con il CV della risorsa. `summary` e' il riassunto scritto dall'AI (se assente, modello da dati)."""
     history = resource.get("assignment_history")
     if history is None:
         history = (resource.get("current_assignments") or []) + (
@@ -285,7 +317,7 @@ def build_resource_cv_pptx(resource):
     text_w = 6.0
     items = []
 
-    for line in _wrap(_summary(resource, history), 11, text_w, 4):
+    for line in _wrap(summary or _summary(resource, history), 11, text_w, 4):
         items.append({"runs": [(line, False, False, INK)], "size": 11})
     items[-1]["after"] = 5 if items else 0
 
@@ -389,7 +421,8 @@ def build_resource_cv_pptx(resource):
 
     # ── Piè di pagina ────────────────────────────────────────────────────────
     _text(slide, left_x, Inches(7.14), Inches(9), Inches(0.25),
-          f"MIRA · D&A Advisory Cockpit · EID {eid} · generated {date.today():%d/%m/%Y}", size=9, color=MUTED)
+          f"MIRA · D&A Advisory Cockpit · EID {eid} · generated {date.today():%d/%m/%Y}"
+          + (" · summary written by AI from MIRA data" if summary else ""), size=9, color=MUTED)
 
     buffer = BytesIO()
     prs.save(buffer)

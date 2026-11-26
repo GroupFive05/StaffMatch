@@ -8,6 +8,7 @@ from services import practice_alerts
 from services.match_service import (
     suggest_matching_weights,
     generate_resource_selection_rationale,
+    generate_resource_cv_summary,
 )
 from services.auth_service import get_current_user, is_manager_or_admin
 from models.schemas import (
@@ -18,6 +19,7 @@ from models.schemas import (
     MatchingAIRequest,
     MatchingWeightsSuggestionRequest,
     ResourceSelectionRationaleRequest,
+    ResourceCVSummaryRequest,
 )
 router = APIRouter(
     prefix="/sm",
@@ -175,6 +177,22 @@ def selection_rationale(
                 "Unable to generate selection rationale: "
                 f"{str(exc)}"
             )
+        )
+
+
+@router.post("/resource-cv-summary")
+def resource_cv_summary(payload: ResourceCVSummaryRequest):
+    """Riassunto professionale per il CV, scritto dall'AI usando solo i dati della persona."""
+    try:
+        return generate_resource_cv_summary(payload.model_dump())
+
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to generate the CV summary: {str(exc)}"
         )
 
 
