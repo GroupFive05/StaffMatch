@@ -4622,6 +4622,8 @@ def show_practice_hub_drilldown():
         column.markdown(kpi_card(icon, label, value, delta), unsafe_allow_html=True)
 
     # ── EXPORT POWERPOINT DEI CONTRATTI SELEZIONATI ───────────────────────────
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
+
     with st.expander("📑 Select contracts to export (PowerPoint)"):
         contracts_by_id = {c.get("contract_id"): c for c in data.get("contracts", [])}
         visible_ids = [
@@ -4703,7 +4705,6 @@ def show_practice_hub_drilldown():
                 except Exception as export_error:
                     st.caption(f"Export unavailable: {export_error}")
 
-    st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
     st.markdown(tree_html, unsafe_allow_html=True)
 
 

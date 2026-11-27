@@ -42,6 +42,7 @@ TREE_CSS = """
 .ph-tree .sub-title:first-child { margin-top: 0.2rem; }
 .ph-tree .sub-title .metric { font-weight: 600; }
 .ph-tree .empty-note { color: #6B7280; font-size: 0.84rem; margin: 0.3rem 0 0 0; }
+.ph-tree > .group-title:first-child { margin-top: 0.2rem; }
 .ph-tree .group-title { font-weight: 800; color: #1E1B4B; margin: 1.2rem 0 0.5rem 0; font-size: 1.05rem; }
 .ph-tree .group-note { color: #6B7280; font-size: 0.85rem; margin: -0.3rem 0 0.6rem 0; }
 </style>
