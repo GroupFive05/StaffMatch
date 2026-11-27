@@ -203,6 +203,8 @@ entity SM_Contract {
   dataFine            : Date;
   contractRevenue     : Decimal(15,2);
   costi               : Decimal(15,2);
+  directCosts         : Decimal(15,2);
+  otherCosts          : Decimal(15,2);
   contractStatus      : String(50);
   isCrossPractice     : Boolean default false;
   daPracticePct       : Integer;

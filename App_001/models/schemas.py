@@ -321,6 +321,8 @@ class ContractCreate(BaseModel):
     data_fine: str
     contract_revenue: float = 0
     costi: float = 0
+    direct_costs: Optional[float] = None
+    other_costs: Optional[float] = None
     contract_status: Optional[str] = "Active"
 
 
@@ -344,3 +346,15 @@ class OSRCreate(BaseModel):
     chargeability_pct: int = 0
     data_inizio: str
     data_fine: str
+
+
+class MilestoneCreate(BaseModel):
+    opportunity_id: str
+    po_number: Optional[str] = None
+    project_phase: Optional[str] = None
+    description: str
+    amount: float
+    planned_date: str
+    actual_date: Optional[str] = None
+    status: Optional[str] = "Planned"
+    invoice_number: Optional[str] = None

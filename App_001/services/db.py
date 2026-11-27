@@ -1848,6 +1848,8 @@ def sm_get_staffing_management_v2():
         ORDER BY c.CONTRACTID
     """)
 
+    cost_split = _contract_cost_split()
+
     for row in contract_rows:
         start_date = to_date(row.get("start_date"))
         end_date = to_date(row.get("end_date"))
@@ -1876,6 +1878,11 @@ def sm_get_staffing_management_v2():
             row["contract_revenue"]
             - row["contract_costs"]
         )
+
+        split = cost_split.get(row["contract_id"]) or {}
+
+        for key in ("direct_costs", "other_costs"):
+            row[key] = float(split[key]) if split.get(key) is not None else None
 
         row["opportunity_count"] = int(
             row.get("opportunity_count") or 0
@@ -3117,6 +3124,36 @@ def _as_date(value):
     return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
 
 
+_COST_SPLIT_AVAILABLE = None
+
+
+def _cost_split_available():
+    """True se la tabella contratti ha DIRECTCOSTS/OTHERCOSTS (richiede il deploy HDI dello schema)."""
+    global _COST_SPLIT_AVAILABLE
+
+    if _COST_SPLIT_AVAILABLE is None:
+        try:
+            _fetchall("SELECT DIRECTCOSTS, OTHERCOSTS FROM STAFFMATCH_SM_CONTRACT LIMIT 1")
+            _COST_SPLIT_AVAILABLE = True
+        except Exception:
+            return False
+
+    return _COST_SPLIT_AVAILABLE
+
+
+def _contract_cost_split():
+    if not _cost_split_available():
+        return {}
+
+    rows = _fetchall(
+        "SELECT CONTRACTID AS contract_id, DIRECTCOSTS AS direct_costs, OTHERCOSTS AS other_costs "
+        "FROM STAFFMATCH_SM_CONTRACT"
+    )
+
+    return {r["contract_id"]: r for r in rows}
+
+
+
 def _required_text(value, message):
     text = str(value or "").strip()
 
@@ -3198,6 +3235,17 @@ def sm_get_data_entry_catalogs():
             if contract.get(field) is not None:
                 contract[field] = str(contract[field])[:10]
 
+    try:
+        milestones = _fetchall("""
+            SELECT OPPORTUNITYID AS opportunity_id, PONUMBER AS po_number,
+                   BILLABLEAMOUNTEUR AS amount
+            FROM STAFFMATCH_SM_MILESTONE
+        """)
+        for m in milestones:
+            m["amount"] = float(m.get("amount") or 0)
+    except Exception:
+        milestones = None
+
     return {
         "clients": _distinct_values("STAFFMATCH_SM_CONTRACT", "CLIENTNAME"),
         "industries": _distinct_values("STAFFMATCH_SM_CONTRACT", "INDUSTRYSECTOR"),
@@ -3214,10 +3262,15 @@ def sm_get_data_entry_catalogs():
             SELECT
                 OPPORTUNITYID    AS opportunity_id,
                 OPPORTUNITYTITLE AS opportunity_title,
-                CONTRACTID       AS contract_id
+                CONTRACTID       AS contract_id,
+                OPPORTUNITYVALUE AS opportunity_value
             FROM STAFFMATCH_SM_OPPORTUNITY
             ORDER BY OPPORTUNITYID
         """),
+        "milestones": milestones or [],
+        "milestones_available": milestones is not None,
+        "milestone_statuses": _distinct_values("STAFFMATCH_SM_MILESTONE", "MILESTONESTATUS") if milestones is not None else [],
+        "project_phases": _distinct_values("STAFFMATCH_SM_MILESTONE", "PROJECTPHASE") if milestones is not None else [],
         "resources": _fetchall("""
             SELECT
                 EID       AS eid,
@@ -3240,9 +3293,14 @@ def sm_create_contract(data):
         start, end = _date_range(data, "del contratto")
 
         revenue = float(data.get("contract_revenue") or 0)
-        costs = float(data.get("costi") or 0)
+        direct_costs = data.get("direct_costs")
+        other_costs = data.get("other_costs")
+        has_split = direct_costs is not None or other_costs is not None
+        direct_costs = float(direct_costs or 0)
+        other_costs = float(other_costs or 0)
+        costs = direct_costs + other_costs if has_split else float(data.get("costi") or 0)
 
-        if revenue < 0 or costs < 0:
+        if revenue < 0 or costs < 0 or direct_costs < 0 or other_costs < 0:
             raise ValueError("Revenue e costi non possono essere negativi.")
 
         manager_eid = data.get("manager_eid")
@@ -3310,9 +3368,23 @@ def sm_create_contract(data):
             )
         )
 
+        split_saved = False
+
+        if has_split and _cost_split_available():
+            cursor.execute(
+                "UPDATE STAFFMATCH_SM_CONTRACT SET DIRECTCOSTS = ?, OTHERCOSTS = ? WHERE CONTRACTID = ?",
+                (direct_costs, other_costs, contract_id)
+            )
+            split_saved = True
+
         conn.commit()
 
-        return {"contract_id": contract_id, "contract_title": title}
+        return {
+            "contract_id": contract_id,
+            "contract_title": title,
+            "total_costs": costs,
+            "cost_split_saved": split_saved or not has_split,
+        }
 
     except Exception:
         conn.rollback()
@@ -3483,6 +3555,133 @@ def sm_create_osr(data):
             "osr_id": osr_id,
             "resource": f"{resource[0]} {resource[1]}".strip(),
             "peak_allocation": peak,
+        }
+
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def sm_create_milestone(data):
+    conn = _get_conn()
+    cursor = conn.cursor()
+
+    try:
+        opportunity_id = _required_text(data.get("opportunity_id"), "L'opportunity è obbligatoria.")
+        description = _required_text(data.get("description"), "La descrizione della milestone è obbligatoria.")
+        planned = _as_date(data.get("planned_date"))
+        actual = _as_date(data.get("actual_date"))
+
+        if planned is None:
+            raise ValueError("La data di fatturazione pianificata è obbligatoria.")
+
+        amount = round(float(data.get("amount") or 0), 2)
+
+        if amount <= 0:
+            raise ValueError("L'importo della milestone deve essere maggiore di zero.")
+
+        status = _optional_text(data.get("status")) or "Planned"
+        invoice = _optional_text(data.get("invoice_number"))
+
+        if status == "Paid":
+            if actual is None or not invoice:
+                raise ValueError("Una milestone Paid richiede data di fatturazione effettiva e numero fattura.")
+        elif actual is not None or invoice:
+            raise ValueError("Data effettiva e numero fattura sono ammessi solo per milestone Paid.")
+
+        cursor.execute(
+            "SELECT OPPORTUNITYVALUE FROM STAFFMATCH_SM_OPPORTUNITY WHERE OPPORTUNITYID = ?",
+            (opportunity_id,)
+        )
+        opportunity = cursor.fetchone()
+
+        if not opportunity:
+            raise ValueError(f"Opportunity {opportunity_id} non trovata.")
+
+        opportunity_value = float(opportunity[0] or 0)
+
+        if opportunity_value <= 0:
+            raise ValueError(
+                f"L'opportunity {opportunity_id} non ha un valore: impostalo prima di inserire milestone/PO."
+            )
+
+        cursor.execute(
+            "SELECT COALESCE(SUM(BILLABLEAMOUNTEUR), 0) FROM STAFFMATCH_SM_MILESTONE WHERE OPPORTUNITYID = ?",
+            (opportunity_id,)
+        )
+        allocated = float(cursor.fetchone()[0] or 0)
+
+        if allocated + amount > opportunity_value + 0.005:
+            raise ValueError(
+                f"Il totale dei PO di {opportunity_id} arriverebbe a {allocated + amount:,.2f} € "
+                f"e supererebbe il valore dell'opportunity ({opportunity_value:,.2f} €); "
+                f"residuo disponibile: {max(opportunity_value - allocated, 0):,.2f} €."
+            )
+
+        po_number = _optional_text(data.get("po_number"))
+
+        if po_number:
+            cursor.execute(
+                "SELECT COUNT(*) FROM STAFFMATCH_SM_MILESTONE WHERE PONUMBER = ? AND OPPORTUNITYID <> ?",
+                (po_number, opportunity_id)
+            )
+
+            if cursor.fetchone()[0] > 0:
+                raise ValueError(f"Il PO {po_number} è già associato a un'altra opportunity.")
+        else:
+            cursor.execute(
+                "SELECT COUNT(DISTINCT PONUMBER) FROM STAFFMATCH_SM_MILESTONE WHERE OPPORTUNITYID = ?",
+                (opportunity_id,)
+            )
+            po_number = f"PO-{opportunity_id}-{int(cursor.fetchone()[0]) + 1}"
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM STAFFMATCH_SM_MILESTONE
+            WHERE OPPORTUNITYID = ? AND PONUMBER = ?
+              AND LOWER(MILESTONEDESCRIPTION) = LOWER(?) AND PLANNEDBILLINGDATE = ?
+            """,
+            (opportunity_id, po_number, description, planned)
+        )
+
+        if cursor.fetchone()[0] > 0:
+            raise ValueError("Esiste già una milestone con stessa descrizione e data pianificata in questo PO.")
+
+        if invoice:
+            cursor.execute(
+                "SELECT COUNT(*) FROM STAFFMATCH_SM_MILESTONE WHERE LOWER(INVOICENUMBER) = LOWER(?)",
+                (invoice,)
+            )
+
+            if cursor.fetchone()[0] > 0:
+                raise ValueError(f"Il numero fattura {invoice} è già usato da un'altra milestone.")
+
+        milestone_id = _next_sequential_id(
+            cursor, "STAFFMATCH_SM_MILESTONE", "MILESTONEID", "MIL-"
+        )
+
+        cursor.execute(
+            """
+            INSERT INTO STAFFMATCH_SM_MILESTONE (
+                MILESTONEID, OPPORTUNITYID, PONUMBER, PROJECTPHASE, MILESTONEDESCRIPTION,
+                BILLABLEAMOUNTEUR, PLANNEDBILLINGDATE, ACTUALBILLINGDATE,
+                MILESTONESTATUS, INVOICENUMBER
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                milestone_id, opportunity_id, po_number,
+                _optional_text(data.get("project_phase")), description,
+                amount, planned, actual, status, invoice,
+            )
+        )
+
+        conn.commit()
+
+        return {
+            "milestone_id": milestone_id,
+            "po_number": po_number,
+            "remaining": round(opportunity_value - allocated - amount, 2),
         }
 
     except Exception:

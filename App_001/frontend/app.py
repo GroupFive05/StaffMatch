@@ -4360,8 +4360,8 @@ def _default_index(options, wanted):
 def show_practice_hub_data_entry(groups):
     st.markdown('<p class="main-title">🗂️ Practice Hub — Data Entry</p>', unsafe_allow_html=True)
     st.caption(
-        "Add contracts, opportunities and OSRs manually. "
-        "Create them in this order: contract → opportunity → OSR."
+        "Add contracts, opportunities, milestones/POs and OSRs manually. "
+        "Create them in this order: contract → opportunity → milestones/PO → OSR."
     )
 
     response = api("GET", "/sm/data-entry-catalogs")
@@ -4390,9 +4390,13 @@ def show_practice_hub_data_entry(groups):
     }
 
     today = date.today()
-    tab_contract, tab_opportunity, tab_osr = st.tabs(
-        ["📄 New Contract", "💼 New Opportunity", "👥 New OSR"]
+    tab_contract, tab_opportunity, tab_milestone, tab_osr = st.tabs(
+        ["📄 New Contract", "💼 New Opportunity", "🧾 New Milestone / PO", "👥 New OSR"]
     )
+    opportunity_values = {
+        o.get("opportunity_id"): float(o.get("opportunity_value") or 0)
+        for o in catalogs.get("opportunities", [])
+    }
 
     # ── NEW CONTRACT ──────────────────────────────────────────────────────────
     with tab_contract:
@@ -4418,7 +4422,10 @@ def show_practice_hub_data_entry(groups):
             end = date_2.date_input("End date *", value=today + timedelta(days=365))
             money_1, money_2 = st.columns(2)
             revenue = money_1.number_input("Contract revenue (€)", min_value=0.0, step=1000.0, format="%.2f")
-            costs = money_2.number_input("Costs (€)", min_value=0.0, step=1000.0, format="%.2f")
+            cost_1, cost_2 = st.columns(2)
+            direct_costs = cost_1.number_input("Direct costs (€)", min_value=0.0, step=1000.0, format="%.2f")
+            other_costs = cost_2.number_input("Other contract costs (€)", min_value=0.0, step=1000.0, format="%.2f")
+            st.caption("Total contract costs = direct costs + other contract costs.")
 
             save_contract = st.form_submit_button("Save contract", type="primary")
 
@@ -4439,10 +4446,17 @@ def show_practice_hub_data_entry(groups):
                         "data_inizio": start.isoformat(),
                         "data_fine": end.isoformat(),
                         "contract_revenue": revenue,
-                        "costi": costs,
+                        "direct_costs": direct_costs,
+                        "other_costs": other_costs,
                         "contract_status": status,
                     },
-                    lambda r: f"Contract {r.get('contract_id')} created.",
+                    lambda r: f"Contract {r.get('contract_id')} created"
+                              + (
+                                  "."
+                                  if r.get("cost_split_saved")
+                                  else f" — total costs {r.get('total_costs', 0):,.2f} € saved; "
+                                       "the direct/other split will be stored once the database schema is updated."
+                              ),
                 )
 
     # ── NEW OPPORTUNITY ───────────────────────────────────────────────────────
@@ -4488,6 +4502,74 @@ def show_practice_hub_data_entry(groups):
                     },
                     lambda r: f"Opportunity {r.get('opportunity_id')} created.",
                 )
+
+    # ── NEW MILESTONE / PO ────────────────────────────────────────────────────
+    with tab_milestone:
+        if not catalogs.get("milestones_available", True):
+            st.warning("Milestones are not available in the database yet.")
+        else:
+            st.caption(
+                "A PO groups one or more milestones of an opportunity. Leave the PO number empty to "
+                "open a new PO with an automatic number; pick an existing PO to add a milestone to it."
+            )
+            ms_opp_label = st.selectbox(
+                "Opportunity *", list(opportunity_labels.keys()), index=None,
+                placeholder="Select the opportunity", key="de_ms_opp"
+            )
+            ms_opp_id = opportunity_labels.get(ms_opp_label)
+            ms_rows = [m for m in catalogs.get("milestones", []) if m.get("opportunity_id") == ms_opp_id]
+            existing_pos = sorted({m.get("po_number") for m in ms_rows if m.get("po_number")})
+
+            if ms_opp_id:
+                opp_value = opportunity_values.get(ms_opp_id, 0.0)
+                allocated = sum(float(m.get("amount") or 0) for m in ms_rows)
+                m_1, m_2, m_3 = st.columns(3)
+                m_1.metric("Opportunity value", f"€ {opp_value:,.0f}")
+                m_2.metric("Already in POs", f"€ {allocated:,.0f}")
+                m_3.metric("Remaining", f"€ {opp_value - allocated:,.0f}")
+
+            with st.form("data_entry_milestone", clear_on_submit=True):
+                col_1, col_2 = st.columns(2)
+                po_number = col_1.selectbox(
+                    "PO number", existing_pos, index=None, accept_new_options=True,
+                    placeholder="Empty = new PO (automatic number)"
+                )
+                phase = _entry_select(col_2, "Project phase", catalogs.get("project_phases", []))
+                description = col_1.text_input("Milestone description *")
+                amount = col_2.number_input("Billable amount (€) *", min_value=0.0, step=1000.0, format="%.2f")
+                ms_statuses = catalogs.get("milestone_statuses") or ["Planned", "Paid", "Overdue"]
+                ms_status = col_1.selectbox(
+                    "Status", ms_statuses, index=_default_index(ms_statuses, "Planned")
+                )
+                planned_date = col_2.date_input("Planned billing date *", value=today, key="de_ms_planned")
+                actual_1, actual_2 = st.columns(2)
+                actual_date = actual_1.date_input(
+                    "Actual billing date (Paid only)", value=None, key="de_ms_actual"
+                )
+                invoice = actual_2.text_input("Invoice number (Paid only)")
+
+                save_milestone = st.form_submit_button("Save milestone", type="primary")
+
+            if save_milestone:
+                if not ms_opp_id or not description.strip() or amount <= 0:
+                    st.error("Opportunity, description and a billable amount greater than zero are required.")
+                else:
+                    _create_entry(
+                        "/sm/milestones",
+                        {
+                            "opportunity_id": ms_opp_id,
+                            "po_number": po_number,
+                            "project_phase": phase,
+                            "description": description,
+                            "amount": amount,
+                            "planned_date": planned_date.isoformat(),
+                            "actual_date": actual_date.isoformat() if actual_date else None,
+                            "status": ms_status,
+                            "invoice_number": invoice,
+                        },
+                        lambda r: f"Milestone {r.get('milestone_id')} added to {r.get('po_number')} "
+                                  f"(remaining on the opportunity: € {r.get('remaining', 0):,.0f}).",
+                    )
 
     # ── NEW OSR ───────────────────────────────────────────────────────────────
     with tab_osr:

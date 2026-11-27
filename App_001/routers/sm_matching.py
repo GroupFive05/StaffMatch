@@ -3,7 +3,7 @@ Router temporaneo per il test del nuovo modello dati (SM_*, Valerio/GroupFive05)
 Tutti gli endpoint richiedono login; le scritture e il matching richiedono Manager/Executive/Administrator.
 """
 from fastapi import APIRouter, Depends, HTTPException
-from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai,sm_get_data_entry_catalogs,sm_create_contract,sm_create_opportunity,sm_create_osr
+from services.db import sm_get_risorse, sm_get_opportunities, sm_match_score, sm_get_risorse_v2, sm_get_resource_form_catalogs,sm_create_resource_v2,sm_get_dashboard_v2,sm_get_staffing_management_v2,sm_get_matching_context,sm_run_matching_ai,sm_get_data_entry_catalogs,sm_create_contract,sm_create_opportunity,sm_create_osr,sm_create_milestone
 from services import practice_alerts
 from services.match_service import (
     suggest_matching_weights,
@@ -15,6 +15,7 @@ from models.schemas import (
     ContractCreate,
     OpportunityCreate,
     OSRCreate,
+    MilestoneCreate,
     ResourceV2Create, 
     MatchingAIRequest,
     MatchingWeightsSuggestionRequest,
@@ -230,3 +231,8 @@ def create_opportunity(payload: OpportunityCreate, user: dict = Depends(is_manag
 @router.post("/osr", status_code=201)
 def create_osr(payload: OSRCreate, user: dict = Depends(is_manager_or_admin)):
     return _create_with_validation(sm_create_osr, payload, "OSR")
+
+
+@router.post("/milestones", status_code=201)
+def create_milestone(payload: MilestoneCreate, user: dict = Depends(is_manager_or_admin)):
+    return _create_with_validation(sm_create_milestone, payload, "Milestone")
