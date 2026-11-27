@@ -451,5 +451,9 @@ def build_tree(data, search="", contract_statuses=(), expand_all=False, clients=
         body = contracts_html + pipeline_block
 
     stats["resources"] = len(stats["resources"])
+    stats["visible_contracts"] = (
+        [entry[2] for entry in ranked if entry[0]]
+        + [entry[2] for entry in ranked if not entry[0]]
+    )
 
     return TREE_CSS + f'<div class="ph-tree">{body}</div>', stats

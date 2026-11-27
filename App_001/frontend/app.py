@@ -4621,6 +4621,88 @@ def show_practice_hub_drilldown():
     for column, (icon, label, value, delta) in zip(st.columns(4), kpis):
         column.markdown(kpi_card(icon, label, value, delta), unsafe_allow_html=True)
 
+    # ── EXPORT POWERPOINT DEI CONTRATTI SELEZIONATI ───────────────────────────
+    with st.expander("📑 Select contracts to export (PowerPoint)"):
+        contracts_by_id = {c.get("contract_id"): c for c in data.get("contracts", [])}
+        visible_ids = [
+            cid for cid in stats.get("visible_contracts", []) if cid in contracts_by_id
+        ]
+
+        if not visible_ids:
+            st.caption("No contracts match the selected filters.")
+        else:
+            st.caption(
+                "Tick one or more contracts (the header checkbox selects all). "
+                "The file has one slide per contract; with more than one, a cover slide is added."
+            )
+
+            export_table = [
+                {
+                    "Contract": cid,
+                    "Title": contracts_by_id[cid].get("contract_title"),
+                    "Client": contracts_by_id[cid].get("client_name"),
+                    "Status": contracts_by_id[cid].get("contract_status"),
+                    "Revenue": float(contracts_by_id[cid].get("contract_revenue") or 0),
+                }
+                for cid in visible_ids
+            ]
+
+            export_event = st.dataframe(
+                export_table,
+                hide_index=True,
+                width="stretch",
+                height=min(38 + 35 * len(export_table), 360),
+                on_select="rerun",
+                selection_mode="multi-row",
+                key="hub_export_contracts",
+                column_config={
+                    "Revenue": st.column_config.NumberColumn("Revenue", format="€ %d"),
+                },
+            )
+
+            picked_ids = [
+                visible_ids[i] for i in export_event.selection.rows if i < len(visible_ids)
+            ]
+
+            if not picked_ids:
+                st.caption("No contract selected yet.")
+            else:
+                try:
+                    from functools import partial
+                    from contract_export import MAX_CONTRACTS, build_contracts_pptx
+
+                    if len(picked_ids) > MAX_CONTRACTS:
+                        st.warning(
+                            f"Only the first {MAX_CONTRACTS} selected contracts will be exported."
+                        )
+
+                    export_filters = " · ".join(
+                        part for part in (
+                            f"Search: {search}" if search else "",
+                            f"Status: {', '.join(selected_statuses)}" if selected_statuses else "",
+                            f"Account: {', '.join(selected_clients)}" if selected_clients else "",
+                            f"Industry: {', '.join(selected_industries)}" if selected_industries else "",
+                            f"Manager: {', '.join(selected_managers)}" if selected_managers else "",
+                            fiscal.fy_label(hub_fiscal_year),
+                        ) if part
+                    )
+
+                    export_count = min(len(picked_ids), MAX_CONTRACTS)
+                    st.download_button(
+                        f"Export {export_count} contract{'s' if export_count > 1 else ''}",
+                        data=partial(build_contracts_pptx, picked_ids, data, export_filters),
+                        file_name=(
+                            f"MIRA_Contract_{picked_ids[0]}_{datetime.now():%Y%m%d}.pptx"
+                            if len(picked_ids) == 1
+                            else f"MIRA_Contracts_{datetime.now():%Y%m%d}.pptx"
+                        ),
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        icon=":material/download:",
+                        key="hub_export_contracts_btn",
+                    )
+                except Exception as export_error:
+                    st.caption(f"Export unavailable: {export_error}")
+
     st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
     st.markdown(tree_html, unsafe_allow_html=True)
 
